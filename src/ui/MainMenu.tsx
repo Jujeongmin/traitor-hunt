@@ -10,6 +10,7 @@ import type { FriendsClient } from "../net/friends";
 import { partyLineup, partyProblem, type PartyClient } from "../net/party";
 import { FriendsPanel } from "./FriendsPanel";
 import { NicknamePanel } from "./NicknamePanel";
+import { playMusic } from "../game/audio/music";
 import { CostumePanel } from "./CostumePanel";
 import { StatsPanel } from "./StatsPanel";
 import { myCostume, onMyCostume, setMyCostume } from "./profile";
@@ -79,6 +80,7 @@ export function MainMenu({
             : null;
 
   useEffect(() => onMyCostume(setCostume), []);
+  useEffect(() => playMusic("menu"), []);
 
   useEffect(() => {
     const container = stage.current;

@@ -3,6 +3,8 @@ import type { Pose } from "../game/match/types";
 import { MatchView, type HudState } from "../game/render/MatchView";
 import type { MatchClient } from "../net/matchClient";
 import { displayName } from "../game/render/names";
+import { playMusic } from "../game/audio/music";
+import { trackFor } from "../game/audio/musicTrack";
 import { Hud } from "./Hud";
 import { TuningPanel } from "./TuningPanel";
 
@@ -77,6 +79,11 @@ export function MatchScreen({ client, onFrame, onExit, tutorial }: MatchScreenPr
     window.addEventListener("keydown", toggle);
     return () => window.removeEventListener("keydown", toggle);
   }, []);
+
+  // The music follows the objective: the ruins, the tension at the altar, the boss.
+  useEffect(() => {
+    playMusic(trackFor(hud ? client.state.match : null, client.account));
+  }, [client, hud?.objective?.stage, hud?.alive, hud?.escaped, hud?.phase]);
 
   const me = client.account;
   const mine = hud?.results?.find((r) => r.account === me) ?? null;

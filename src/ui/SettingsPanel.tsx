@@ -13,6 +13,7 @@ interface Slider {
 const SLIDERS: Slider[] = [
   { key: "sensitivity", label: "마우스 감도", min: 0.3, max: 2.5, step: 0.05, format: (v) => `${v.toFixed(2)}배` },
   { key: "volume", label: "효과음", min: 0, max: 1, step: 0.05, format: (v) => `${Math.round(v * 100)}%` },
+  { key: "music", label: "배경음악", min: 0, max: 1, step: 0.05, format: (v) => (v === 0 ? "끔" : `${Math.round(v * 100)}%`) },
   { key: "brightness", label: "밝기", min: 0.6, max: 1.6, step: 0.05, format: (v) => `${Math.round(v * 100)}%` },
 ];
 

@@ -4,12 +4,14 @@ export interface Settings {
   sensitivity: number;
   // 0 to 1.
   volume: number;
+  // Background music, 0 to 1.
+  music: number;
   // Renderer exposure.
   brightness: number;
 }
 
 const STORAGE_KEY = "traitor-hunt:settings";
-export const DEFAULT_SETTINGS: Settings = { sensitivity: 1, volume: 0.8, brightness: 1 };
+export const DEFAULT_SETTINGS: Settings = { sensitivity: 1, volume: 0.8, music: 0.5, brightness: 1 };
 
 function load(): Settings {
   try {

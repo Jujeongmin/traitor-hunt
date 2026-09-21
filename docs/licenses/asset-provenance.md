@@ -91,3 +91,15 @@ npm 패키지(@fontsource)로 넣었고 모두 SIL Open Font License 1.1이다(�
 - Cinzel (영문 로고) — https://fonts.google.com/specimen/Cinzel
 - Hahmlet (한글 제목·버튼) — https://fonts.google.com/specimen/Hahmlet
 - Noto Serif KR (HUD 본문) — https://fonts.google.com/noto/specimen/Noto+Serif+KR
+
+## 배경음악 (2026-09-21)
+
+모두 **CC0(퍼블릭 도메인)** 이라 출처 표기 의무가 없다. 아래는 기록용이며, 원본을 96 kbps Vorbis로 다시 인코딩해
+`public/assets/music/`에 넣었다(합계 약 8 MB). GitHub 공개 저장소에도 그대로 커밋한다.
+
+| 파일 | 원곡 | 작곡·제작 | 출처 |
+|---|---|---|---|
+| `menu.ogg` | Dark Cavern Ambient 002 | Paul Wortmann | https://opengameart.org/content/dark-cavern-ambient |
+| `explore.ogg` | Loopable Dungeon Ambience | JaggedStone | https://opengameart.org/content/loopable-dungeon-ambience |
+| `tension.ogg` | Post Apocalyptic Wastelands (Horror Atmosphere) | Juhani Junkala (SubspaceAudio) | https://opengameart.org/content/horror-atmosphere |
+| `boss.ogg` | Oldschool Horror Theme | josepharaoh99 수집, CC0 | https://opengameart.org/content/oldschool-horror-theme |
