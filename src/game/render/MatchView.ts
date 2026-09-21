@@ -12,8 +12,9 @@ import { distance } from "../match/view";
 import { tallyPlates, votesNeeded } from "../match/vote";
 import { ZOMBIE_HEIGHT, ZOMBIE_RADIUS, resolveShot, type HitTarget, type Ray3 } from "../rules/combat";
 import { RUINS, TILE_SIZE, parseLevel, solidWith, spawnPoint, type LevelLayout } from "../rules/levelLayout";
+import { groundAt, platformBlocks } from "../rules/platforms";
 import {
-  EYE_HEIGHT, GROUNDED, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
+  EYE_HEIGHT, GROUNDED, PLAYER_RADIUS, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
 import { FpsInput } from "./FpsInput";
 import { LightPool } from "./lightPool";
@@ -141,9 +142,15 @@ export class MatchView {
   private readonly players = new Map<string, RemotePlayerActor>();
   private readonly hudListeners = new Set<(hud: HudState) => void>();
   private readonly aim = new THREE.Vector3();
-  private solid: SolidTest = solidWith(this.layout, []);
+  // Walls and closed gates only: shots fly over the crates.
+  private solid: SolidTest = solidWith(this.layout, [], Infinity);
   private gatesKey = "";
-  private readonly isSolid = (x: number, z: number) => this.solid(x, z);
+  // What stops you: a platform too tall to be standing on at your feet height stops you too.
+  private readonly isSolid = (x: number, z: number) =>
+    this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, this.air.y);
+  // Monsters never leave the floor, so every platform is a wall to them.
+  private readonly isSolidOnFloor = (x: number, z: number) =>
+    this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, 0);
   private library: ModelLibrary | null = null;
   private props: ObjectiveProps | null = null;
   private viewmodel: Viewmodel | null = null;
@@ -295,9 +302,10 @@ export class MatchView {
     } else if (active) {
       this.pose = { ...this.pose, yaw: this.yaw };
     }
-    // Space jumps: only the body and camera rise, so a bound or possessing player stays put.
+    // Space jumps, onto the crates and blocks under you; a bound or possessing player stays put.
     const jump = this.input.consumePress("Space");
-    this.air = active && !possession && !bound ? stepJump(this.air, jump, dt) : GROUNDED;
+    const ground = groundAt(this.layout.platforms, this.pose.x, this.pose.z, PLAYER_RADIUS);
+    this.air = active && !possession && !bound ? stepJump(this.air, jump, dt, ground) : GROUNDED;
     this.pose = { ...this.pose, y: this.air.y };
     if (match) this.handleActions(match, state, possession, active, bound);
     if (active && !possession) this.client.reportPose(this.pose);
@@ -335,7 +343,7 @@ export class MatchView {
     const key = match.objectives.gates.join(",");
     if (key === this.gatesKey) return;
     this.gatesKey = key;
-    this.solid = solidWith(this.layout, match.objectives.gates);
+    this.solid = solidWith(this.layout, match.objectives.gates, Infinity);
   }
 
   private handleActions(
@@ -390,7 +398,8 @@ export class MatchView {
     for (const [id, m] of Object.entries(match.monsters)) {
       if (m.alive) targets.push({ id, x: m.x, z: m.z, ...HIT_SHAPE[m.kind], alive: true });
     }
-    const hit = resolveShot(ray, targets, this.isSolid, AKM_RANGE, TILE_SIZE);
+    // Bullets fly over the crates: only walls and closed gates stop them.
+    const hit = resolveShot(ray, targets, this.solid, AKM_RANGE, TILE_SIZE);
     if (!hit) return Promise.resolve("miss");
     // Guns only hurt monsters: nobody can shoot another player, the traitor included.
     return this.client.fireAtMonster(hit.id).then((code) => {
@@ -405,7 +414,7 @@ export class MatchView {
     const monster = match.monsters[monsterId];
     if (!monster || !monster.alive) return;
     const speed = MONSTER_STATS[monster.kind].speed * POSSESSED_SPEED_FACTOR;
-    const next = stepPlayer({ x: monster.x, z: monster.z, yaw: this.yaw }, move, dt, this.isSolid, speed);
+    const next = stepPlayer({ x: monster.x, z: monster.z, yaw: this.yaw }, move, dt, this.isSolidOnFloor, speed);
     if (next.x === monster.x && next.z === monster.z && Math.abs(this.yaw - monster.yaw) < 1e-3) return;
     this.client.reportMonsters([{ id: monsterId, x: next.x, z: next.z, yaw: this.yaw }]);
   }

@@ -3,7 +3,7 @@ import { MONSTER_STATS } from "./constants";
 import type { MonsterPoseUpdate } from "./damage";
 import { isActive } from "./lifecycle";
 import type { Poses, PublicMatch } from "./types";
-import { distance } from "./view";
+import { distance, reaches } from "./view";
 
 export const ZOMBIE_SPEED = MONSTER_STATS.zombie.speed;
 export const ZOMBIE_AGGRO_RANGE = MONSTER_STATS.zombie.aggro;
@@ -24,6 +24,8 @@ export function stepMonsterAi(
     for (const account of match.players) {
       const pose = poses[account];
       if (!pose || !isActive(match, account)) continue;
+      // Someone the monster cannot hit is not worth walking to.
+      if (!reaches(monster.kind, pose.y)) continue;
       const d = distance(pose, monster);
       if (d <= stats.aggro && (!target || d < target.d)) target = { account, x: pose.x, z: pose.z, d };
     }

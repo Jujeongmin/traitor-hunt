@@ -13,8 +13,10 @@ export const MONSTER_DEATH_BODY_DAMAGE = 35;
 export const PAIN_RADIUS = 10;
 
 export const MONSTER_STATS = {
-  zombie: { hp: 100, damage: 20, range: 1.8, intervalMs: 1_200, speed: 1.8, aggro: 14 },
-  boss: { hp: 800, damage: 35, range: 2.6, intervalMs: 1_600, speed: 1.5, aggro: 26 },
+  // reachY: how far above the floor its swing still lands. A zombie cannot hit you on a high block
+  // (see platforms.ts); the boss reaches anywhere.
+  zombie: { hp: 100, damage: 20, range: 1.8, intervalMs: 1_200, speed: 1.8, aggro: 14, reachY: 0.7 },
+  boss: { hp: 800, damage: 35, range: 2.6, intervalMs: 1_600, speed: 1.5, aggro: 26, reachY: Infinity },
 } as const;
 
 export const ZOMBIE_HP = MONSTER_STATS.zombie.hp;

@@ -4,13 +4,18 @@ import {
 } from "../../src/game/account/party";
 import { COSTUMES } from "../../src/game/render/costumes";
 import { isBot } from "../../src/game/match/lifecycle";
+import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
 import { readJumpY } from "../../src/game/rules/movement";
+import { maxFeetY } from "../../src/game/rules/platforms";
 import { addResult, readProfile } from "../../src/game/match/profile";
 import {
   RuleViolation, type PlayerResult, type Pose, type Poses, type PublicMatch, type SecretMatch, type SecretRef,
 } from "../../src/game/match/types";
 
 export const RESULTS_COLLECTION = "match_results";
+
+// The one map everyone plays. Poses are checked against its platforms.
+export const LEVEL = parseLevel(RUINS, TILE_SIZE);
 
 export function token(length: number): string {
   let out = "";
@@ -84,7 +89,7 @@ export function isPose(value: unknown): value is Pose {
 
 export async function readPose(roomId: string, account: string): Promise<Pose | null> {
   const pose: unknown = (await $global.getRoomUserState(roomId, account)).pose;
-  return isPose(pose) ? { x: pose.x, z: pose.z, yaw: pose.yaw } : null;
+  return isPose(pose) ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y) } : null;
 }
 
 export async function readPoses(roomId: string, accounts: string[]): Promise<Poses> {
@@ -94,7 +99,8 @@ export async function readPoses(roomId: string, accounts: string[]): Promise<Pos
 }
 
 export async function writePose(roomId: string, account: string, pose: Pose, at: number): Promise<void> {
-  const y = readJumpY(pose.y);
+  // Trust the height only as far as the map allows: what is under them plus a jump.
+  const y = Math.min(readJumpY(pose.y), maxFeetY(LEVEL.platforms, pose.x, pose.z));
   await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, at } });
 }
 

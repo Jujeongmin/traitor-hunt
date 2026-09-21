@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Server } from "../../server/src/server";
 import { PROTOCOL_VERSION } from "../../src/game/match/constants";
+import { MAX_JUMP_RISE } from "../../src/game/rules/movement";
 import { LocalWorld } from "../../src/net/local/localWorld";
 import { LocalTransport } from "../../src/net/localTransport";
 import { MatchClient, SYNC_INTERVAL_MS, errorCode } from "../../src/net/matchClient";
@@ -191,7 +192,7 @@ describe("MatchClient", () => {
 });
 
 describe("jump height", () => {
-  it("reaches the other players, clamped to a sane range", async () => {
+  it("reaches the other players, clamped to what the spot allows", async () => {
     const world = new LocalWorld(new Server());
     const [a, b] = await joinAll(world);
     a.reportPose({ x: 5, z: 6, yaw: 0, y: 0.5 });
@@ -200,7 +201,7 @@ describe("jump height", () => {
     await new Promise((r) => setTimeout(r, 120));
     a.reportPose({ x: 5, z: 6, yaw: 0, y: 99 });
     await settle(world);
-    expect(b.state.poses[a.account]?.y).toBe(1);
+    expect(b.state.poses[a.account]?.y).toBe(MAX_JUMP_RISE);
   });
 
   it("reads a pose without a height as standing", async () => {

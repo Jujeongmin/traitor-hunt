@@ -22,15 +22,13 @@ import {
 } from "../../src/game/match/types";
 import { privateView, type PrivateView } from "../../src/game/match/view";
 import { stepVote } from "../../src/game/match/vote";
-import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
 import {
-  claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
+  LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
   partyMember, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
   readSecret, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
   writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
 } from "./store";
 
-const LEVEL = parseLevel(RUINS, TILE_SIZE);
 const SPAWNS = monsterSpawnsFor(LEVEL);
 
 interface RoomContext {

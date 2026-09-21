@@ -7,7 +7,7 @@ import { endPossession, expirePossession } from "./possession";
 import {
   RuleViolation, type MatchEvent, type Pose, type Poses, type PublicMatch, type SecretMatch, type Vec2,
 } from "./types";
-import { distance, nearbyAccounts } from "./view";
+import { distance, nearbyAccounts, reaches } from "./view";
 
 export interface MonsterPoseUpdate { id: string; x: number; z: number; yaw: number }
 
@@ -87,6 +87,7 @@ export function monsterAttack(
   if (!targetPose || distance(monster, targetPose) > stats.range + RANGE_SLACK) {
     throw new RuleViolation("out_of_range");
   }
+  if (!reaches(monster.kind, targetPose.y)) throw new RuleViolation("out_of_reach");
 
   monster.attackReadyAt = now + stats.intervalMs;
   if (monster.possessed) {

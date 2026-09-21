@@ -1,6 +1,12 @@
 import {
   PLAYERS, actAs, captureMessages, errorOf, fillRoom, findTraitor, placeAll, roomMatch,
 } from "./helpers";
+import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
+import { MAX_JUMP_RISE } from "../../src/game/rules/movement";
+import { HIGH_H, LOW_H } from "../../src/game/rules/platforms";
+
+const LEVEL = parseLevel(RUINS, TILE_SIZE);
+const platformAt = (h: number) => LEVEL.platforms.find((p) => p.h === h)!;
 
 const MINUTE = 60_000;
 
@@ -34,6 +40,35 @@ describe("reportPose", () => {
     expect([stored.x, stored.z, stored.yaw]).toEqual([3, 4, 1]);
     expect(await errorOf(server.reportPose({ x: Number.NaN, z: 0, yaw: 0 }))).toContain("unavailable");
     expect(await errorOf(server.reportPose(null))).toContain("unavailable");
+  });
+});
+
+describe("reported height", () => {
+  test("is kept over a crate and cut down to a jump over open floor", async (server) => {
+    const roomId = await fillRoom(server);
+    actAs(server, PLAYERS[0], roomId);
+    const crate = platformAt(LOW_H);
+    await server.reportPose({ x: crate.x, z: crate.z, yaw: 0, y: LOW_H });
+    expect((await $global.getRoomUserState(roomId, PLAYERS[0])).pose.y).toBe(LOW_H);
+    // Nothing to stand on here, so the most it can be is a jump off the floor.
+    await server.reportPose({ x: 3, z: 4, yaw: 0, y: HIGH_H });
+    expect((await $global.getRoomUserState(roomId, PLAYERS[0])).pose.y).toBe(MAX_JUMP_RISE);
+  });
+
+  test("reaches the monsters, so a zombie cannot hit a player on a high block", async (server) => {
+    const roomId = await fillRoom(server);
+    const block = platformAt(HIGH_H);
+    actAs(server, PLAYERS[1], roomId);
+    await server.reportPose({ x: block.x, z: block.z, yaw: 0, y: HIGH_H });
+    // The first player is the authority over the free monsters; walk one up to the block.
+    actAs(server, PLAYERS[0], roomId);
+    await server.reportMonsters([{ id: "zombie-0", x: block.x, z: block.z + 1, yaw: 0 }]);
+    expect(await errorOf(server.attackWithMonster("zombie-0", PLAYERS[1]))).toContain("out_of_reach");
+    // Standing on the low crate beside it, the same player is in reach.
+    actAs(server, PLAYERS[1], roomId);
+    await server.reportPose({ x: block.x, z: block.z, yaw: 0, y: LOW_H });
+    actAs(server, PLAYERS[0], roomId);
+    await server.attackWithMonster("zombie-0", PLAYERS[1]);
   });
 });
 

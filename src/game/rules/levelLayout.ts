@@ -1,4 +1,5 @@
 import type { SolidTest } from "./movement";
+import { platformBlocks, platformsFor, type Platform } from "./platforms";
 
 export interface Placement { model: string; x: number; y: number; z: number; rotationY: number }
 export interface Point2 { x: number; z: number }
@@ -18,6 +19,8 @@ export interface LevelLayout {
   waveSpawns: Point2[];
   bossSpawn: Point2 | null;
   gates: Gate[];
+  // Crates and blocks to jump onto (see platforms.ts).
+  platforms: Platform[];
 }
 
 export const TILE_SIZE = 4;
@@ -34,26 +37,27 @@ export const LEVEL_1: string[] = [
   "###########",
 ];
 
-// Plan 4 map. S rune shard, 1-3 gates, D device, A altar, W wave spawn, K boss.
+// Plan 4 map. S rune shard, 1-3 gates, D device, A altar, W wave spawn, K boss, c low crate,
+// H low crate beside a high block.
 export const RUINS: string[] = [
   "#########################",
-  "#P.......S#.............#",
+  "#P...H...S#.....H.......#",
   "#.........T.D.........D.#",
-  "#.......Z.#......Z......#",
+  "#..c....Z.#......Z..c...#",
   "#.........1.....#########",
   "#B........#..Z..2.......#",
-  "###.#######.....#.W...W.#",
-  "#S..#######T###T#.......#",
+  "###.#######...c.#.W...W.#",
+  "#S..#######T###T#......c#",
   "#...########...#T...A...#",
   "############.K..#.......#",
-  "###########.....3.W...W.#",
-  "###########..E..#......C#",
+  "###########c....3.W...W.#",
+  "###########..E..#...H..C#",
   "#########################",
 ];
 
 const PROP: Record<string, string> = { B: "dd_barrel", C: "chest_closed" };
 const GATE_SYMBOLS = new Set(["1", "2", "3"]);
-const FLOOR_SYMBOLS = new Set([".", "P", "Z", "B", "C", "E", "S", "D", "A", "W", "K", ...GATE_SYMBOLS]);
+const FLOOR_SYMBOLS = new Set([".", "P", "Z", "B", "C", "E", "S", "D", "A", "W", "K", "c", "H", ...GATE_SYMBOLS]);
 const SOLID_SYMBOLS = new Set(["#", "T"]);
 
 // Neighbour offset -> rotation that turns a panel's +z toward the floor cell.
@@ -84,6 +88,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   const devices: Point2[] = [];
   const waveSpawns: Point2[] = [];
   const gates: Gate[] = [];
+  const platforms: Platform[] = [];
   // Asserted so TS keeps the wide types; they are assigned inside the callbacks below.
   let altar = null as Point2 | null;
   let bossSpawn = null as Point2 | null;
@@ -113,6 +118,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
         });
       }
       if (PROP[ch]) placements.push({ model: PROP[ch], x, y: 0, z, rotationY: 0 });
+      platforms.push(...platformsFor(ch, x, z));
       if (ch === "P") playerSpawn = { x, z };
       if (ch === "Z") zombieSpawns.push({ x, z });
       if (ch === "E") exits.push({ x, z });
@@ -129,7 +135,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   gates.sort((a, b) => a.n - b.n);
   return {
     tileSize, cols, rows: rows.length, solid, placements, playerSpawn, zombieSpawns, exits,
-    shards, devices, altar, waveSpawns, bossSpawn, gates,
+    shards, devices, altar, waveSpawns, bossSpawn, gates, platforms,
   };
 }
 
@@ -140,13 +146,16 @@ export function solidAt(layout: LevelLayout, x: number, z: number): boolean {
   return layout.solid[r][c];
 }
 
-// Gate cells are floor in the layout; a closed gate blocks its whole cell like a wall.
-export function solidWith(layout: LevelLayout, openGates: readonly number[]): SolidTest {
+// Gate cells are floor in the layout; a closed gate blocks its whole cell like a wall. Platforms taller
+// than feetY + STEP_UP block too: monsters and bots are always on the floor (feetY 0); a player passes
+// their feet height; Infinity leaves only walls and gates (for shots, which fly over crates).
+export function solidWith(layout: LevelLayout, openGates: readonly number[], feetY = 0): SolidTest {
   const half = layout.tileSize / 2;
   const closed = layout.gates.filter((g) => !openGates.includes(g.n));
   return (x, z) =>
     solidAt(layout, x, z)
-    || closed.some((g) => x >= g.x - half && x < g.x + half && z >= g.z - half && z < g.z + half);
+    || closed.some((g) => x >= g.x - half && x < g.x + half && z >= g.z - half && z < g.z + half)
+    || platformBlocks(layout.platforms, x, z, feetY);
 }
 
 const SPAWN_OFFSETS: Point2[] = [

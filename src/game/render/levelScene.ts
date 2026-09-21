@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { ModelLibrary } from "../assets/ModelLibrary";
 import { DRESSING_MODELS, dressLevel } from "../rules/dressing";
 import { TILE_SIZE, solidAt, type LevelLayout } from "../rules/levelLayout";
+import type { Platform } from "../rules/platforms";
 import type { LightPool } from "./lightPool";
 import { bakedTint, buildStaticBatch, type BakeLight, type StaticPiece } from "./staticBatch";
 
@@ -9,7 +10,10 @@ import { bakedTint, buildStaticBatch, type BakeLight, type StaticPiece } from ".
 // Wall_A is authored running along z, so it needs a quarter turn to span its edge.
 export const KIT = { wallYawOffset: Math.PI / 2, wallInset: 0, ceilingYOffset: 0 };
 
-const KIT_MODELS = ["dd_floor_a", "dd_ceiling", "dd_wall_a", "dd_pillar_a", "dd_torch", "dd_barrel", "chest_closed", "dd_floor_gate"];
+const KIT_MODELS = [
+  "dd_floor_a", "dd_ceiling", "dd_wall_a", "dd_pillar_a", "dd_torch", "dd_barrel", "chest_closed",
+  "dd_floor_gate", "dd_crate_a",
+];
 export const LEVEL_MODELS = [...new Set([...KIT_MODELS, ...DRESSING_MODELS])];
 
 const HANG_CLEARANCE = 2.3;
@@ -18,6 +22,18 @@ const TORCH_COLOR = new THREE.Color(0xff8a3d);
 const TORCH_BAKE = { color: new THREE.Color(1, 0.82, 0.62), strength: 0.7, range: 11 };
 const BAKE_AMBIENT = 0.5;
 const BAKE_MAX = 1.25;
+
+// Where to draw a platform's model so the crate you see is the box you stand on: stretched to its
+// width, depth and top, and lifted until its own foot rests on the floor.
+export function platformMatrix(platform: Platform, bounds: THREE.Box3): THREE.Matrix4 {
+  const size = bounds.getSize(new THREE.Vector3());
+  const scale = new THREE.Vector3(platform.w / size.x, platform.h / size.y, platform.d / size.z);
+  return new THREE.Matrix4().compose(
+    new THREE.Vector3(platform.x, -bounds.min.y * scale.y, platform.z),
+    new THREE.Quaternion(),
+    scale,
+  );
+}
 
 export interface LevelScene {
   kitScale: number;
@@ -93,6 +109,21 @@ export function buildLevelScene(
     tint.setRGB(Math.min(tint.r, BAKE_MAX), Math.min(tint.g, BAKE_MAX), Math.min(tint.b, BAKE_MAX));
     return { model: p.model, matrix, tint };
   });
+  // Crates to jump onto. The barrel and the chest are already placed as props; only the crates are
+  // stretched to their boxes.
+  const crateBounds = new Map<string, THREE.Box3>();
+  for (const platform of layout.platforms) {
+    if (platform.model !== "dd_crate_a") continue;
+    let bounds = crateBounds.get(platform.model);
+    if (!bounds) {
+      bounds = new THREE.Box3().setFromObject(library.get(platform.model).scene);
+      crateBounds.set(platform.model, bounds);
+    }
+    const matrix = platformMatrix(platform, bounds);
+    const tint = bakedTint(sample.set(platform.x, platform.h, platform.z), bake, BAKE_AMBIENT, blocked);
+    tint.setRGB(Math.min(tint.r, BAKE_MAX), Math.min(tint.g, BAKE_MAX), Math.min(tint.b, BAKE_MAX));
+    pieces.push({ model: platform.model, matrix, tint });
+  }
   scene.add(buildStaticBatch(library, pieces).group);
 
   // The way out is a floor hatch with a pale green glow.
