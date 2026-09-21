@@ -8,7 +8,8 @@ import type { FriendsClient } from "../net/friends";
 import { partyLineup, partyProblem, type PartyClient } from "../net/party";
 import { FriendsPanel } from "./FriendsPanel";
 import { NicknamePanel } from "./NicknamePanel";
-import { myCostume, onMyCostume } from "./profile";
+import { CostumePanel } from "./CostumePanel";
+import { myCostume, onMyCostume, setMyCostume } from "./profile";
 import { SettingsPanel } from "./SettingsPanel";
 
 interface MainMenuProps {
@@ -33,7 +34,7 @@ interface MainMenuProps {
   onlineAvailable: boolean;
 }
 
-type Sheet = "none" | "settings" | "help";
+type Sheet = "none" | "settings" | "help" | "costume";
 
 export function MainMenu({
   account, nickname, level, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
@@ -167,7 +168,7 @@ export function MainMenu({
           {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
         </button>
         <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving}>연습 (봇 3명)</button>
-        <button type="button" className="brush-button" disabled>코스튬 (개발 중)</button>
+        <button type="button" className="brush-button" onClick={() => setSheet("costume")}>코스튬</button>
         <button type="button" className="brush-button" disabled>전적 · 랭킹 (개발 중)</button>
         <button type="button" className="brush-button" onClick={() => setSheet("help")}>게임 방법</button>
         {onlineNote && <p className="note">{onlineNote}</p>}
@@ -200,6 +201,14 @@ export function MainMenu({
       )}
 
       {sheet === "settings" && <SettingsPanel onClose={() => setSheet("none")} />}
+      {sheet === "costume" && (
+        <CostumePanel
+          current={costume}
+          online={!!onSaveNickname}
+          onPick={setMyCostume}
+          onClose={() => setSheet("none")}
+        />
+      )}
       {sheet === "help" && (
         <div className="menu-modal" onClick={() => setSheet("none")}>
           <div className="dark-panel help-panel" onClick={(e) => e.stopPropagation()}>

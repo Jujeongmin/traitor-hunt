@@ -43,3 +43,15 @@ export function costumeForSeat(seat: number): Costume {
   const n = COSTUMES.length;
   return COSTUMES[((seat % n) + n) % n];
 }
+
+export function costumeById(id: unknown): Costume | null {
+  return COSTUMES.find((c) => c.id === id) ?? null;
+}
+
+// What a player wears in a match: the costume they picked in the menu, and the seat's own costume
+// for bots and for anyone whose choice the match never heard of.
+export function wearing(
+  looks: Record<string, string> | undefined, account: string, seat: number,
+): Costume {
+  return costumeById(looks?.[account]) ?? costumeForSeat(seat);
+}

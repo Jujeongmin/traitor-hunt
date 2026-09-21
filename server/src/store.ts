@@ -3,7 +3,7 @@ import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
 import { xpOf } from "../../src/game/account/level";
-import { COSTUMES } from "../../src/game/render/costumes";
+import { COSTUMES, costumeById } from "../../src/game/render/costumes";
 import { isBot } from "../../src/game/match/lifecycle";
 import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
 import { readJumpY } from "../../src/game/rules/movement";
@@ -225,12 +225,18 @@ export async function writePartyInvites(account: string, invites: PartyInvite[])
   await $global.updateUserState(account, { partyInvites: invites });
 }
 
+// The costume an account picked in the menu, or the first one for anyone who never picked.
+export async function readCostume(account: string): Promise<string> {
+  const state = await $global.getUserState(account);
+  return costumeById(state.costume)?.id ?? COSTUMES[0].id;
+}
+
 export async function partyMember(account: string, now: number): Promise<PartyMemberView> {
   const state = await $global.getUserState(account);
   return {
     account,
     nickname: typeof state.nickname === "string" ? state.nickname : null,
-    costume: typeof state.costume === "string" ? state.costume : COSTUMES[0].id,
+    costume: costumeById(state.costume)?.id ?? COSTUMES[0].id,
     online: isOnline(state.lastSeenAt, now),
     activity: readActivity(state.activity),
   };

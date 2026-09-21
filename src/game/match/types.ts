@@ -68,6 +68,8 @@ export interface PublicMatch {
   version: 1;
   phase: Phase;
   players: string[];
+  // Account -> the costume id they picked; a seat without one wears its seat costume.
+  looks: Record<string, string>;
   createdAt: number;
   startedAt: number | null;
   endsAt: number | null;

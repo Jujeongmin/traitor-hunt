@@ -25,7 +25,7 @@ import { privateView, type PrivateView } from "../../src/game/match/view";
 import { stepVote } from "../../src/game/match/vote";
 import {
   LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
-  partyMember, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
+  partyMember, readCostume, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
   readSecret, readXp, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
   writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
 } from "./store";
@@ -372,7 +372,11 @@ export class Server {
       await $global.joinRoom(id);
       await withRoomLock(id, async () => {
         const match = (await readMatch(id)) ?? createLobby(now);
-        for (const seat of seats) joinLobby(match, seat);
+        for (const seat of seats) {
+          joinLobby(match, seat);
+          // The look is copied in as you sit down, so a later change never repaints a live match.
+          match.looks[seat] = await readCostume(seat);
+        }
         if (match.players.length === MATCH_PLAYERS) {
           match.secretRef = await createSecret(startMatch(match, clock(match), Math.random, SPAWNS));
         }

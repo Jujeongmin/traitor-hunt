@@ -24,7 +24,7 @@ import { RemotePlayerActor, type PlayerStatus } from "./RemotePlayerActor";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
 import { Viewmodel } from "./Viewmodel";
 import { FirstPersonArms, type Grips } from "./FirstPersonArms";
-import { costumeForSeat } from "./costumes";
+import { wearing } from "./costumes";
 import { displayName, ownName } from "./names";
 import { playScream, playThud } from "./scream";
 import { settings } from "../../ui/settings";
@@ -324,7 +324,7 @@ export class MatchView {
       this.armsTried = true;
       this.arms = FirstPersonArms.create(
         this.camera, this.library.instance("explorer"), this.library.get("explorer").animations,
-        costumeForSeat(match.players.indexOf(me)),
+        wearing(match.looks, me, match.players.indexOf(me)),
       );
     }
     if (this.arms && this.viewmodel) {
@@ -481,7 +481,7 @@ export class MatchView {
         actor = new RemotePlayerActor(account, {
           object: library.instance("explorer"),
           clips: library.get("explorer").animations,
-          costume: costumeForSeat(match.players.indexOf(account)),
+          costume: wearing(match.looks, account, match.players.indexOf(account)),
           weapon: library.instance("wpn_akm"),
         });
         this.scene.add(actor.object);
