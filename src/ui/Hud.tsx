@@ -1,4 +1,4 @@
-import type { HudState, ObjectiveHud, VoteHud } from "../game/render/MatchView";
+import type { GuideHud, HudState, ObjectiveHud, VoteHud } from "../game/render/MatchView";
 import { useEffect, useState } from "react";
 import { ICONS } from "./theme";
 
@@ -69,6 +69,19 @@ function objectiveText(o: ObjectiveHud): string {
     case "exit":
       return "출구로 탈출 (F)";
   }
+}
+
+// Practice only: what to do now, with an arrow that turns toward it.
+function GuidePanel({ guide }: { guide: GuideHud }) {
+  return (
+    <div className="hud-guide band">
+      {guide.bearing !== null && (
+        <span className="guide-arrow" style={{ transform: `rotate(${guide.bearing}rad)` }} aria-hidden="true">➤</span>
+      )}
+      <span className="guide-text">{guide.text}</span>
+      {guide.distance !== null && <span className="guide-distance">{Math.round(guide.distance)} m</span>}
+    </div>
+  );
 }
 
 function VotePanel({ vote }: { vote: VoteHud }) {
@@ -176,9 +189,7 @@ export function Hud({ hud, now }: { hud: HudState; now: number }) {
       {pain && <div className="pain"><span className="band">가까이서 비명이 들렸다!</span></div>}
       {error && <div className="hud-error band">{error}</div>}
       {inside && !hud.possession && <div className="crosshair" />}
-      <div className="hint band">
-        클릭해서 조작 · WASD 이동 · 스페이스 점프 · 클릭 사격 · E 상호작용 · F 탈출{hud.role === "traitor" ? " · Q 빙의 · R 해제" : ""} · 투표 때 발판에 서서 배신자 지목
-      </div>
+      {hud.guide && <GuidePanel guide={hud.guide} />}
     </>
   );
 }

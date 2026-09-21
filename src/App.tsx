@@ -10,12 +10,16 @@ import { Verse8Transport } from "./net/verse8Transport";
 import { MatchScreen } from "./ui/MatchScreen";
 import { ModelGallery, galleryEnabled } from "./ui/ModelGallery";
 import { MainMenu } from "./ui/MainMenu";
+import { MatchmakingPanel } from "./ui/MatchmakingPanel";
+import type { ClientState } from "./net/matchClient";
 import { loadStats } from "./net/account";
 import { useAccount } from "./ui/useAccount";
+import { useUiScale } from "./ui/useUiScale";
 import { useFriends } from "./ui/useFriends";
 import { useParty } from "./ui/useParty";
 
-type Mode = "title" | "practice" | "online";
+// "matching" keeps the menu up while the lobby fills; the match screen loads once it starts.
+type Mode = "title" | "practice" | "matching";
 type Entry = "findMatch" | "joinPartyMatch";
 
 const layout = parseLevel(RUINS, TILE_SIZE);
@@ -27,6 +31,7 @@ export default function App() {
   // The last room your leader called you into, so a failed follow is not retried on every menu visit.
   const [followed, setFollowed] = useState<string | null>(null);
   const { server, connected } = useGameServer();
+  useUiScale();
   const toTitle = useCallback(() => setMode("title"), []);
   const menuTransport = useMemo(
     () => (ONLINE_AVAILABLE && connected ? new Verse8Transport(server) : null),
@@ -36,10 +41,21 @@ export default function App() {
   const friends = useFriends(menuTransport);
   const party = useParty(menuTransport, mode === "title" ? "menu" : "match");
   const partyCall = party.view?.match && party.view.match.roomId !== followed ? party.view.match : null;
+  const seat = useOnlineSeat(mode === "matching" ? entry : null);
+  const leaveMatching = useCallback(() => {
+    setMode("title");
+  }, []);
+  const started = seat.state?.phase === "playing" || seat.state?.phase === "ended";
+
+  const rotate = <div className="rotate-hint">화면을 가로로 돌리면 더 편하게 즐길 수 있어요</div>;
   if (galleryEnabled()) return <ModelGallery />;
-  if (mode === "practice") return <PracticeMatch onExit={toTitle} />;
-  if (mode === "online") return <OnlineMatch entry={entry} onExit={toTitle} />;
+  if (mode === "practice") return <>{rotate}<PracticeMatch onExit={toTitle} /></>;
+  if (mode === "matching" && seat.seat && started) {
+    return <>{rotate}<OnlineMatch client={seat.seat.client} crew={seat.seat.crew} onExit={toTitle} /></>;
+  }
   return (
+    <>
+    {rotate}
     <MainMenu
       account={menuTransport?.account ?? (connected ? server.account : PRACTICE_ACCOUNT)}
       nickname={view?.nickname ?? null}
@@ -54,17 +70,60 @@ export default function App() {
       onPractice={() => setMode("practice")}
       onOnline={() => {
         setEntry("findMatch");
-        setMode("online");
+        setMode("matching");
       }}
       partyCall={partyCall}
       onFollowParty={() => {
         setFollowed(partyCall?.roomId ?? null);
         setEntry("joinPartyMatch");
-        setMode("online");
+        setMode("matching");
       }}
       onlineAvailable={ONLINE_AVAILABLE}
+      matching={mode === "matching" ? (
+        <MatchmakingPanel
+          state={seat.state}
+          account={menuTransport?.account ?? server.account}
+          serverNow={() => seat.seat?.client.serverNow() ?? Date.now()}
+          startedAt={seat.startedAt}
+          onCancel={leaveMatching}
+        />
+      ) : null}
     />
+    </>
   );
+}
+
+// Takes a seat in an online lobby and follows it. Null entry means "not matching": the seat is left.
+function useOnlineSeat(entry: Entry | null) {
+  const { server, connected } = useGameServer();
+  const [seat, setSeat] = useState<{ client: MatchClient; crew: BotCrew } | null>(null);
+  const [state, setState] = useState<ClientState | null>(null);
+  const [startedAt, setStartedAt] = useState(() => Date.now());
+
+  useEffect(() => {
+    setSeat(null);
+    setState(null);
+    if (!entry || !connected) return;
+    setStartedAt(Date.now());
+    const transport = new Verse8Transport(server);
+    const client = new MatchClient(transport);
+    // Drives the lobby's fill bots whenever this client is the host.
+    const crew = new BotCrew(client, transport, layout);
+    const off = client.onChange(setState);
+    let live = true;
+    void client.join(entry).then(() => {
+      if (live) setSeat({ client, crew });
+    });
+    return () => {
+      live = false;
+      off();
+      crew.dispose();
+      void client.leave();
+      client.dispose();
+    };
+  }, [entry, connected, server]);
+
+  return { seat, state, startedAt };
 }
 
 function PracticeMatch({ onExit }: { onExit: () => void }) {
@@ -84,37 +143,15 @@ function PracticeMatch({ onExit }: { onExit: () => void }) {
 
   const onFrame = useCallback((dt: number, pose: Pose | null) => session?.update(dt, pose), [session]);
   if (!session) return <div className="overlay">연습 방을 준비하는 중…</div>;
-  return <MatchScreen client={session.human} onFrame={onFrame} onExit={onExit} />;
+  return <MatchScreen client={session.human} onFrame={onFrame} onExit={onExit} tutorial />;
 }
 
-function OnlineMatch({ entry, onExit }: { entry: Entry; onExit: () => void }) {
-  const { server, connected } = useGameServer();
-  const [seat, setSeat] = useState<{ client: MatchClient; crew: BotCrew } | null>(null);
-  const client = seat?.client ?? null;
-
-  useEffect(() => {
-    if (!connected) return;
-    const transport = new Verse8Transport(server);
-    const next = new MatchClient(transport);
-    // Drives the lobby's fill bots whenever this client is the host.
-    const crew = new BotCrew(next, transport, layout);
-    let live = true;
-    void next.join(entry).then(() => {
-      if (live) setSeat({ client: next, crew });
-    });
-    return () => {
-      live = false;
-      crew.dispose();
-      void next.leave();
-      next.dispose();
-    };
-  }, [connected, server, entry]);
-
-  const director = useMemo(() => (client ? new HostDirector(client, layout) : null), [client]);
+// The match itself, once the lobby it was found in has started.
+function OnlineMatch({ client, crew, onExit }: { client: MatchClient; crew: BotCrew; onExit: () => void }) {
+  const director = useMemo(() => new HostDirector(client, layout), [client]);
   const onFrame = useCallback((dt: number, pose: Pose | null) => {
-    director?.update(dt, pose);
-    seat?.crew.update(dt);
-  }, [director, seat]);
-  if (!client) return <div className="overlay">{connected ? "매치를 찾는 중…" : "Verse8 서버에 연결하는 중…"}</div>;
+    director.update(dt, pose);
+    crew.update(dt);
+  }, [director, crew]);
   return <MatchScreen client={client} onFrame={onFrame} onExit={onExit} />;
 }

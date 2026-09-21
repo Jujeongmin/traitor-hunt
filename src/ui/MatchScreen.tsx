@@ -16,6 +16,8 @@ export interface MatchScreenProps {
   client: MatchClient;
   onFrame?: (dt: number, pose: Pose | null) => void;
   onExit: () => void;
+  // Practice walks the player through each objective.
+  tutorial?: boolean;
 }
 
 const REASON_LABEL = {
@@ -24,7 +26,7 @@ const REASON_LABEL = {
   humans_out: "남은 사람이 없어 봇만 남았습니다",
 } as const;
 
-export function MatchScreen({ client, onFrame, onExit }: MatchScreenProps) {
+export function MatchScreen({ client, onFrame, onExit, tutorial }: MatchScreenProps) {
   const host = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [ready, setReady] = useState(false);
@@ -35,6 +37,7 @@ export function MatchScreen({ client, onFrame, onExit }: MatchScreenProps) {
   useEffect(() => {
     const view = new MatchView(host.current!, client, {
       onFrame,
+      tutorial,
       onProgress: (done, total) => setProgress({ done, total }),
     });
     let cancelled = false;
@@ -53,7 +56,7 @@ export function MatchScreen({ client, onFrame, onExit }: MatchScreenProps) {
       offHud();
       view.dispose();
     };
-  }, [client, onFrame]);
+  }, [client, onFrame, tutorial]);
 
   const result = hud?.result ?? null;
   useEffect(() => {
@@ -81,6 +84,7 @@ export function MatchScreen({ client, onFrame, onExit }: MatchScreenProps) {
 
   return (
     <div className="app" ref={host}>
+      <div className="ui">
       {ready && hud && !result && <Hud hud={hud} now={now} />}
       {tuning && <TuningPanel onClose={() => setTuning(false)} />}
       {!ready && !loadError && (
@@ -111,6 +115,7 @@ export function MatchScreen({ client, onFrame, onExit }: MatchScreenProps) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

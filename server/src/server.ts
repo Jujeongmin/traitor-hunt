@@ -388,8 +388,11 @@ export class Server {
         const match = (await readMatch(id)) ?? createLobby(now);
         for (const seat of seats) {
           joinLobby(match, seat);
-          // The look is copied in as you sit down, so a later change never repaints a live match.
+          // The look and the name are copied in as you sit down, so a later change never repaints a
+          // live match.
           match.looks[seat] = await readCostume(seat);
+          const name = await readNickname(seat);
+          if (name) match.names[seat] = name;
         }
         if (match.players.length === MATCH_PLAYERS) {
           match.secretRef = await createSecret(startMatch(match, clock(match), Math.random, SPAWNS));

@@ -1,6 +1,17 @@
 import { COSTUMES } from "../../src/game/render/costumes";
 import { PLAYERS, actAs, errorOf, fillRoom, roomMatch } from "./helpers";
 
+describe("names in a match", () => {
+  test("the lobby carries each player nickname, so the matching screen can show it", async (server) => {
+    server.connect({ account: PLAYERS[0] });
+    await server.setNickname("유적왕");
+    const roomId = await fillRoom(server);
+    const match = await roomMatch(roomId);
+    expect(match.names[PLAYERS[0]]).toBe("유적왕");
+    expect(match.names[PLAYERS[1]] ?? null).toBeNull();
+  });
+});
+
 describe("costumes in a match", () => {
   test("the match carries what each player picked, so everyone sees the same look", async (server) => {
     server.connect({ account: PLAYERS[0] });

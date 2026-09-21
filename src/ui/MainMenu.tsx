@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FriendsView } from "../game/account/friends";
+import type { ReactNode } from "react";
 import type { LevelView } from "../game/account/level";
 import type { StatsView } from "../game/account/ranking";
 import type { PartyView } from "../game/account/party";
@@ -22,6 +23,8 @@ interface MainMenuProps {
   level: LevelView | null;
   // Reads your record and the board; null while offline.
   loadStats: (() => Promise<StatsView>) | null;
+  // The matchmaking panel, shown over the menu while a lobby fills.
+  matching: ReactNode;
   // Null until the server account has loaded.
   onSaveNickname: ((nickname: string) => Promise<void>) | null;
   accountFailed: boolean;
@@ -41,7 +44,7 @@ interface MainMenuProps {
 type Sheet = "none" | "settings" | "help" | "costume" | "stats";
 
 export function MainMenu({
-  account, nickname, level, loadStats, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
+  account, nickname, level, loadStats, matching, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
   onPractice, onOnline, onlineAvailable,
 }: MainMenuProps) {
   const stage = useRef<HTMLDivElement>(null);
@@ -113,9 +116,10 @@ export function MainMenu({
     else start();
   };
 
+  // Matching keeps you on the menu, so there is no dive into the ruins until the match starts.
   const quickStart = () => {
     if (nickname !== null) {
-      go(onOnline);
+      onOnline();
       return;
     }
     setStartAfterName(true);
@@ -123,14 +127,17 @@ export function MainMenu({
   };
 
   useEffect(() => {
-    if (partyCall) go(onFollowParty);
+    if (partyCall) onFollowParty();
     // Once per call: keyed on the room, and `leaving` stops repeats.
   }, [partyCall?.roomId]);
 
   return (
     <div className="main-menu">
       <div className="menu-stage" ref={stage} />
+      <div className="ui">
       {loading < 1 && <div className="menu-loading band">유적을 여는 중… {Math.round(loading * 100)}%</div>}
+
+      {matching && <div className="menu-matching">{matching}</div>}
 
       <div className="menu-profile band">
         <span className="menu-level" title={level ? `경험치 ${level.into} / ${level.need}` : undefined}>
@@ -168,10 +175,10 @@ export function MainMenu({
 
       <nav className="menu-left">
         <h1>TRAITOR HUNT</h1>
-        <button type="button" className="brush-button" onClick={quickStart} disabled={!onlineReady || leaving}>
+        <button type="button" className="brush-button" onClick={quickStart} disabled={!onlineReady || leaving || !!matching}>
           {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
         </button>
-        <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving}>연습 (봇 3명)</button>
+        <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving || !!matching}>연습 (봇 3명)</button>
         <button type="button" className="brush-button" onClick={() => setSheet("costume")}>코스튬</button>
         <button type="button" className="brush-button" onClick={() => setSheet("stats")}>전적 · 랭킹</button>
         <button type="button" className="brush-button" onClick={() => setSheet("help")}>게임 방법</button>
@@ -195,7 +202,7 @@ export function MainMenu({
           purpose={startAfterName ? "start" : nickname === null ? "first" : "rename"}
           onSave={async (next) => {
             await onSaveNickname(next);
-            if (startAfterName) go(onOnline);
+            if (startAfterName) onOnline();
           }}
           onClose={() => {
             setRenaming(false);
@@ -228,6 +235,7 @@ export function MainMenu({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

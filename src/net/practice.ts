@@ -47,7 +47,8 @@ export class PracticeSession {
     for (let i = 1; i <= count; i++) {
       const client = new MatchClient(new LocalTransport(this.world, `test-bot-${i}`));
       await client.join();
-      this.bots.push({ client, brain: new BotBrain(client, this.layout), director: new HostDirector(client, this.layout) });
+      const brain = new BotBrain(client, this.layout, Math.random, { assist: PRACTICE_ACCOUNT });
+      this.bots.push({ client, brain, director: new HostDirector(client, this.layout) });
     }
     await this.world.idle();
     await this.human.refresh();

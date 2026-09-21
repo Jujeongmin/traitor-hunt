@@ -70,6 +70,8 @@ export interface PublicMatch {
   players: string[];
   // Account -> the costume id they picked; a seat without one wears its seat costume.
   looks: Record<string, string>;
+  // Account -> their nickname, copied in as they sit down; bots and the nameless are left out.
+  names: Record<string, string>;
   createdAt: number;
   startedAt: number | null;
   endsAt: number | null;

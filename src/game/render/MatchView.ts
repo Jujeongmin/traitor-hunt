@@ -6,6 +6,7 @@ import {
   SEAL_DURATION_MS, SEAL_RADIUS, SHARD_COUNT, VOTE_DECIDE_HOLD_MS,
 } from "../match/constants";
 import { botFillInMs, isActive, isBound } from "../match/lifecycle";
+import { bearingTo, guideFor } from "../match/guide";
 import { BOSS_ID, interactableNear, type Interactable } from "../match/objectives";
 import type { MatchResult, MonsterKind, PlayerResult, Pose, Possession, PublicMatch, Stage } from "../match/types";
 import { distance } from "../match/view";
@@ -104,11 +105,22 @@ export interface HudState {
   boundMs: number | null;
   revealed: string | null;
   sealed: boolean;
+  // Practice only: the step to take now, where it is and how far.
+  guide: GuideHud | null;
+}
+
+export interface GuideHud {
+  text: string;
+  // Where the step is, as an angle from the middle of the screen; null when there is nowhere to go.
+  bearing: number | null;
+  distance: number | null;
 }
 
 export interface MatchViewOptions {
   onProgress?: (done: number, total: number) => void;
   onFrame?: (dt: number, ownPose: Pose | null) => void;
+  // Practice mode walks a new player through the objectives step by step.
+  tutorial?: boolean;
 }
 
 export interface MatchDebugHandle {
@@ -551,9 +563,21 @@ export class MatchView {
       boundMs: match && bound ? (match.bound[me] ?? serverNow) - serverNow : null,
       revealed: match?.revealed ? displayName(match.revealed, me) : null,
       sealed: !!match && match.revealed === me,
+      guide: this.options.tutorial && match && active && !possession ? this.guideHud(match) : null,
     };
     this.lastHud = hud;
     for (const listener of this.hudListeners) listener(hud);
+  }
+
+  private guideHud(match: PublicMatch): GuideHud | null {
+    const guide = guideFor(this.layout, match, this.pose);
+    if (!guide) return null;
+    if (!guide.at) return { text: guide.text, bearing: null, distance: null };
+    return {
+      text: guide.text,
+      bearing: bearingTo({ ...this.pose, yaw: this.yaw }, guide.at),
+      distance: distance(this.pose, guide.at),
+    };
   }
 
   private posesWithMine(state: ClientState): Record<string, Pose> {

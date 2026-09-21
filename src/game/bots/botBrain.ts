@@ -24,6 +24,8 @@ const FOLLOW_PLATE_AFTER_MS = 1_500;
 const SKIP_AFTER_MS = 8_000;
 const GUARD_DISTANCE = 2.5;
 const PLATE_STAND = 0.5;
+// How close an assisting bot walks to the player it is tagging along with.
+const FOLLOW_DISTANCE = 4;
 
 // Timings that make a bot look like a person rather than an aimbot.
 const HUMAN = {
@@ -56,6 +58,13 @@ function angleBetween(from: number, to: number): number {
   return d;
 }
 
+// A bot that tags along with a learner: it fights and helps where two are needed, but leaves every
+// objective the player should learn (keys, gate, altar, the way out) to them.
+export interface BotOptions {
+  // The account this bot follows and waits for; without one the bot plays the objectives itself.
+  assist?: string;
+}
+
 export class BotBrain {
   pose: Pose | null = null;
   private path: Vec2[] = [];
@@ -78,6 +87,7 @@ export class BotBrain {
     private readonly client: MatchClient,
     private readonly layout: LevelLayout,
     private readonly rng: () => number = Math.random,
+    private readonly options: BotOptions = {},
   ) {
     this.solid = solidWith(layout, []);
     this.speed = WALK_SPEED * this.between(HUMAN.speed);
@@ -160,8 +170,11 @@ export class BotBrain {
     const o = match.objectives;
     const level = this.layout;
     const pose = this.pose!;
+    const assist = this.options.assist;
     switch (o.stage) {
       case "shards": {
+        // The keys and the gate are the player's to find.
+        if (assist) return this.tagAlong(assist);
         let best: Vec2 | null = null;
         for (let i = 0; i < level.shards.length; i++) {
           const shard = level.shards[i];
@@ -176,12 +189,18 @@ export class BotBrain {
         const i = this.deviceIndex(match);
         const device = level.devices[i];
         if (!device) return null;
-        return { at: device, useAt: o.devices[i] <= now ? device : null, escape: false, near: 1.2 };
+        // Two candles must burn at once, so an assisting bot waits at the other one and lights it
+        // only once the player has lit theirs.
+        const helping = !assist || o.devices.some((until, n) => n !== i && until > now);
+        const use = helping && o.devices[i] <= now ? device : null;
+        return { at: device, useAt: use, escape: false, near: 1.2 };
       }
       case "seal": {
         const altar = level.altar;
         if (!altar) return null;
-        return { at: this.guardSpot(match, altar), useAt: o.seal.lastAt === null ? altar : null, escape: false, near: 0.8 };
+        // Guarding the altar is help; starting the seal is the player's move.
+        const start = !assist && o.seal.lastAt === null;
+        return { at: this.guardSpot(match, altar), useAt: start ? altar : null, escape: false, near: 0.8 };
       }
       case "boss": {
         const boss = match.monsters[BOSS_ID];
@@ -189,9 +208,19 @@ export class BotBrain {
       }
       case "exit": {
         const exit = level.exits[0];
-        return exit ? { at: exit, useAt: null, escape: true, near: 0 } : null;
+        if (!exit) return null;
+        // An assisting bot keeps the player company at the hatch and only leaves after them. Once the
+        // player is out (or down for good), it takes the exit itself so the match can end.
+        if (assist && isActive(match, assist)) return { at: exit, useAt: null, escape: false, near: EXIT_RADIUS + 2 };
+        return { at: exit, useAt: null, escape: true, near: 0 };
       }
     }
+  }
+
+  // Walks after the player, stopping a few steps short; stands still until they show up.
+  private tagAlong(account: string): Goal | null {
+    const lead = this.allPoses()[account];
+    return lead ? { at: { x: lead.x, z: lead.z }, useAt: null, escape: false, near: FOLLOW_DISTANCE } : null;
   }
 
   // A floor spot beside a closed gate, nudged toward it, that this bot can walk to.
