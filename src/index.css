@@ -185,6 +185,32 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .hud-target .hud-bar { width: 100%; }
 .hud-auto { position: absolute; right: 16px; bottom: 22px; }
+.hud-menu-buttons { position: absolute; top: 8px; right: 12px; display: flex; gap: 8px; }
+.hud-notes {
+  position: absolute; right: 16px; top: 64px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  font: 600 14px var(--font-head); color: #ffe08a; pointer-events: none;
+}
+/* The potion slot, left of the skill slot. */
+.hud-potion {
+  position: absolute; left: calc(50% - 190px); bottom: 22px;
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px;
+  background: rgba(14, 11, 9, 0.8); border: 1px solid rgba(157, 255, 176, 0.4); border-radius: 8px;
+  pointer-events: none;
+}
+.hud-potion b { font: 700 14px var(--font-head); }
+.hud-potion span:last-child { font-size: 12px; color: var(--ink-dim); }
+/* The bag and the shop. */
+.bag-panel { width: min(560px, 92%); max-height: 86%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.bag-gold { margin: 0; text-align: center; font: 700 18px var(--font-head); color: #ffd36a; }
+.bag-gear, .bag-list { display: flex; flex-direction: column; gap: 4px; }
+.bag-gear { padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.bag-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.bag-row b { font: 700 15px var(--font-head); }
+.bag-slot { width: 36px; color: var(--ink-dim); font-size: 13px; }
+.bag-count { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.bag-blurb { flex: 1; font-size: 12px; color: var(--ink-dim); }
+.bag-row .text-button { font-size: 13px; padding: 4px 8px; }
+.bag-problem { margin: 0; text-align: center; color: var(--ember); font-size: 13px; }
 .hud-auto.on { color: #1a120b; background: var(--ember); }
 .pain.fallen { align-items: center; padding-top: 0; pointer-events: auto; }
 .pain.fallen .world-panel { display: flex; flex-direction: column; align-items: center; gap: 12px; }
@@ -473,7 +499,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .class-skill { padding: 8px 10px; border-radius: 6px; background: rgba(255, 179, 90, 0.1); }
 .class-skill b { color: var(--ember); }
 
-.hud-menu-button { position: absolute; top: 8px; right: 12px; }
 
 /* Your characters on this server: one card each, the one you play highlighted, and a card to make
    another. */

@@ -3,6 +3,7 @@ import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
 import { levelOf, readXp } from "../../src/game/account/level";
+import { NO_GEAR } from "../../src/game/account/items";
 import {
   characterMap, legacyMatchXp, readCharacters, readSpot, type Character, type Spot,
 } from "../../src/game/account/characters";
@@ -85,6 +86,8 @@ export async function readProfile(account: string): Promise<Profile> {
       xp: Math.max(readXp(state.xp), oldXp),
       spot: readSpot(state.spot),
       made: 0,
+      bag: {},
+      gear: NO_GEAR,
     }];
   } else if (oldXp > 0) {
     // Moved over before its old XP was carried: the character named like the account's first name

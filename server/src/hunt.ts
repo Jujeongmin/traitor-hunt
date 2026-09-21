@@ -1,3 +1,4 @@
+import { gearStats, type Gear, type GearStats } from "../../src/game/account/items";
 import { levelOf } from "../../src/game/account/level";
 import { WEAPONS, readClass, type PlayerClass } from "../../src/game/combat/classes";
 import { BLOCK_ARC, facing, inStrikeReach } from "../../src/game/combat/melee";
@@ -5,6 +6,7 @@ import { SKILLS, skillTargets } from "../../src/game/combat/skills";
 import { stepMonsters, type Prey } from "../../src/game/world/monsterAi";
 import {
   MONSTERS, ZONE_BOSS, ZONE_MONSTERS, damageAt, maxHpAt, readMonsterType, spawnMonsters, type MonsterState,
+  type MonsterType,
 } from "../../src/game/world/monsters";
 import { RANGE_SLACK, RuleViolation, isPose, type Pose } from "../../src/game/world/types";
 import { zoneLayout, type ZoneId } from "../../src/game/world/zones";
@@ -38,12 +40,18 @@ interface Fighter {
   hp: number;
   maxHp: number;
   dead: boolean;
+  // What the worn gear adds.
+  gear: GearStats;
 }
+
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
 function readFighter(state: Record<string, any>): Fighter {
   const level = typeof state.look?.level === "number" ? state.look.level : 1;
-  const maxHp = typeof state.maxHp === "number" ? state.maxHp : maxHpAt(level);
+  const gear = { power: num(state.gear?.power), hp: num(state.gear?.hp), guard: Math.min(0.8, num(state.gear?.guard)) };
+  const maxHp = typeof state.maxHp === "number" ? state.maxHp : maxHpAt(level) + gear.hp;
   return {
+    gear,
     pose: isPose(state.pose) ? state.pose : null,
     playerClass: readClass(state.look?.playerClass) ?? "warrior",
     level,
@@ -79,9 +87,11 @@ async function writeMonsters(monsters: Record<string, MonsterState>): Promise<vo
   await $room.updateRoomState({ monsters: tidy(monsters) }, { returnState: false });
 }
 
-// The stats a character fights with at its level, for the room user state on arrival or level up.
-export function fightStats(xp: number): { maxHp: number } {
-  return { maxHp: maxHpAt(levelOf(xp).level) };
+// The stats a character fights with at its level and in its gear, for the room user state on
+// arrival, level up or a change of gear.
+export function fightStats(xp: number, gear: Gear): { maxHp: number; gear: GearStats } {
+  const stats = gearStats(gear);
+  return { maxHp: maxHpAt(levelOf(xp).level) + stats.hp, gear: stats };
 }
 
 // One room tick: monsters move and swing, blows land on players (a raised guard facing the monster
@@ -105,7 +115,8 @@ export async function tickRoom(zone: ZoneId, deltaMs: number, now: number): Prom
     const m = monsters[hit.monsterId];
     if (!f || f.dead || !m) continue;
     const guarded = f.pose?.block === true && facing(f.pose, m, BLOCK_ARC);
-    const damage = Math.max(1, Math.round(hit.damage * (guarded ? 1 - WEAPONS[f.playerClass].block : 1)));
+    const shield = guarded ? 1 - WEAPONS[f.playerClass].block : 1;
+    const damage = Math.max(1, Math.round(hit.damage * shield * (1 - f.gear.guard)));
     f.hp = Math.max(0, f.hp - damage);
     f.dead = f.hp <= 0;
     f.hitAt = now;
@@ -126,10 +137,20 @@ export async function tickRoom(zone: ZoneId, deltaMs: number, now: number): Prom
 }
 
 // What one blow or skill did: the monsters it felled and the XP they pay.
-export interface HitResult { hit: string[]; killed: string[]; xp: number }
+// The kinds felled, for their loot; the server fills gold and items in after paying out.
+export interface HitResult {
+  hit: string[];
+  killed: string[];
+  xp: number;
+  felled: MonsterType[];
+  gold: number;
+  items: string[];
+}
+
+export const NOTHING: HitResult = { hit: [], killed: [], xp: 0, felled: [], gold: 0, items: [] };
 
 function land(monsters: Record<string, MonsterState>, ids: string[], damage: number, stunMs: number, now: number): HitResult {
-  const out: HitResult = { hit: [], killed: [], xp: 0 };
+  const out: HitResult = { ...NOTHING, hit: [], killed: [], felled: [], items: [] };
   for (const id of ids) {
     const m = monsters[id];
     if (!m?.alive) continue;
@@ -141,6 +162,7 @@ function land(monsters: Record<string, MonsterState>, ids: string[], damage: num
       m.alive = false;
       m.respawnAt = now + spec.respawnMs;
       out.killed.push(id);
+      out.felled.push(m.type);
       out.xp += spec.xp;
     }
   }
@@ -170,7 +192,7 @@ export async function strike(zone: ZoneId, monsterId: unknown, yaw: unknown, now
   const weapon = WEAPONS[f.playerClass];
   if (!inStrikeReach(f.pose, m, weapon, true)) throw new RuleViolation("out_of_range");
   await $room.updateMyState({ strikeReadyAt: now + weapon.intervalMs * COOLDOWN_GRACE }, { returnState: false });
-  const result = land(monsters, [monsterId], damageAt(weapon.damage, f.level), 0, now);
+  const result = land(monsters, [monsterId], damageAt(weapon.damage, f.level, f.gear.power), 0, now);
   await writeMonsters(monsters);
   return result;
 }
@@ -196,8 +218,8 @@ export async function useSkill(zone: ZoneId, yaw: unknown, now: number): Promise
   }
   const monsters = await readMonsters(zone);
   const targets = skillTargets(f.pose, monsters, skill, true);
-  if (targets.length === 0) return { hit: [], killed: [], xp: 0 };
-  const result = land(monsters, targets, damageAt(skill.damage, f.level), skill.stunMs, now);
+  if (targets.length === 0) return { ...NOTHING };
+  const result = land(monsters, targets, damageAt(skill.damage, f.level, f.gear.power), skill.stunMs, now);
   await writeMonsters(monsters);
   return result;
 }

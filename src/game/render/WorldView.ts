@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { HitResult, OtherPlayer, WorldClient } from "../../net/worldClient";
+import { ITEMS } from "../account/items";
 import { levelOf } from "../account/level";
 import { ModelLibrary } from "../assets/ModelLibrary";
 import { WEAPONS, type PlayerClass } from "../combat/classes";
@@ -48,8 +49,12 @@ const AUTO_CAMERA_RATE = 2.5;
 const AUTO_HEAL_BELOW = 0.75;
 // A click with no monster in your arc still turns you to one this far round from where you look.
 const AIM_ASSIST = Math.PI * 0.6;
-// How long a "+XP" note stays up.
+// How long a "+XP" note, and a note of gold or a drop, stays up.
 const GAIN_MS = 1500;
+const NOTE_MS = 3000;
+// Auto-battle drinks a potion below this share of health; potions go down no faster than this.
+const AUTO_POTION_BELOW = 0.35;
+const POTION_GAP_MS = 1000;
 
 // The monster models a zone needs.
 function zoneMonsterModels(zone: ZoneId): string[] {
@@ -78,6 +83,9 @@ export interface WorldHud {
   auto: boolean;
   // The monster you are fighting.
   target: { name: string; hp: number; maxHp: number } | null;
+  // Potions in the bag (Q drinks one), and what the last kills paid.
+  potions: number;
+  notes: string[];
 }
 
 export interface WorldViewOptions {
@@ -129,6 +137,8 @@ export class WorldView {
   private auto = false;
   private target: string | null = null;
   private gain: { xp: number; at: number } | null = null;
+  private notes: { text: string; at: number }[] = [];
+  private lastPotionAt = Number.NEGATIVE_INFINITY;
   private frame = 0;
   private disposed = false;
 
@@ -223,6 +233,8 @@ export class WorldView {
     // Mid-swing you stand still (and turn only through the attack itself).
     const rooted = this.me?.rooted === true;
     if (this.input.consumePress("KeyF")) this.toggleAuto();
+    const potion = this.input.consumePress("KeyQ");
+    if (here && (potion || (this.auto && state.me && state.me.hp < state.me.maxHp * AUTO_POTION_BELOW))) this.drinkPotion();
     let facingYaw = this.yaw;
     if (here) {
       this.bodies = state.others.map((o) => ({ x: o.pose.x, z: o.pose.z, r: PLAYER_BODY * 2 }));
@@ -354,10 +366,29 @@ export class WorldView {
   }
 
   private gained(result: HitResult | null): void {
-    if (!result || result.xp <= 0) return;
+    if (!result) return;
     const now = performance.now();
-    const recent = this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : 0;
-    this.gain = { xp: recent + result.xp, at: now };
+    if (result.xp > 0) {
+      const recent = this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : 0;
+      this.gain = { xp: recent + result.xp, at: now };
+    }
+    if (result.gold > 0) this.notes.push({ text: `+${result.gold} 골드`, at: now });
+    for (const id of result.items) this.notes.push({ text: `${ITEMS[id]?.name ?? id} 획득`, at: now });
+  }
+
+  // Drinks the potion that fits: the big one when a lot is missing, otherwise the small one.
+  private drinkPotion(): void {
+    const now = performance.now();
+    const me = this.client.state.me;
+    const bag = this.client.state.bag?.bag;
+    if (!me || !bag || me.hp >= me.maxHp || now - this.lastPotionAt < POTION_GAP_MS) return;
+    const missing = me.maxHp - me.hp;
+    const big = (bag.potion_big ?? 0) > 0;
+    const small = (bag.potion_small ?? 0) > 0;
+    const pick = big && (missing >= ITEMS.potion_big.heal || !small) ? "potion_big" : small ? "potion_small" : null;
+    if (!pick) return;
+    this.lastPotionAt = now;
+    void this.client.drink(pick);
   }
 
   private checkPortals(here: boolean): void {
@@ -468,6 +499,7 @@ export class WorldView {
     const now = performance.now();
     if (now - this.lastHudAt < HUD_INTERVAL_MS) return;
     this.lastHudAt = now;
+    this.notes = this.notes.filter((n) => now - n.at < NOTE_MS).slice(-4);
     const entry = this.client.state.entry ?? this.options.entry;
     const near = this.nearestPortal();
     const skill = SKILLS[this.options.playerClass];
@@ -492,6 +524,8 @@ export class WorldView {
       gain: this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : null,
       auto: this.auto,
       target: fighting?.alive ? { name: MONSTERS[fighting.type].name, hp: fighting.hp, maxHp: MONSTERS[fighting.type].hp } : null,
+      potions: (this.client.state.bag?.bag.potion_small ?? 0) + (this.client.state.bag?.bag.potion_big ?? 0),
+      notes: this.notes.map((n) => n.text),
     };
     for (const listener of this.hudListeners) listener(hud);
   }

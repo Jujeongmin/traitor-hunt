@@ -1,5 +1,6 @@
 import { readJumpY } from "../game/rules/movement";
 import { PROTOCOL_VERSION, isPose, readSwing, type Pose } from "../game/world/types";
+import type { BagView, ItemId, Slot } from "../game/account/items";
 import { readMonsterType, type MonsterState } from "../game/world/monsters";
 import type { ZoneEntry, ZoneId, ZoneLook } from "../game/world/zones";
 import { errorCode } from "./errors";
@@ -29,11 +30,13 @@ export interface WorldState {
   // The monsters of your channel, by id.
   monsters: Record<string, MonsterState>;
   me: Vitals | null;
+  // Your gold, bag and gear; null until the server has said.
+  bag: BagView | null;
   error: string | null;
 }
 
-// What an attack or skill did, as the server answers it.
-export interface HitResult { hit: string[]; killed: string[]; xp: number }
+// What an attack or skill did, as the server answers it: what it hit and felled, and what that paid.
+export interface HitResult { hit: string[]; killed: string[]; xp: number; gold: number; items: ItemId[] }
 
 // Moving, your pose goes out this often; standing still, this often, so the others keep hearing you.
 export const POSE_THROTTLE_MS = 100;
@@ -76,7 +79,7 @@ function readVitals(user: Record<string, unknown>): Vitals | null {
 // Your place in the open world: which zone and channel you are in, who else is there and where,
 // and your own pose going out to them.
 export class WorldClient {
-  private current: WorldState = { phase: "idle", entry: null, others: [], monsters: {}, me: null, error: null };
+  private current: WorldState = { phase: "idle", entry: null, others: [], monsters: {}, me: null, bag: null, error: null };
   private readonly listeners = new Set<(s: WorldState) => void>();
   private unsubscribers: (() => void)[] = [];
   private members: string[] = [];
@@ -161,12 +164,54 @@ export class WorldClient {
   // Facing yaw: turning is instant, so it goes with the attack rather than waiting for the next pose.
   async strike(monsterId: string, yaw: number): Promise<HitResult | null> {
     if (this.current.phase !== "in") return null;
-    return this.transport.call<HitResult>("strike", [monsterId, yaw]).catch(() => null);
+    return this.paid(await this.transport.call<HitResult>("strike", [monsterId, yaw]).catch(() => null));
   }
 
   async useSkill(yaw: number): Promise<HitResult | null> {
     if (this.current.phase !== "in") return null;
-    return this.transport.call<HitResult>("useSkill", [yaw]).catch(() => null);
+    return this.paid(await this.transport.call<HitResult>("useSkill", [yaw]).catch(() => null));
+  }
+
+  // Gold or a drop changes the bag; asks for it again.
+  private paid(result: HitResult | null): HitResult | null {
+    if (result && (result.gold > 0 || result.items.length > 0)) void this.refreshBag();
+    return result;
+  }
+
+  async refreshBag(): Promise<void> {
+    const bag = await this.transport.call<BagView>("getBag").catch(() => null);
+    if (bag) this.set({ bag });
+  }
+
+  // The bag and the shop. Each answers null when done, or why it was refused.
+  equip(id: ItemId): Promise<string | null> {
+    return this.bagCall("equipItem", [id]);
+  }
+
+  unequip(slot: Slot): Promise<string | null> {
+    return this.bagCall("unequipItem", [slot]);
+  }
+
+  drink(id: ItemId): Promise<string | null> {
+    return this.bagCall("drinkPotion", [id]);
+  }
+
+  buy(id: ItemId, count = 1): Promise<string | null> {
+    return this.bagCall("buyItem", [id, count]);
+  }
+
+  sell(id: ItemId, count = 1): Promise<string | null> {
+    return this.bagCall("sellItem", [id, count]);
+  }
+
+  private async bagCall(name: string, args: unknown[]): Promise<string | null> {
+    if (this.current.phase !== "in") return "unavailable";
+    try {
+      this.set({ bag: await this.transport.call<BagView>(name, args) });
+      return null;
+    } catch (error) {
+      return errorCode(error);
+    }
   }
 
   // Fallen: back to the village.
@@ -199,6 +244,7 @@ export class WorldClient {
     this.users = [];
     this.lastPose = null;
     this.set({ phase: "in", entry, others: [], monsters: {}, me: null, error: null });
+    void this.refreshBag();
     this.unsubscribers = [
       this.transport.subscribeRoomState(entry.roomId, (state) => {
         const users = (state as { $users?: unknown }).$users;

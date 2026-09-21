@@ -5,3 +5,4 @@ declare const $global: any;
 declare const $room: any;
 declare const $sender: { account: string; roomId?: string };
 declare function $lock<T>(lockKey: string, fn: () => T | Promise<T>): Promise<T>;
+declare const $asset: any;

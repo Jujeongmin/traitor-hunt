@@ -1,6 +1,7 @@
 import { readClass, type PlayerClass } from "../combat/classes";
 import { costumeById } from "../render/costumes";
 import { readZone, type ZoneId } from "../world/zones";
+import { readBag, readGear, type Bag, type Gear } from "./items";
 import { levelOf, readXp, type LevelView } from "./level";
 
 // An account holds characters on each server. One of them is active: the one the menus show and
@@ -20,6 +21,9 @@ export interface Character {
   spot: Spot | null;
   // When it was made (ms), for listing in order; 0 for characters from before this was kept.
   made: number;
+  // What it carries, and what it wears.
+  bag: Bag;
+  gear: Gear;
 }
 
 // What the menus show of a character.
@@ -54,7 +58,10 @@ export function readCharacters(raw: unknown): Character[] {
       continue;
     }
     const made = typeof c.made === "number" && Number.isFinite(c.made) ? c.made : 0;
-    out.push({ id: c.id, world: c.world, name: c.name, playerClass, costume: costume.id, xp: readXp(c.xp), spot: readSpot(c.spot), made });
+    out.push({
+      id: c.id, world: c.world, name: c.name, playerClass, costume: costume.id, xp: readXp(c.xp), spot: readSpot(c.spot), made,
+      bag: readBag(c.bag), gear: readGear(c.gear),
+    });
   }
   return out.sort((a, b) => a.made - b.made);
 }

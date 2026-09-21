@@ -22,7 +22,7 @@ export const RANGE_SLACK = 1.5;
 
 export const RULE_ERRORS = [
   "unavailable", "not_owned", "no_character", "character_limit", "no_zone", "not_near", "zone_full", "too_fast", "blocking",
-  "no_monster", "monster_dead", "out_of_range",
+  "no_monster", "monster_dead", "out_of_range", "no_item", "not_enough_gold", "not_in_village",
   "nickname_invalid", "nickname_taken",
   "friend_not_found", "friend_self", "already_friends", "friend_limit", "request_limit", "no_request",
   "not_friends", "party_full", "already_in_party", "no_invite", "not_leader", "party_busy",
@@ -40,4 +40,4 @@ export class RuleViolation extends Error {
 }
 
 // Bumped whenever client and server stop understanding each other.
-export const PROTOCOL_VERSION = 10;
+export const PROTOCOL_VERSION = 11;

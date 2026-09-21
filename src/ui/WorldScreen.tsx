@@ -6,6 +6,9 @@ import type { Costume } from "../game/render/costumes";
 import { WorldView, type WorldHud } from "../game/render/WorldView";
 import type { ZoneEntry } from "../game/world/zones";
 import type { WorldClient, WorldState } from "../net/worldClient";
+import type { BagView } from "../game/account/items";
+import { START_ZONE } from "../game/world/zones";
+import { BagPanel, ShopPanel } from "./BagPanel";
 import { SettingsPanel } from "./SettingsPanel";
 
 interface WorldScreenProps {
@@ -37,7 +40,8 @@ export function WorldScreen({ client, playerClass, costume, name, owned, onExit 
     // The screen only cares where you are and whether you are moving between zones; the others'
     // poses change many times a second and go straight to the 3D view, not through React.
     const off = client.onChange((next) =>
-      setState((prev) => (prev.phase === next.phase && prev.entry === next.entry && prev.error === next.error ? prev : next)));
+      setState((prev) => (prev.phase === next.phase && prev.entry === next.entry && prev.error === next.error && prev.bag === next.bag
+        ? prev : next)));
     void client.enter();
     return () => {
       off();
@@ -70,6 +74,7 @@ export function WorldScreen({ client, playerClass, costume, name, owned, onExit 
       name={name}
       owned={owned}
       travelling={state.phase === "travelling"}
+      bag={state.bag}
       problem={problem}
       onProblem={(code) => setProblem({ text: TRAVEL_PROBLEM[code] ?? "지금은 갈 수 없어요", at: performance.now() })}
       onExit={onExit}
@@ -79,6 +84,7 @@ export function WorldScreen({ client, playerClass, costume, name, owned, onExit 
 
 interface ZoneScreenProps extends Omit<WorldScreenProps, "onExit"> {
   entry: ZoneEntry;
+  bag: BagView | null;
   travelling: boolean;
   problem: { text: string; at: number } | null;
   onProblem: (code: string) => void;
@@ -88,7 +94,7 @@ interface ZoneScreenProps extends Omit<WorldScreenProps, "onExit"> {
 // How long a refused portal's message stays up.
 const PROBLEM_MS = 3000;
 
-function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelling, problem, onProblem, onExit }: ZoneScreenProps) {
+function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelling, bag, problem, onProblem, onExit }: ZoneScreenProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<WorldView | null>(null);
   const [hud, setHud] = useState<WorldHud | null>(null);
@@ -96,6 +102,9 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   const [ready, setReady] = useState(false);
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
+  // Which of the bag and the shop is open.
+  const [panel, setPanel] = useState<"bag" | "shop" | null>(null);
+  const inVillage = entry.zone === START_ZONE;
   const [now, setNow] = useState(() => performance.now());
 
   useEffect(() => {
@@ -126,10 +135,14 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     // One view per zone: the key on this component remounts it for a new entry.
   }, []);
 
-  // Escape opens the menu (the pointer lock lets go of the mouse first).
+  // Escape opens the menu (the pointer lock lets go of the mouse first); I opens the bag.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenu((m) => !m);
+      if (e.code === "KeyI") {
+        document.exitPointerLock?.();
+        setPanel((p) => (p === "bag" ? null : "bag"));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -148,7 +161,16 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
             <span>채널 {hud.channel}</span>
             <span>{hud.players}명</span>
           </div>
-          <button type="button" className="brush-button small hud-menu-button" onClick={() => setMenu(true)}>메뉴</button>
+          <div className="hud-menu-buttons">
+            {inVillage && <button type="button" className="brush-button small" onClick={() => setPanel("shop")}>상점</button>}
+            <button type="button" className="brush-button small" onClick={() => setPanel("bag")}>가방 (I)</button>
+            <button type="button" className="brush-button small" onClick={() => setMenu(true)}>메뉴</button>
+          </div>
+          {hud.notes.length > 0 && (
+            <div className="hud-notes">
+              {hud.notes.map((text, i) => <span key={i} className="band">{text}</span>)}
+            </div>
+          )}
           {hud.portal && (
             <div className="hud-prompt band">
               {hud.portal.locked ? `${hud.portal.to} — 정식판이 필요해요` : `${hud.portal.to}(으)로 가는 길`}
@@ -178,6 +200,11 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           >
             {hud.auto ? "자동 전투 중" : "자동 전투"} (F)
           </button>
+          <div className="hud-potion">
+            <span className="hud-skill-key">Q</span>
+            <b>물약</b>
+            <span>{hud.potions}개</span>
+          </div>
           <div className={`hud-skill${hud.skill.readyInMs > 0 ? " cooling" : ""}`}>
             <span className="hud-skill-key">1</span>
             <b>{hud.skill.name}</b>
@@ -201,7 +228,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1 스킬 · F 자동 전투</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1 스킬 · Q 물약 · I 가방 · F 자동 전투</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>
@@ -209,6 +236,8 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         </div>
       )}
       {settings && <SettingsPanel onClose={() => setSettings(false)} />}
+      {panel === "bag" && <BagPanel client={client} bag={bag} inVillage={inVillage} onClose={() => setPanel(null)} />}
+      {panel === "shop" && <ShopPanel client={client} bag={bag} onClose={() => setPanel(null)} />}
       </div>
     </div>
   );

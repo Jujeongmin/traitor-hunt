@@ -33,7 +33,7 @@ function copy<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
 }
 
-const GLOBAL_NAMES = ["$global", "$room", "$sender", "$lock"] as const;
+const GLOBAL_NAMES = ["$global", "$room", "$sender", "$lock", "$asset"] as const;
 
 // The Verse8 globals are process-wide, so every world must take turns, not just calls within one world.
 let sharedQueue: Promise<unknown> = Promise.resolve();
@@ -41,6 +41,8 @@ let sharedQueue: Promise<unknown> = Promise.resolve();
 export class LocalWorld {
   private readonly rooms = new Map<string, RoomRecord>();
   private readonly userStates = new Map<string, Json>();
+  // Each account's $asset balances.
+  private readonly assets = new Map<string, Map<string, number>>();
   private readonly collections = new Map<string, Map<string, Json>>();
   private readonly listeners = new Set<(event: WorldEvent) => void>();
   private readonly dirtyRooms = new Set<string>();
@@ -153,6 +155,7 @@ export class LocalWorld {
     scope.$global = this.globalApi();
     scope.$room = this.roomApi(() => sender.roomId, account);
     scope.$lock = async (_key: string, work: () => unknown) => work();
+    scope.$asset = this.assetApi(account);
     try {
       return await fn();
     } finally {
@@ -229,6 +232,37 @@ export class LocalWorld {
       deleteCollection: async (collectionId: string) => {
         this.collections.delete(collectionId);
         return collectionId;
+      },
+    };
+  }
+
+  // $asset as Verse8 has it: balances of the caller (or of the account given).
+  private assetApi(caller: string) {
+    const of = (account?: string) => {
+      const who = account ?? caller;
+      let balances = this.assets.get(who);
+      if (!balances) {
+        balances = new Map();
+        this.assets.set(who, balances);
+      }
+      return balances;
+    };
+    const all = (account?: string) => Object.fromEntries(of(account));
+    return {
+      get: async (id: string, account?: string) => of(account).get(id) ?? 0,
+      getAll: async (account?: string) => all(account),
+      has: async (id: string, amount: number, account?: string) => (of(account).get(id) ?? 0) >= amount,
+      mint: async (id: string, amount: number, account?: string) => {
+        if (!(amount > 0)) throw new Error("Amount must be positive");
+        of(account).set(id, (of(account).get(id) ?? 0) + amount);
+        return all(account);
+      },
+      burn: async (id: string, amount: number, account?: string) => {
+        if (!(amount > 0)) throw new Error("Amount must be positive");
+        const have = of(account).get(id) ?? 0;
+        if (have < amount) throw new Error(`Insufficient ${id}: has ${have}, needs ${amount}`);
+        of(account).set(id, have - amount);
+        return all(account);
       },
     };
   }

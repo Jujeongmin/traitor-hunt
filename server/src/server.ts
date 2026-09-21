@@ -2,6 +2,10 @@ import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
 import { levelOf } from "../../src/game/account/level";
+import {
+  GOLD, ITEMS, MAX_STACK, NO_GEAR, addItem, equip, readItemId, sellPrice, unequip, type BagView, type ItemId, type Slot,
+} from "../../src/game/account/items";
+import { rollLoot } from "../../src/game/world/monsters";
 import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/game/account/characters";
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
 import { readClass } from "../../src/game/combat/classes";
@@ -80,19 +84,61 @@ async function enter(account: string, character: Character, zone: ZoneId, x: num
   return { roomId, zone, channel, x, z };
 }
 
-// Pays a hunter the XP of what they felled. A new level heals them to their new, larger health.
-async function reward(account: string, roomId: string, result: HitResult): Promise<void> {
-  if (result.xp <= 0) return;
-  const next = await updateActive(account, (c) => ({ ...c, xp: c.xp + result.xp }));
+// Pays a hunter for what they felled: XP, gold (onto the account, as a Verse8 asset) and whatever
+// dropped (into the bag). A new level heals them to their new, larger health.
+async function reward(account: string, roomId: string, result: HitResult): Promise<HitResult> {
+  if (result.felled.length === 0) return result;
+  const loot = result.felled.map((type) => rollLoot(type));
+  const gold = loot.reduce((sum, l) => sum + l.gold, 0);
+  const items = loot.flatMap((l) => l.items);
+  if (gold > 0) await $asset.mint(GOLD, gold);
+  const next = await updateActive(account, (c) => ({
+    ...c, xp: c.xp + result.xp, bag: items.reduce((bag, id) => addItem(bag, id, 1), c.bag),
+  }));
   await writeRanking(account, next);
   const levelled = levelOf(next.xp).level > levelOf(next.xp - result.xp).level;
   await withRoomLock(roomId, async () => {
-    const stats = fightStats(next.xp);
+    const stats = fightStats(next.xp, next.gear);
     await $room.updateMyState(
       { look: zoneLook(next), xp: next.xp, ...(levelled ? { maxHp: stats.maxHp, hp: stats.maxHp } : {}) },
       { returnState: false },
     );
   });
+  return { ...result, gold, items };
+}
+
+async function bagView(character: Character): Promise<BagView> {
+  return { gold: await $asset.get(GOLD), bag: character.bag, gear: character.gear };
+}
+
+// After a change of gear: the room carries your new health and what your gear adds.
+async function refreshFighter(character: Character): Promise<void> {
+  const roomId = $sender.roomId;
+  if (!roomId || !readChannelRoom(roomId)) return;
+  await withRoomLock(roomId, async () => {
+    const mine = await $room.getMyState();
+    const stats = fightStats(character.xp, character.gear);
+    const hp = Math.min(typeof mine.hp === "number" ? mine.hp : stats.maxHp, stats.maxHp);
+    await $room.updateMyState({ maxHp: stats.maxHp, hp, gear: stats.gear }, { returnState: false });
+  });
+}
+
+// How many of something to buy or sell: a whole number from 1 to a full stack.
+function readCount(value: unknown): number {
+  if (value === undefined) return 1;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > MAX_STACK) throw new RuleViolation("unavailable");
+  return value;
+}
+
+function readItem(value: unknown): ItemId {
+  const id = readItemId(value);
+  if (!id) throw new RuleViolation("no_item");
+  return id;
+}
+
+// The shop is in the village.
+function requireVillage(): void {
+  if (currentChannel().zone !== START_ZONE) throw new RuleViolation("not_in_village");
 }
 
 // The caller's channel room, from inside it.
@@ -135,6 +181,8 @@ export class Server {
       if (characters.filter((c) => c.world === world).length >= CHARACTERS_PER_WORLD) throw new RuleViolation("character_limit");
       const character: Character = {
         id: `c-${token(10)}`, world, name, playerClass: picked, costume: look.id, xp: 0, spot: null, made: Date.now(),
+        // A start: a few potions.
+        bag: { potion_small: 3 }, gear: NO_GEAR,
       };
       await withNicknameLock(() => claimName(account, character.id, key, name));
       await saveProfile(account, [...characters, character], character.id);
@@ -262,12 +310,12 @@ export class Server {
     const spot = character.spot?.zone === zone ? character.spot : { zone, ...zoneLayout(zone).playerSpawn };
     const now = Date.now();
     // Every arrival is whole: full health, nothing on cooldown.
-    const { maxHp } = fightStats(character.xp);
+    const { maxHp, gear } = fightStats(character.xp, character.gear);
     await $room.updateMyState({
       pose: { x: spot.x, z: spot.z, yaw: 0, y: 0, block: false, swing: 0, skill: 0, at: now },
       look: zoneLook(character),
       savedAt: now,
-      xp: character.xp, hp: maxHp, maxHp, dead: false, hitAt: 0, strikeReadyAt: 0, skillReadyAt: 0,
+      xp: character.xp, hp: maxHp, maxHp, gear, dead: false, hitAt: 0, strikeReadyAt: 0, skillReadyAt: 0,
     });
     return { x: spot.x, z: spot.z };
   }
@@ -306,16 +354,86 @@ export class Server {
   async strike(monsterId: unknown, yaw?: unknown): Promise<HitResult> {
     const { roomId, zone } = currentChannel();
     const result = await withRoomLock(roomId, () => strike(zone, monsterId, yaw, Date.now()));
-    await reward($sender.account, roomId, result);
-    return result;
+    return reward($sender.account, roomId, result);
   }
 
   // Your class's skill, no sooner than its cooldown allows.
   async useSkill(yaw?: unknown): Promise<HitResult> {
     const { roomId, zone } = currentChannel();
     const result = await withRoomLock(roomId, () => useSkill(zone, yaw, Date.now()));
-    await reward($sender.account, roomId, result);
-    return result;
+    return reward($sender.account, roomId, result);
+  }
+
+  // Your gold, and your active character's bag and gear.
+  async getBag(): Promise<BagView> {
+    return bagView(await playing($sender.account));
+  }
+
+  // Wears an item from the bag (what was in its slot goes back in the bag).
+  async equipItem(id: unknown): Promise<BagView> {
+    const item = readItem(id);
+    const account = $sender.account;
+    await playing(account);
+    const next = await updateActive(account, (c) => ({ ...c, ...equip(c.bag, c.gear, item) }));
+    await refreshFighter(next);
+    return bagView(next);
+  }
+
+  async unequipItem(slot: unknown): Promise<BagView> {
+    if (slot !== "weapon" && slot !== "armor") throw new RuleViolation("unavailable");
+    const account = $sender.account;
+    await playing(account);
+    const next = await updateActive(account, (c) => ({ ...c, ...unequip(c.bag, c.gear, slot as Slot) }));
+    await refreshFighter(next);
+    return bagView(next);
+  }
+
+  // Drinks a potion from the bag, in the world and standing.
+  async drinkPotion(id: unknown): Promise<BagView> {
+    const item = readItem(id);
+    if (ITEMS[item].kind !== "potion") throw new RuleViolation("unavailable");
+    const account = $sender.account;
+    const { roomId } = currentChannel();
+    if ((await $room.getMyState()).dead === true) throw new RuleViolation("unavailable");
+    const next = await updateActive(account, (c) => ({ ...c, bag: addItem(c.bag, item, -1) }));
+    await withRoomLock(roomId, async () => {
+      const mine = await $room.getMyState();
+      if (mine.dead === true || typeof mine.hp !== "number" || typeof mine.maxHp !== "number") return;
+      await $room.updateMyState({ hp: Math.min(mine.maxHp, mine.hp + ITEMS[item].heal) }, { returnState: false });
+    });
+    return bagView(next);
+  }
+
+  // The village shop: gold for items, at the listed price.
+  async buyItem(id: unknown, count?: unknown): Promise<BagView> {
+    const item = readItem(id);
+    const n = readCount(count);
+    requireVillage();
+    const price = ITEMS[item].price;
+    if (price === null) throw new RuleViolation("unavailable");
+    const account = $sender.account;
+    await playing(account);
+    const cost = price * n;
+    if (!(await $asset.has(GOLD, cost))) throw new RuleViolation("not_enough_gold");
+    await $asset.burn(GOLD, cost);
+    try {
+      return bagView(await updateActive(account, (c) => ({ ...c, bag: addItem(c.bag, item, n) })));
+    } catch (error) {
+      await $asset.mint(GOLD, cost);
+      throw error;
+    }
+  }
+
+  // Sells items from the bag back to the shop for half their price.
+  async sellItem(id: unknown, count?: unknown): Promise<BagView> {
+    const item = readItem(id);
+    const n = readCount(count);
+    requireVillage();
+    const account = $sender.account;
+    await playing(account);
+    const next = await updateActive(account, (c) => ({ ...c, bag: addItem(c.bag, item, -n) }));
+    await $asset.mint(GOLD, sellPrice(item) * n);
+    return bagView(next);
   }
 
   // Fallen: back to the village, whole again (arrive heals).
