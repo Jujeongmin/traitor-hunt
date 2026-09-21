@@ -1,9 +1,8 @@
-import "@fontsource/cinzel/600.css";
-import "@fontsource/cinzel/800.css";
-import "@fontsource/hahmlet/600.css";
-import "@fontsource/hahmlet/800.css";
-import "@fontsource/noto-serif-kr/500.css";
-import "@fontsource/noto-serif-kr/700.css";
+// Rounded, friendly type for a chibi fantasy game: Jua for titles and buttons, Gowun Dodum for
+// reading, Black Han Sans for the logo.
+import "@fontsource/jua";
+import "@fontsource/gowun-dodum";
+import "@fontsource/black-han-sans";
 import { publicUrl } from "../game/assets/publicUrl";
 
 // UI art cut from the store packs by scripts/extract-ui.mjs. Paths go through publicUrl because

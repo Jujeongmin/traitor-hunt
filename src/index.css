@@ -6,13 +6,15 @@
   --frost: #9fd6ff;
   --night: #0b0a09;
   --band: rgba(9, 7, 6, 0.8);
-  --font-body: "Noto Serif KR", serif;
-  --font-head: "Hahmlet", "Noto Serif KR", serif;
-  --font-logo: "Cinzel", "Hahmlet", serif;
+  --font-body: "Gowun Dodum", sans-serif;
+  --font-head: "Jua", "Gowun Dodum", sans-serif;
+  --font-logo: "Black Han Sans", "Jua", sans-serif;
   --shadow: 0 1px 2px #000, 0 0 6px rgba(0, 0, 0, 0.9);
 }
 
 html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font-family: var(--font-body); }
+/* The fonts come in one weight; a faked bold would smear them. */
+html { font-synthesis: none; }
 /* Korean wraps between words, not inside them, so lines break where a reader would break them. */
 html { word-break: keep-all; overflow-wrap: break-word; }
 body { display: flex; align-items: center; justify-content: center; overflow: hidden; }
