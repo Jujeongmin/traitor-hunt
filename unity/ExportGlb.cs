@@ -10,7 +10,7 @@ using UnityGLTF;
 
 public static class ExportGlb
 {
-    [Serializable] class Item { public string name; public string kind; public string asset; public string material; public string[] clips; }
+    [Serializable] class Item { public string name; public string kind; public string asset; public string material; public string[] clips; public bool showAll; }
     [Serializable] class ExportList { public string outDir; public Item[] items; }
 
     const string TempDir = "Assets/__export_tmp";
@@ -43,6 +43,8 @@ public static class ExportGlb
         try
         {
             instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            // A modular character ships every part; the game picks which to show.
+            if (item.showAll) foreach (var t in instance.GetComponentsInChildren<Transform>(true)) t.gameObject.SetActive(true);
             if (!string.IsNullOrEmpty(item.material)) ApplyMaterial(instance, item.material);
             StandardizeMaterials(instance);
             if (item.kind == "character") AttachClips(instance, item.clips);

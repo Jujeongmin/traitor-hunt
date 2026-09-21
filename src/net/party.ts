@@ -1,5 +1,5 @@
 import type { Activity, PartyView } from "../game/account/party";
-import { COSTUMES, type Costume } from "../game/render/costumes";
+import { COSTUMES, costumeById, type Costume } from "../game/render/costumes";
 import { errorCode } from "./matchClient";
 import type { MatchTransport } from "./transport";
 
@@ -103,7 +103,7 @@ export function partyLineup(
     { name: me.name, costume: me.costume, isYou: true },
     ...others.map((m) => ({
       name: m.nickname ?? m.account,
-      costume: COSTUMES.find((c) => c.id === m.costume) ?? COSTUMES[0],
+      costume: costumeById(m.costume) ?? COSTUMES[0],
       isYou: false,
     })),
   ];

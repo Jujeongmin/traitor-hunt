@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Pose } from "../match/types";
+import { PART_MESHES, shownMeshes, type Costume } from "./costumes";
 import { createLabel, setLabel } from "./labels";
 import { ActionBlender, clipByName, skinnedHeight } from "./skinned";
 
@@ -28,6 +29,7 @@ export type PlayerStatus = "active" | "dead" | "escaped";
 export interface PlayerModel {
   object: THREE.Object3D;
   clips: THREE.AnimationClip[];
+  costume: Costume;
 }
 
 interface Animated {
@@ -98,7 +100,13 @@ export class PlayerActor {
     setLabel(this.tag, text, revealed ? "#ff6b5a" : "#ffb35a");
   }
 
-  private static animate({ object, clips }: PlayerModel): Animated {
+  private static animate({ object, clips, costume }: PlayerModel): Animated {
+    // The modular hero carries every part; hide the ones this costume does not wear. Measured after,
+    // so a long cloak or a tall hairdo does not shrink the body.
+    const shown = shownMeshes(costume);
+    object.traverse((o) => {
+      if (PART_MESHES.has(o.name)) o.visible = shown.has(o.name);
+    });
     object.scale.setScalar(PLAYER_HEIGHT / skinnedHeight(object));
     const mixer = new THREE.AnimationMixer(object);
     const action = (name: string) => mixer.clipAction(clipByName(clips, name));

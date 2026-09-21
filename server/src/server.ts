@@ -10,7 +10,7 @@ import {
   addInvite, checkInvite, joinParty, kickFromParty, leaveParty, readActivity, readPartyMatch, type Party,
   type PartyView,
 } from "../../src/game/account/party";
-import { COSTUMES } from "../../src/game/render/costumes";
+import { costumeById } from "../../src/game/render/costumes";
 import { MATCH_PLAYERS, PROTOCOL_VERSION } from "../../src/game/match/constants";
 import {
   applyMonsterPoses, monsterAttack, reachExit, strikeMonster, type MonsterPoseUpdate,
@@ -297,8 +297,9 @@ export class Server {
   }
 
   async setCostume(id: unknown): Promise<void> {
-    if (!COSTUMES.some((c) => c.id === id)) throw new RuleViolation("unavailable");
-    await $global.updateUserState($sender.account, { costume: id });
+    const costume = costumeById(id);
+    if (!costume) throw new RuleViolation("unavailable");
+    await $global.updateUserState($sender.account, { costume: costume.id });
   }
 
   // Marks you online (and at the menu or in a match), drops party members who went quiet,

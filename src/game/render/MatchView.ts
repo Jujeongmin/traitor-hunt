@@ -470,8 +470,10 @@ export class MatchView {
     for (const account of match.players) {
       let actor = this.players.get(account);
       if (!actor) {
-        const model = wearing(match.looks, account, match.players.indexOf(account)).model;
-        actor = new PlayerActor(account, { object: library.instance(model), clips: library.get(model).animations });
+        const costume = wearing(match.looks, account, match.players.indexOf(account));
+        actor = new PlayerActor(account, {
+          object: library.instance(costume.model), clips: library.get(costume.model).animations, costume,
+        });
         this.scene.add(actor.object);
         this.players.set(account, actor);
       }

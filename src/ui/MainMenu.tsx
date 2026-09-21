@@ -11,7 +11,7 @@ import { partyLineup, partyProblem, type PartyClient } from "../net/party";
 import { FriendsPanel } from "./FriendsPanel";
 import { NicknamePanel } from "./NicknamePanel";
 import { playMusic } from "../game/audio/music";
-import { CostumePanel } from "./CostumePanel";
+import { Wardrobe } from "./Wardrobe";
 import { StatsPanel } from "./StatsPanel";
 import { myCostume, onMyCostume, setMyCostume } from "./profile";
 import { SettingsPanel } from "./SettingsPanel";
@@ -49,7 +49,7 @@ interface MainMenuProps {
   onlineAvailable: boolean;
 }
 
-type Sheet = "none" | "settings" | "help" | "costume" | "stats";
+type Sheet = "none" | "settings" | "help" | "stats";
 
 export function MainMenu({
   account, nickname, level, loadStats, owned, onBuy, purchase, price, matching, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
@@ -60,6 +60,11 @@ export function MainMenu({
   const [loading, setLoading] = useState(0);
   const [costume, setCostume] = useState(myCostume());
   const [sheet, setSheet] = useState<Sheet>("none");
+  // The wardrobe is a screen of its own: the menu steps aside and the camera closes in on you.
+  const [wardrobe, setWardrobe] = useState(false);
+  useEffect(() => {
+    scene.current?.setWardrobe(wardrobe);
+  }, [wardrobe]);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -179,30 +184,32 @@ export function MainMenu({
       )}
       {!invite && inviteProblem && <div className="party-invite band">{inviteProblem}</div>}
 
-      <div className="menu-corner">
+      <div className="menu-corner" style={wardrobe ? { display: "none" } : undefined}>
         <button type="button" className="brush-button small" onClick={() => setFriendsOpen((v) => !v)}>
           친구{requests > 0 && <span className="badge">{requests}</span>}
         </button>
         <button type="button" className="brush-button small" onClick={() => setSheet("settings")}>설정</button>
       </div>
 
-      <nav className="menu-left">
-        <h1>TRAITOR HUNT</h1>
-        {mustBuy && onBuy ? (
-          <button type="button" className="brush-button buy-button" onClick={onBuy} disabled={purchase === "confirming"}>
-            정식판 구매 ({price} VX)
-          </button>
-        ) : (
-          <button type="button" className="brush-button" onClick={quickStart} disabled={!onlineReady || leaving || !!matching}>
-            {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
-          </button>
-        )}
-        <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving || !!matching}>연습 (봇 3명)</button>
-        <button type="button" className="brush-button" onClick={() => setSheet("costume")}>직업 · 코스튬</button>
-        <button type="button" className="brush-button" onClick={() => setSheet("stats")}>전적 · 랭킹</button>
-        <button type="button" className="brush-button" onClick={() => setSheet("help")}>게임 방법</button>
-        {onlineNote && <p className="note">{onlineNote}</p>}
-      </nav>
+      {!wardrobe && (
+        <nav className="menu-left">
+          <h1>TRAITOR HUNT</h1>
+          {mustBuy && onBuy ? (
+            <button type="button" className="brush-button buy-button" onClick={onBuy} disabled={purchase === "confirming"}>
+              정식판 구매 ({price} VX)
+            </button>
+          ) : (
+            <button type="button" className="brush-button" onClick={quickStart} disabled={!onlineReady || leaving || !!matching}>
+              {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
+            </button>
+          )}
+          <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving || !!matching}>연습 (봇 3명)</button>
+          <button type="button" className="brush-button" onClick={() => setWardrobe(true)}>캐릭터 꾸미기</button>
+          <button type="button" className="brush-button" onClick={() => setSheet("stats")}>전적 · 랭킹</button>
+          <button type="button" className="brush-button" onClick={() => setSheet("help")}>게임 방법</button>
+          {onlineNote && <p className="note">{onlineNote}</p>}
+        </nav>
+      )}
 
       {friendsOpen && <FriendsPanel
           onClose={() => setFriendsOpen(false)}
@@ -234,12 +241,13 @@ export function MainMenu({
       {sheet === "stats" && (
         <StatsPanel account={account} load={loadStats} onClose={() => setSheet("none")} />
       )}
-      {sheet === "costume" && (
-        <CostumePanel
-          current={costume}
+      {wardrobe && (
+        <Wardrobe
+          costume={costume}
           online={!!onSaveNickname}
           onPick={setMyCostume}
-          onClose={() => setSheet("none")}
+          onSpin={(r) => scene.current?.spin(r)}
+          onClose={() => setWardrobe(false)}
         />
       )}
       {sheet === "help" && (

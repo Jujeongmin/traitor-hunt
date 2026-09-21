@@ -47,31 +47,9 @@
         "Victory"
       ]
     },
-    "hero_female": {
-      "url": "assets/models/hero_female.glb",
-      "bytes": 619176,
-      "animations": [
-        "Idle_Normal_SwordAndShield",
-        "Idle_Battle_SwordAndShiled",
-        "MoveFWD_Normal_InPlace_SwordAndShield",
-        "MoveFWD_Battle_InPlace_SwordAndShield",
-        "MoveBWD_Battle_InPlace_SwordAndShield",
-        "MoveLFT_Battle_InPlace_SwordAndShield",
-        "MoveRGT_Battle_InPlace_SwordAndShield",
-        "SprintFWD_Battle_InPlace_SwordAndShield",
-        "JumpFull_Normal_InPlace_SwordAndShield",
-        "Attack01_SwordAndShiled",
-        "Attack02_SwordAndShiled",
-        "Defend_SwordAndShield",
-        "DefendHit_SwordAndShield",
-        "GetHit01_SwordAndShield",
-        "Die01_SwordAndShield",
-        "Victory_Battle_SwordAndShield"
-      ]
-    },
-    "hero_male": {
-      "url": "assets/models/hero_male.glb",
-      "bytes": 618864,
+    "hero": {
+      "url": "assets/models/hero.glb",
+      "bytes": 800912,
       "animations": [
         "Idle_Normal_SwordAndShield",
         "Idle_Battle_SwordAndShiled",

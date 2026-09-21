@@ -1,5 +1,5 @@
 import { classForSeat, readClass, type PlayerClass } from "../game/match/classes";
-import { COSTUMES, type Costume } from "../game/render/costumes";
+import { COSTUMES, costumeById, type Costume } from "../game/render/costumes";
 
 // Your own look, kept in this browser until the account profile lands on the server.
 const STORAGE_KEY = "traitor-hunt:costume";
@@ -8,7 +8,7 @@ const listeners = new Set<(costume: Costume) => void>();
 function load(): Costume {
   try {
     const id = localStorage.getItem(STORAGE_KEY);
-    return COSTUMES.find((c) => c.id === id) ?? COSTUMES[0];
+    return costumeById(id) ?? COSTUMES[0];
   } catch {
     return COSTUMES[0];
   }

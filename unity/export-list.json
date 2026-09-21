@@ -6,52 +6,6 @@
       "asset": "Assets/Resources/Treasure chest closed/treasure_chest_closed.prefab"
     },
     {
-      "name": "hero_male",
-      "kind": "character",
-      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/MaleCharacterPolyart.prefab",
-      "clips": [
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Normal_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Battle_SwordAndShiled.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Normal_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveBWD_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveLFT_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveRGT_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/SprintFWD_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/JumpFull_Normal_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack01_SwordAndShiled.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack02_SwordAndShiled.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Defend_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/DefendHit_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/GetHit01_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Die01_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Victory_Battle_SwordAndShield.fbx"
-      ]
-    },
-    {
-      "name": "hero_female",
-      "kind": "character",
-      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/FemaleCharacterPolyart.prefab",
-      "clips": [
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Normal_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Battle_SwordAndShiled.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Normal_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveBWD_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveLFT_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveRGT_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/SprintFWD_Battle_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/JumpFull_Normal_InPlace_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack01_SwordAndShiled.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack02_SwordAndShiled.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Defend_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/DefendHit_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/GetHit01_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Die01_SwordAndShield.fbx",
-        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Victory_Battle_SwordAndShield.fbx"
-      ]
-    },
-    {
       "name": "grunt",
       "kind": "character",
       "asset": "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Prefab/GruntPolyart.prefab",
@@ -180,6 +134,30 @@
       "name": "pt_bridge",
       "kind": "prefab",
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Bridge/PT_Wooden_Bridge_02.prefab"
+    },
+    {
+      "name": "hero",
+      "kind": "character",
+      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/FemaleCharacterPolyart.prefab",
+      "clips": [
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Normal_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Battle_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Normal_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveBWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveLFT_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveRGT_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/SprintFWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/JumpFull_Normal_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack01_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack02_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Defend_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/DefendHit_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/GetHit01_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Die01_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Victory_Battle_SwordAndShield.fbx"
+      ],
+      "showAll": true
     }
   ]
 }
