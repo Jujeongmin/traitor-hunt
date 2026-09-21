@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { MonsterState } from "../match/types";
 import { ActionBlender, clipByName, ownMaterials, skinnedHeight } from "./skinned";
+import { playHit } from "../audio/sfx";
 
 const HIT_FLASH_SECONDS = 0.08;
 const FOLLOW_RATE = 12;
@@ -62,7 +63,10 @@ export class MonsterActor {
     // State yaw uses the camera convention; the model faces +z.
     this.object.rotation.y = state.yaw + Math.PI;
 
-    if (this.lastHp !== null && state.hp < this.lastHp) this.flashLeft = HIT_FLASH_SECONDS;
+    if (this.lastHp !== null && state.hp < this.lastHp) {
+      this.flashLeft = HIT_FLASH_SECONDS;
+      playHit();
+    }
     this.lastHp = state.hp;
     // Every attack pushes attackReadyAt forward, so a jump in it means the monster just swung.
     if (this.lastAttackReadyAt !== null && state.attackReadyAt > this.lastAttackReadyAt && state.alive) {

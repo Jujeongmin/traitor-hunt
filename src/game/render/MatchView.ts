@@ -32,6 +32,7 @@ import { CHASE, chaseCamera } from "../rules/chaseCamera";
 import { wearing } from "./costumes";
 import { HEROES, HERO_MODELS } from "./heroes";
 import { Effects } from "./effects";
+import { playHurt, playShot, playSkill, playSwing } from "../audio/sfx";
 import { displayName, ownName } from "./names";
 import { playScream, playThud } from "./scream";
 import { settings } from "../../ui/settings";
@@ -182,6 +183,8 @@ export class MatchView {
   private swings = 0;
   private skills = 0;
   private lastSkillAt = Number.NEGATIVE_INFINITY;
+  // Your health last frame, to hear it drop.
+  private lastHp: number | null = null;
   private air: Airborne = GROUNDED;
   private yaw = 0;
   private pitch = 0;
@@ -341,6 +344,9 @@ export class MatchView {
     if (match) {
       this.syncActors(match, state, dt, possession, now);
       this.effects.update(dt);
+      const hp = state.you.hp;
+      if (hp !== null && this.lastHp !== null && hp < this.lastHp) playHurt();
+      this.lastHp = hp;
       this.props?.update(match, now, dt, match.players.map((p) => displayName(p, me)));
       this.placeCamera(match, possession);
     }
@@ -422,6 +428,9 @@ export class MatchView {
     // Every swing shows, hit or miss: the count rides along with the pose.
     this.swings += 1;
     const weapon = weaponOf(match, this.client.account);
+    const shot = HEROES[classFor(match.classes, this.client.account, match.players.indexOf(this.client.account))].shot;
+    if (shot) playShot(shot);
+    else playSwing();
     const me = { ...this.pose, yaw: this.yaw };
     let best: { id: string; d: number } | null = null;
     for (const [id, m] of Object.entries(match.monsters)) {
@@ -447,6 +456,7 @@ export class MatchView {
     if (now - this.lastSkillAt < skill.cooldownMs) return;
     this.lastSkillAt = now;
     this.skills += 1;
+    playSkill();
     void this.client.useSkill().then((code) => {
       if (code) this.fail(code);
     });
