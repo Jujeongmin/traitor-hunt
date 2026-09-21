@@ -2,7 +2,8 @@ import { isOnline, readFriendLists, type FriendEntry, type FriendSide } from "..
 import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
-import { xpOf } from "../../src/game/account/level";
+import { levelOf, xpOf } from "../../src/game/account/level";
+import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
 import { isBot } from "../../src/game/match/lifecycle";
 import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
@@ -14,6 +15,10 @@ import {
 } from "../../src/game/match/types";
 
 export const RESULTS_COLLECTION = "match_results";
+// One row per account, so the board is a short read instead of a scan over every account.
+const RANKING_COLLECTION = "ranking";
+// Read a few more rows than the board shows, so a row that has slipped down still lands in order.
+const RANKING_READ = RANKING_SIZE * 5;
 
 // The one map everyone plays. Poses are checked against its platforms.
 export const LEVEL = parseLevel(RUINS, TILE_SIZE);
@@ -105,6 +110,36 @@ export async function writePose(roomId: string, account: string, pose: Pose, at:
   await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, at } });
 }
 
+// Writes this account's line on the board. Called whenever its XP or its name changes; a fresh
+// account that has never finished a match leaves no row behind.
+export async function writeRanking(account: string): Promise<void> {
+  const state = await $global.getUserState(account);
+  const profile = readProfile(state.profile);
+  const xp = xpOf(profile);
+  if (xp <= 0) return;
+  const row: RankRow = {
+    account,
+    nickname: typeof state.nickname === "string" ? state.nickname : null,
+    xp,
+    level: levelOf(xp).level,
+    games: profile.games,
+    wins: profile.wins,
+  };
+  const id = typeof state.rankingId === "string" ? state.rankingId : null;
+  if (id) {
+    await $global.updateCollectionItem(RANKING_COLLECTION, { __id: id, ...row });
+    return;
+  }
+  const item = await $global.addCollectionItem(RANKING_COLLECTION, { ...row });
+  await $global.updateUserState(account, { rankingId: item.__id });
+}
+
+// The board, best first.
+export async function readRanking(): Promise<RankRow[]> {
+  const items = await $global.getCollectionItems(RANKING_COLLECTION, { limit: RANKING_READ });
+  return rankRows(items as unknown as RankRow[]);
+}
+
 // The XP of an account, read from the matches it has finished.
 export async function readXp(account: string): Promise<number> {
   return xpOf(readProfile((await $global.getUserState(account)).profile));
@@ -116,6 +151,7 @@ export async function saveResults(matchId: string, results: PlayerResult[]): Pro
     await $global.addCollectionItem(RESULTS_COLLECTION, { ...result, matchId });
     const state = await $global.getUserState(result.account);
     await $global.updateUserState(result.account, { profile: addResult(readProfile(state.profile), result) });
+    await writeRanking(result.account);
   }
 }
 

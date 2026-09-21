@@ -10,6 +10,7 @@ import { Verse8Transport } from "./net/verse8Transport";
 import { MatchScreen } from "./ui/MatchScreen";
 import { ModelGallery, galleryEnabled } from "./ui/ModelGallery";
 import { MainMenu } from "./ui/MainMenu";
+import { loadStats } from "./net/account";
 import { useAccount } from "./ui/useAccount";
 import { useFriends } from "./ui/useFriends";
 import { useParty } from "./ui/useParty";
@@ -43,6 +44,7 @@ export default function App() {
       account={menuTransport?.account ?? (connected ? server.account : PRACTICE_ACCOUNT)}
       nickname={view?.nickname ?? null}
       level={view?.level ?? null}
+      loadStats={menuTransport ? () => loadStats(menuTransport) : null}
       onSaveNickname={view ? save : null}
       accountFailed={failed}
       friends={friends.client}

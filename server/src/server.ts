@@ -1,7 +1,8 @@
 import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
-import { levelOf } from "../../src/game/account/level";
+import { levelOf, xpOf } from "../../src/game/account/level";
+import { rankOf, type StatsView } from "../../src/game/account/ranking";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
 import {
   addInvite, checkInvite, joinParty, kickFromParty, leaveParty, readActivity, readPartyMatch, type Party,
@@ -15,6 +16,7 @@ import {
 import {
   createLobby, fillWithBots, isBot, joinLobby, leaveLobby, matchHost, monsterSpawnsFor, startMatch,
 } from "../../src/game/match/lifecycle";
+import { readProfile } from "../../src/game/match/profile";
 import { advanceObjectives, operateObjective, skipToStage } from "../../src/game/match/objectives";
 import { markLeft, resolveOutcome, settleResults } from "../../src/game/match/outcome";
 import { releasePossession, startPossession } from "../../src/game/match/possession";
@@ -26,6 +28,7 @@ import { stepVote } from "../../src/game/match/vote";
 import {
   LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
   partyMember, readCostume, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
+  readRanking, writeRanking,
   readSecret, readXp, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
   writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
 } from "./store";
@@ -230,7 +233,18 @@ export class Server {
     const { name, key } = parseNickname(requested);
     const account = $sender.account;
     await withNicknameLock(() => claimNickname(account, key, name));
+    // The board carries names, so it hears about a rename too.
+    await writeRanking(account);
     return accountView(account, name);
+  }
+
+  // Your own record, where you sit on the board, and the board itself.
+  async getStats(): Promise<StatsView> {
+    const account = $sender.account;
+    const profile = readProfile((await $global.getUserState(account)).profile);
+    const xp = xpOf(profile);
+    const board = await readRanking();
+    return { profile, xp, level: levelOf(xp), rank: rankOf(board, account), board };
   }
 
   // Marks you online (the menu calls it every HEARTBEAT_MS) and returns your lists with names and presence.

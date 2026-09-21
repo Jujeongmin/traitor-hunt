@@ -1,4 +1,5 @@
 import type { AccountView } from "../game/account/nickname";
+import type { StatsView } from "../game/account/ranking";
 import { errorCode } from "./matchClient";
 import type { MatchTransport } from "./transport";
 
@@ -18,4 +19,8 @@ export function saveNickname(transport: MatchTransport, nickname: string): Promi
 // What to show under the nickname field when saving fails.
 export function nicknameProblem(error: unknown): string {
   return PROBLEMS[errorCode(error)] ?? "저장하지 못했어요. 잠시 뒤 다시 시도해 주세요";
+}
+
+export function loadStats(transport: MatchTransport): Promise<StatsView> {
+  return transport.call<StatsView>("getStats");
 }

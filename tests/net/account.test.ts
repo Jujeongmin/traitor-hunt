@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Server } from "../../server/src/server";
 import { FIRST_LEVEL_XP } from "../../src/game/account/level";
-import { loadAccount, nicknameProblem, saveNickname } from "../../src/net/account";
+import { loadAccount, loadStats, nicknameProblem, saveNickname } from "../../src/net/account";
 import { LocalWorld } from "../../src/net/local/localWorld";
 import { LocalTransport } from "../../src/net/localTransport";
 
@@ -31,6 +31,14 @@ describe("account", () => {
     const [a] = seats("test-a");
     expect(await loadAccount(a)).toMatchObject({ xp: 0, level: { level: 1, into: 0, need: FIRST_LEVEL_XP } });
     expect(await saveNickname(a, "등반가")).toMatchObject({ xp: 0, level: { level: 1 } });
+  });
+
+  it("reads an empty record and an empty board for a new account", async () => {
+    const [a] = seats("test-a");
+    const stats = await loadStats(a);
+    expect(stats.profile.games).toBe(0);
+    expect(stats.rank).toBeNull();
+    expect(stats.board).toEqual([]);
   });
 
   it("lets two players hold different names", async () => {

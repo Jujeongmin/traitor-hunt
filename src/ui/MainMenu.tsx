@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FriendsView } from "../game/account/friends";
 import type { LevelView } from "../game/account/level";
+import type { StatsView } from "../game/account/ranking";
 import type { PartyView } from "../game/account/party";
 import { MenuScene } from "../game/render/MenuScene";
 import { ownName } from "../game/render/names";
@@ -9,6 +10,7 @@ import { partyLineup, partyProblem, type PartyClient } from "../net/party";
 import { FriendsPanel } from "./FriendsPanel";
 import { NicknamePanel } from "./NicknamePanel";
 import { CostumePanel } from "./CostumePanel";
+import { StatsPanel } from "./StatsPanel";
 import { myCostume, onMyCostume, setMyCostume } from "./profile";
 import { SettingsPanel } from "./SettingsPanel";
 
@@ -18,6 +20,8 @@ interface MainMenuProps {
   nickname: string | null;
   // What your finished matches add up to; null while offline or loading.
   level: LevelView | null;
+  // Reads your record and the board; null while offline.
+  loadStats: (() => Promise<StatsView>) | null;
   // Null until the server account has loaded.
   onSaveNickname: ((nickname: string) => Promise<void>) | null;
   accountFailed: boolean;
@@ -34,10 +38,10 @@ interface MainMenuProps {
   onlineAvailable: boolean;
 }
 
-type Sheet = "none" | "settings" | "help" | "costume";
+type Sheet = "none" | "settings" | "help" | "costume" | "stats";
 
 export function MainMenu({
-  account, nickname, level, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
+  account, nickname, level, loadStats, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
   onPractice, onOnline, onlineAvailable,
 }: MainMenuProps) {
   const stage = useRef<HTMLDivElement>(null);
@@ -169,7 +173,7 @@ export function MainMenu({
         </button>
         <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving}>연습 (봇 3명)</button>
         <button type="button" className="brush-button" onClick={() => setSheet("costume")}>코스튬</button>
-        <button type="button" className="brush-button" disabled>전적 · 랭킹 (개발 중)</button>
+        <button type="button" className="brush-button" onClick={() => setSheet("stats")}>전적 · 랭킹</button>
         <button type="button" className="brush-button" onClick={() => setSheet("help")}>게임 방법</button>
         {onlineNote && <p className="note">{onlineNote}</p>}
       </nav>
@@ -201,6 +205,9 @@ export function MainMenu({
       )}
 
       {sheet === "settings" && <SettingsPanel onClose={() => setSheet("none")} />}
+      {sheet === "stats" && (
+        <StatsPanel account={account} load={loadStats} onClose={() => setSheet("none")} />
+      )}
       {sheet === "costume" && (
         <CostumePanel
           current={costume}
