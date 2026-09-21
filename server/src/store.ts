@@ -290,10 +290,10 @@ export async function readPlayerClass(account: string): Promise<PlayerClass | nu
   return readClass((await $global.getUserState(account)).playerClass);
 }
 
-// The costume an account picked in the menu, or the first one for anyone who never picked.
-export async function readCostume(account: string): Promise<string> {
+// The costume an account picked in the menu, or null for anyone who never picked (their seat decides).
+export async function readCostume(account: string): Promise<string | null> {
   const state = await $global.getUserState(account);
-  return costumeById(state.costume)?.id ?? COSTUMES[0].id;
+  return costumeById(state.costume)?.id ?? null;
 }
 
 export async function partyMember(account: string, now: number): Promise<PartyMemberView> {

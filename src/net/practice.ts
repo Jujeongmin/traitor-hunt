@@ -17,6 +17,8 @@ export interface PracticeOptions {
   autopilot?: boolean;
   // The class you picked in the menu; the practice room seats you with it.
   playerClass?: PlayerClass;
+  // The costume you picked in the menu, by id.
+  costume?: string;
 }
 
 interface Seat {
@@ -45,9 +47,9 @@ export class PracticeSession {
   }
 
   async start(): Promise<void> {
-    if (this.options.playerClass) {
-      await new LocalTransport(this.world, PRACTICE_ACCOUNT).call("setClass", [this.options.playerClass]);
-    }
+    const you = new LocalTransport(this.world, PRACTICE_ACCOUNT);
+    if (this.options.playerClass) await you.call("setClass", [this.options.playerClass]);
+    if (this.options.costume) await you.call("setCostume", [this.options.costume]);
     await this.human.join();
     const count = this.options.bots ?? PRACTICE_BOTS;
     for (let i = 1; i <= count; i++) {

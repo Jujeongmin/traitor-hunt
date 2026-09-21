@@ -20,25 +20,8 @@ describe("parseLevel", () => {
     expect(level.solid[1][1]).toBe(false);
   });
 
-  it("puts a floor and a ceiling on every walkable cell", () => {
-    const floors = level.placements.filter((p) => p.model === "dd_floor_a");
-    const ceilings = level.placements.filter((p) => p.model === "dd_ceiling");
-    expect(floors).toHaveLength(4);
-    expect(ceilings).toHaveLength(4);
-    expect(ceilings[0].y).toBeGreaterThan(0);
-  });
-
-  it("puts one wall panel on each floor/wall edge, facing the floor", () => {
-    const walls = level.placements.filter((p) => p.model === "dd_wall_a");
-    expect(walls).toHaveLength(8);
-    const northOfSpawn = walls.find((w) => w.x === 3 && w.z === 2);
-    expect(northOfSpawn?.rotationY).toBe(0);
-    const westOfSpawn = walls.find((w) => w.x === 2 && w.z === 3);
-    expect(westOfSpawn?.rotationY).toBeCloseTo(Math.PI / 2);
-  });
-
-  it("places props on their cells", () => {
-    expect(level.placements).toContainEqual({ model: "dd_barrel", x: 5, y: 0, z: 5, rotationY: 0 });
+  it("turns a prop cell into a platform to stand on", () => {
+    expect(level.platforms.some((p) => p.x === 5 && p.z === 5)).toBe(true);
   });
 
   it("rejects ragged rows and unknown symbols", () => {
@@ -50,7 +33,6 @@ describe("parseLevel", () => {
     const withExit = parseLevel(["####", "#PE#", "####"], 2);
     expect(withExit.exits).toEqual([{ x: 5, z: 3 }]);
     expect(withExit.solid[1][2]).toBe(false);
-    expect(withExit.placements).toContainEqual({ model: "dd_floor_a", x: 5, y: 0, z: 3, rotationY: 0 });
   });
 });
 

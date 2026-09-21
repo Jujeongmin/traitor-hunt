@@ -19,13 +19,7 @@ const outDir = join(root, "public/assets/models");
 
 // Models too dense for four players on the web: keep this share of their triangles.
 // error is how far (as a share of the model's size) the simplified surface may drift.
-const SIMPLIFY = {
-  explorer: { ratio: 0.25, error: 0.004 },
-  dd_chain_a: { ratio: 0.15, error: 0.05 },
-  dd_chain_c: { ratio: 0.15, error: 0.05 },
-  dd_candles: { ratio: 0.35, error: 0.01 },
-  wpn_akm: { ratio: 0.5, error: 0.002 },
-};
+const SIMPLIFY = {};
 mkdirSync(outDir, { recursive: true });
 
 await MeshoptDecoder.ready;
@@ -40,9 +34,9 @@ for (const file of readdirSync(srcDir).filter((f) => f.endsWith(".glb"))) {
   const name = basename(file, ".glb");
   const doc = await io.read(join(srcDir, file));
   const skinned = doc.getRoot().listSkins().length > 0;
-  // The dungeon kit stores Unity shader blend masks in vertex colours; three.js would multiply
-  // the textures by them and draw the pieces nearly black.
-  if (name.startsWith("dd_")) {
+  // Polytope's nature pack stores its shader's wind and tint masks in vertex colours; three.js
+  // would multiply the textures by them and draw trunks and leaves purple.
+  if (name.startsWith("pt_")) {
     for (const mesh of doc.getRoot().listMeshes()) {
       for (const prim of mesh.listPrimitives()) prim.setAttribute("COLOR_0", null);
     }

@@ -8,26 +8,29 @@ import { createLabel, setLabel } from "./labels";
 import type { LightPool } from "./lightPool";
 import { buildStaticBatch, type StaticBatch, type StaticPiece } from "./staticBatch";
 
-// Everything here is a dungeon-kit model drawn in one instanced batch; lights and labels only show state.
-export const OBJECTIVE_MODELS = [
-  "dd_arch_a", "dd_arch_gate", "dd_table_a", "dd_table_b", "dd_key_set", "dd_candles", "dd_floor_gate",
-];
+// Everything here is a Polytope nature model drawn in one instanced batch (sizes in metres); lights
+// and labels only show state. Keys are glowing ore, the candles are rune stones, the altar is a
+// stone circle, gates are wooden gates that sink into the ground, and vote plates are stepping stones.
+export const OBJECTIVE_MODELS = ["pt_gate_wood", "pt_ore_rock", "pt_menhir", "pt_river_rocks", "pt_mushroom"];
 
-const GATE_BAR_WIDTH = 2.7;
-const GATE_RAISE = 2.5;
-const GATE_RAISE_RATE = 2.5;
-const KEY_SCALE = 1.6;
-const GUARD_CANDLES = 10;
+const GATE_SINK = 2.6;
+const GATE_SINK_RATE = 2.5;
+const ORE_SCALE = 1.7;
+const DEVICE_SCALE = 0.85;
+const ALTAR_SCALE = 1.25;
+const RING_SCALE = 0.45;
+const GUARD_STONES = 10;
+const RUNE_LIGHT = 0x7fd4ff;
+const ORE_LIGHT = 0xffc86a;
 const PLATE_DROP_HEIGHT = 7;
 const PLATE_DROP_SECONDS = 0.45;
-const CANDLE_LIGHT = 0xffa24a;
-// Each dropped grate gets a light above it and candles on its rim so it reads from across a room.
+// Each dropped plate gets a light above it and mushrooms on its rim so it reads from across the field.
 const PLATE_GLOW_HEIGHT = 2.4;
 const PLATE_GLOW_RANGE = 5;
 const PLATE_GLOW_IDLE = 0xffd9a0;
 const PLATE_GLOW_SKIP = 0xcfd6e0;
 const PLATE_GLOW_LEADING = 0xff9a3a;
-const PLATE_CANDLES = 3;
+const PLATE_MUSHROOMS = 3;
 const PLATE_LABEL_HEIGHT = 2.1;
 const LABEL_IDLE = "#f0d9a8";
 const LABEL_SKIP = "#c9c1b3";
@@ -40,7 +43,7 @@ const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
 
 // A movable group of batch pieces: each piece keeps its offset from the group's floor point.
 interface Part { piece: number; local: THREE.Matrix4 }
-interface GateView { parts: Part[]; at: Point2; yaw: number; raised: number; shown: number }
+interface GateView { parts: Part[]; at: Point2; yaw: number; sunk: number; shown: number }
 interface KeyView { part: Part; at: Point2; y: number; taken: boolean; shown: boolean | null }
 interface DeviceView { on: boolean }
 interface PlateView {
@@ -62,7 +65,8 @@ export class ObjectiveProps {
   private readonly scratch = new THREE.Matrix4();
   private altarPower = 0;
   private flicker = 1;
-  private readonly candle = new THREE.Color(CANDLE_LIGHT);
+  private readonly rune = new THREE.Color(RUNE_LIGHT);
+  private readonly ore = new THREE.Color(ORE_LIGHT);
   private time = 0;
   private roundKey: number | null = null;
   private landed = false;
@@ -75,7 +79,6 @@ export class ObjectiveProps {
     private readonly scene: THREE.Scene,
     private readonly layout: LevelLayout,
     private readonly library: ModelLibrary,
-    private readonly kitScale: number,
     private readonly lights: LightPool,
   ) {
     for (const gate of layout.gates) this.addGate(gate);
@@ -115,7 +118,7 @@ export class ObjectiveProps {
   }
 
   // Adds a fixed piece and returns its height.
-  private fixed(model: string, at: Point2, y = 0, yaw = 0, scale = this.kitScale): number {
+  private fixed(model: string, at: Point2, y = 0, yaw = 0, scale = 1): number {
     const { local, height } = this.grounded(model, scale);
     this.pieces.push({ model, matrix: this.placement(at, y, yaw).multiply(local) });
     return height;
@@ -132,78 +135,68 @@ export class ObjectiveProps {
     for (const part of parts) this.batch.move(part.piece, this.scratch.multiplyMatrices(base, part.local));
   }
 
-  // An archway across the passage with a portcullis that rises when the gate opens.
+  // A wooden gate across the passage that sinks into the ground when it opens.
   private addGate(gate: { n: number; x: number; z: number }): void {
     const t = this.layout.tileSize;
     const col = Math.floor(gate.x / t);
     const row = Math.floor(gate.z / t);
     const alongX = !this.layout.solid[row]?.[col - 1] && !this.layout.solid[row]?.[col + 1];
-    // The arch model spans z, so a passage running along x crosses it as authored.
-    const yaw = alongX ? 0 : Math.PI / 2;
-    this.fixed("dd_arch_a", gate, 0, yaw);
-
-    // The portcullis model lies flat; stand it up and turn it across the passage.
-    const stand = new THREE.Matrix4().makeRotationY(Math.PI / 2).multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
-    const raw = this.library.get("dd_arch_gate").scene;
-    const size = new THREE.Box3().setFromObject(raw).getSize(new THREE.Vector3());
-    const scale = GATE_BAR_WIDTH / Math.max(size.x, size.z);
-    const { local } = this.grounded("dd_arch_gate", scale, stand);
-    const bars = this.movable("dd_arch_gate", local, gate, 0, yaw);
-    this.gates.set(gate.n, { parts: [bars], at: gate, yaw, raised: 0, shown: 0 });
+    // The gate model spans x, so it is turned across a passage that runs along x.
+    const yaw = alongX ? Math.PI / 2 : 0;
+    const size = new THREE.Box3().setFromObject(this.library.get("pt_gate_wood").scene).getSize(new THREE.Vector3());
+    const { local } = this.grounded("pt_gate_wood", t / size.x);
+    const part = this.movable("pt_gate_wood", local, gate, 0, yaw);
+    this.gates.set(gate.n, { parts: [part], at: gate, yaw, sunk: 0, shown: 0 });
   }
 
-  // A key ring on a small table, with a small glow so it can be spotted across the room.
+  // A lump of glowing ore: the key shard, found by its warm light.
   private addKeys(at: Point2): void {
-    const top = this.fixed("dd_table_a", at);
-    const { local } = this.grounded("dd_key_set", this.kitScale * KEY_SCALE);
-    const part = this.movable("dd_key_set", local, at, top, 0);
-    const view: KeyView = { part, at, y: top, taken: false, shown: null };
+    const { local, height } = this.grounded("pt_ore_rock", ORE_SCALE);
+    const part = this.movable("pt_ore_rock", local, at, 0, 0);
+    const view: KeyView = { part, at, y: 0, taken: false, shown: null };
     this.lights.add({
-      position: new THREE.Vector3(at.x, top + 0.5, at.z), color: this.candle, range: 3,
-      intensity: () => (view.taken ? 0 : 3),
+      position: new THREE.Vector3(at.x, height + 0.6, at.z), color: this.ore, range: 5,
+      intensity: () => (view.taken ? 0 : 6 + Math.sin(this.time * 3) * 1.5),
     });
     this.keys.push(view);
   }
 
-  // A ritual table with candles; lit while the device is on.
+  // A standing rune stone; its runes glow while the device is on.
   private addDevice(at: Point2): void {
-    const top = this.fixed("dd_table_b", at, 0, Math.PI / 2);
-    this.fixed("dd_candles", { x: at.x, z: at.z - 0.35 }, top);
-    this.fixed("dd_candles", { x: at.x, z: at.z + 0.35 }, top, 1.3);
+    const top = this.fixed("pt_menhir", at, 0, 0.4, DEVICE_SCALE);
     const view: DeviceView = { on: false };
     this.lights.add({
-      position: new THREE.Vector3(at.x, top + 0.6, at.z), color: this.candle, range: 8,
-      intensity: () => (view.on ? 14 * this.flicker : 0),
+      position: new THREE.Vector3(at.x, top * 0.7, at.z), color: this.rune, range: 8,
+      intensity: () => (view.on ? 16 * this.flicker : 0),
     });
     this.devices.push(view);
   }
 
-  // The altar: a candle-covered table, ringed by candles that mark the guarded area.
+  // The altar: a tall stone ringed by small stones that mark the guarded area.
   private addAltar(at: Point2): void {
-    const top = this.fixed("dd_table_b", at);
-    for (const dz of [-0.6, 0, 0.6]) this.fixed("dd_candles", { x: at.x, z: at.z + dz }, top, dz * 3);
-    for (let i = 0; i < GUARD_CANDLES; i++) {
-      const a = (i / GUARD_CANDLES) * Math.PI * 2;
-      this.fixed("dd_candles", { x: at.x + Math.cos(a) * SEAL_RADIUS, z: at.z + Math.sin(a) * SEAL_RADIUS }, 0, a);
+    const top = this.fixed("pt_menhir", at, 0, 0, ALTAR_SCALE);
+    for (let i = 0; i < GUARD_STONES; i++) {
+      const a = (i / GUARD_STONES) * Math.PI * 2;
+      this.fixed("pt_menhir", { x: at.x + Math.cos(a) * SEAL_RADIUS, z: at.z + Math.sin(a) * SEAL_RADIUS }, 0, a, RING_SCALE);
     }
     this.lights.add({
-      position: new THREE.Vector3(at.x, top + 1, at.z), color: this.candle, range: 10,
+      position: new THREE.Vector3(at.x, top + 0.5, at.z), color: this.rune, range: 12,
       intensity: () => this.altarPower,
     });
   }
 
-  // A floor grate with candles on its rim that drops for a vote round.
+  // A ring of flat stepping stones with mushrooms on its rim that drops for a vote round.
   private addPlate(): void {
-    const raw = this.library.get("dd_floor_gate").scene;
+    const raw = this.library.get("pt_river_rocks").scene;
     const size = new THREE.Box3().setFromObject(raw).getSize(new THREE.Vector3());
     const origin = { x: 0, z: 0 };
-    const grate = this.grounded("dd_floor_gate", (PLATE_RADIUS * 2) / Math.max(size.x, size.z)).local;
-    const parts = [this.movable("dd_floor_gate", grate, origin, 0, 0)];
-    for (let i = 0; i < PLATE_CANDLES; i++) {
-      const a = (i / PLATE_CANDLES) * Math.PI * 2 + 0.4;
-      const local = this.placement({ x: Math.cos(a) * PLATE_RADIUS * 0.8, z: Math.sin(a) * PLATE_RADIUS * 0.8 }, 0.02, a)
-        .multiply(this.grounded("dd_candles", this.kitScale).local);
-      parts.push(this.movable("dd_candles", local, origin, 0, 0));
+    const stones = this.grounded("pt_river_rocks", (PLATE_RADIUS * 2) / Math.max(size.x, size.z)).local;
+    const parts = [this.movable("pt_river_rocks", stones, origin, 0, 0)];
+    for (let i = 0; i < PLATE_MUSHROOMS; i++) {
+      const a = (i / PLATE_MUSHROOMS) * Math.PI * 2 + 0.4;
+      const local = this.placement({ x: Math.cos(a) * PLATE_RADIUS * 0.9, z: Math.sin(a) * PLATE_RADIUS * 0.9 }, 0.02, a)
+        .multiply(this.grounded("pt_mushroom", 2).local);
+      parts.push(this.movable("pt_mushroom", local, origin, 0, 0));
     }
     const label = createLabel();
     label.visible = false;
@@ -231,11 +224,11 @@ export class ObjectiveProps {
     this.time += dt;
     const o = match.objectives;
     for (const [n, gate] of this.gates) {
-      const target = o.gates.includes(n) ? GATE_RAISE : 0;
-      gate.raised = target === 0 ? 0 : Math.min(target, gate.raised + dt * GATE_RAISE_RATE);
-      if (gate.raised !== gate.shown) {
-        gate.shown = gate.raised;
-        this.moveParts(gate.parts, gate.at, gate.raised, gate.yaw);
+      const target = o.gates.includes(n) ? GATE_SINK : 0;
+      gate.sunk = target === 0 ? 0 : Math.min(target, gate.sunk + dt * GATE_SINK_RATE);
+      if (gate.sunk !== gate.shown) {
+        gate.shown = gate.sunk;
+        this.moveParts(gate.parts, gate.at, -gate.sunk, gate.yaw);
       }
     }
     this.keys.forEach((k, i) => {

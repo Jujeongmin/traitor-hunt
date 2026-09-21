@@ -1,152 +1,9 @@
 {
   "items": [
     {
-      "name": "dd_floor_a",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Floors/Floor_A.prefab"
-    },
-    {
-      "name": "dd_wall_a",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Walls/Wall_A.prefab"
-    },
-    {
-      "name": "dd_wall_a_corner",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Walls/Wall_A_Corner.prefab"
-    },
-    {
-      "name": "dd_ceiling",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Walls/Ceiling.prefab"
-    },
-    {
-      "name": "dd_pillar_a",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Pillars/Pillar_A.prefab"
-    },
-    {
-      "name": "dd_torch",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Torch.prefab"
-    },
-    {
-      "name": "dd_barrel",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Barrel.prefab"
-    },
-    {
-      "name": "dd_crate_a",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Crate_A.prefab"
-    },
-    {
       "name": "chest_closed",
       "kind": "prefab",
       "asset": "Assets/Resources/Treasure chest closed/treasure_chest_closed.prefab"
-    },
-    {
-      "name": "wpn_akm",
-      "kind": "fbx",
-      "asset": "Assets/Resources/Weapons_ChamferZone/AKM/WPN_AKM.FBX",
-      "material": "Assets/Resources/Weapons_ChamferZone/AKM/Materials/WPNM_AKM.mat"
-    },
-    {
-      "name": "zombie1",
-      "kind": "character",
-      "asset": "Assets/Resources/Zombie/Prefabs/Zombie1.prefab",
-      "clips": [
-        "Assets/Resources/Zombie/Animations/Z_Idle.anim",
-        "Assets/Resources/Zombie/Animations/Z_Walk_InPlace.anim",
-        "Assets/Resources/Zombie/Animations/Z_Attack.anim",
-        "Assets/Resources/Zombie/Animations/Z_FallingBack.anim"
-      ]
-    },
-    {
-      "name": "explorer",
-      "kind": "character",
-      "asset": "Assets/Resources/Adventure_Character/Prefabs/Man_Full.prefab",
-      "clips": [
-        "Assets/Resources/Kevin Iglesias/Human Animations/Animations/Male/Combat/Rifle/HumanM@Rifle_Aim01.fbx",
-        "Assets/Resources/Kevin Iglesias/Human Animations/Animations/Male/Combat/Rifle/HumanM@Rifle_Aim01_Shoot01.fbx",
-        "Assets/Resources/Kevin Iglesias/Human Animations/Animations/Male/Movement/Run/HumanM@Run01_Forward.fbx",
-        "Assets/Resources/Kevin Iglesias/Human Animations/Animations/Male/Combat/HumanM@Death01.fbx"
-      ]
-    },
-    {
-      "name": "dd_arch_gate",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Arch_Gate.prefab"
-    },
-    {
-      "name": "dd_arch_a",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Arches/Arch_A.prefab"
-    },
-    {
-      "name": "dd_arch_b",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Arches/Arch_B.prefab"
-    },
-    {
-      "name": "dd_arch_c",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Arches/Arch_C.prefab"
-    },
-    {
-      "name": "dd_key_set",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Dungeon_Key_Set.prefab"
-    },
-    {
-      "name": "dd_candles",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Candles.prefab"
-    },
-    {
-      "name": "dd_table_a",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Table_A.prefab"
-    },
-    {
-      "name": "dd_table_b",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Table_B.prefab"
-    },
-    {
-      "name": "dd_floor_gate",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Floor_Gate.prefab"
-    },
-    {
-      "name": "dd_wall_b",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Walls/Wall_B.prefab"
-    },
-    {
-      "name": "dd_wall_c",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Walls/Wall_C.prefab"
-    },
-    {
-      "name": "dd_wall_d",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Walls/Wall_D.prefab"
-    },
-    {
-      "name": "dd_wall_e",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Walls/Wall_E.prefab"
-    },
-    {
-      "name": "dd_chain_a",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Chain_A.prefab"
-    },
-    {
-      "name": "dd_chain_c",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Chain_C.prefab"
     },
     {
       "name": "hero_male",
@@ -193,26 +50,6 @@
         "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Die01_SwordAndShield.fbx",
         "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Victory_Battle_SwordAndShield.fbx"
       ]
-    },
-    {
-      "name": "th_ohs03",
-      "kind": "prefab",
-      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/OHS03Polyart.prefab"
-    },
-    {
-      "name": "th_ohs06",
-      "kind": "prefab",
-      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/OHS06Polyart.prefab"
-    },
-    {
-      "name": "th_shield05",
-      "kind": "prefab",
-      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/Shield05Polyart.prefab"
-    },
-    {
-      "name": "th_shield08",
-      "kind": "prefab",
-      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/Shield08Polyart.prefab"
     },
     {
       "name": "grunt",
@@ -333,21 +170,6 @@
       "name": "pt_mushroom",
       "kind": "prefab",
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Mushrooms/PT_Caesars_Mushroom_01.prefab"
-    },
-    {
-      "name": "pt_fence_1",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Fence_Wood_01.prefab"
-    },
-    {
-      "name": "pt_fence_2",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Fence_Wood_02.prefab"
-    },
-    {
-      "name": "pt_fence_3",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Fence_Wood_03.prefab"
     },
     {
       "name": "pt_gate_wood",

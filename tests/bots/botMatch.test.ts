@@ -32,10 +32,11 @@ describe("practice session", () => {
     session.dispose();
   });
 
-  it("seats you with the class you picked", async () => {
-    const session = new PracticeSession(layout, { playerClass: "guardian" });
+  it("seats you with the class and costume you picked", async () => {
+    const session = new PracticeSession(layout, { playerClass: "guardian", costume: "heroine" });
     await session.start();
     expect(session.human.state.match!.classes["test-you"]).toBe("guardian");
+    expect(session.human.state.match!.looks["test-you"]).toBe("heroine");
     session.dispose();
   });
 

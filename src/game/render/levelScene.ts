@@ -1,27 +1,26 @@
 import * as THREE from "three";
 import type { ModelLibrary } from "../assets/ModelLibrary";
-import { DRESSING_MODELS, dressLevel } from "../rules/dressing";
-import { TILE_SIZE, solidAt, type LevelLayout } from "../rules/levelLayout";
+import type { LevelLayout } from "../rules/levelLayout";
+import { NATURE_MODELS, cellNoise, natureLayout } from "../rules/nature";
 import type { Platform } from "../rules/platforms";
 import type { LightPool } from "./lightPool";
-import { bakedTint, buildStaticBatch, type BakeLight, type StaticPiece } from "./staticBatch";
+import { buildStaticBatch, type StaticPiece } from "./staticBatch";
 
-// Corrections for the Decrepit Dungeon kit's own pivots and facing, tuned by eye in Plan 1.
-// Wall_A is authored running along z, so it needs a quarter turn to span its edge.
-export const KIT = { wallYawOffset: Math.PI / 2, wallInset: 0, ceilingYOffset: 0 };
+// The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
+// same as ever; solid cells are drawn as trees and rocks instead of stone walls.
+const PLATFORM_MODELS = ["pt_logs", "pt_rock", "pt_tree_stump", "chest_closed"];
+const EXIT_MODEL = "pt_bridge";
+export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, EXIT_MODEL])];
 
-const KIT_MODELS = [
-  "dd_floor_a", "dd_ceiling", "dd_wall_a", "dd_pillar_a", "dd_torch", "dd_barrel", "chest_closed",
-  "dd_floor_gate", "dd_crate_a",
-];
-export const LEVEL_MODELS = [...new Set([...KIT_MODELS, ...DRESSING_MODELS])];
-
-const HANG_CLEARANCE = 2.3;
-const TORCH_COLOR = new THREE.Color(0xff8a3d);
-// Baked torch light is a softer, paler warmth than the flame itself, so near walls do not burn orange.
-const TORCH_BAKE = { color: new THREE.Color(1, 0.82, 0.62), strength: 0.7, range: 11 };
-const BAKE_AMBIENT = 0.5;
-const BAKE_MAX = 1.25;
+export const SKY = 0xa8cde6;
+const FOG_NEAR = 28;
+const FOG_FAR = 78;
+// Open ground is sunlit grass; the forest floor under the trees is darker.
+const PATH_COLOR = new THREE.Color(0x8fb35a);
+const FOREST_COLOR = new THREE.Color(0x4f6e32);
+// Beyond the map the ground runs on this many cells so the forest never floats over the void.
+const GROUND_BORDER = 6;
+const GROUND_STEP = 1;
 
 // Where to draw a platform's model so the crate you see is the box you stand on: stretched to its
 // width, depth and top, and lifted until its own foot rests on the floor.
@@ -35,106 +34,81 @@ export function platformMatrix(platform: Platform, bounds: THREE.Box3): THREE.Ma
   );
 }
 
-export interface LevelScene {
-  kitScale: number;
+// A ground plane coloured per vertex: light where you can walk, dark under the trees, with a little
+// noise so it does not look painted on.
+function buildGround(layout: LevelLayout): THREE.Mesh {
+  const t = layout.tileSize;
+  const width = (layout.cols + GROUND_BORDER * 2) * t;
+  const depth = (layout.rows + GROUND_BORDER * 2) * t;
+  const geometry = new THREE.PlaneGeometry(width, depth, Math.round(width / GROUND_STEP), Math.round(depth / GROUND_STEP));
+  geometry.rotateX(-Math.PI / 2);
+  geometry.translate((layout.cols * t) / 2, 0, (layout.rows * t) / 2);
+  const positions = geometry.getAttribute("position");
+  const colors = new Float32Array(positions.count * 3);
+  const colour = new THREE.Color();
+  const openAt = (x: number, z: number) => {
+    const c = Math.floor(x / t);
+    const r = Math.floor(z / t);
+    return c >= 0 && r >= 0 && c < layout.cols && r < layout.rows && !layout.solid[r][c];
+  };
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const z = positions.getZ(i);
+    // Averaging the four nearby points softens the path's edge.
+    const open = [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]].filter(([dx, dz]) => openAt(x + dx, z + dz)).length / 4;
+    colour.copy(FOREST_COLOR).lerp(PATH_COLOR, open);
+    const jitter = 0.92 + cellNoise(Math.round(x * 2), Math.round(z * 2), 5) * 0.16;
+    colors.set([colour.r * jitter, colour.g * jitter, colour.b * jitter], i * 3);
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const ground = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  ground.receiveShadow = true;
+  return ground;
 }
 
-// Builds the dressed kit level (instanced, with baked torch light), its ambient light, the torch flames
-// as pooled light sources and the exit hatch. Shared by the match view and the main menu.
+// Builds the sky, the sun, the ground, the forest, the platforms and the way out. Shared by the match
+// view and the main menu.
 export function buildLevelScene(
-  scene: THREE.Scene, library: ModelLibrary, layout: LevelLayout, lights: LightPool, time: () => number,
-): LevelScene {
-  const dressing = dressLevel(layout);
-  const floorSize = new THREE.Box3().setFromObject(library.get("dd_floor_a").scene).getSize(new THREE.Vector3());
-  const kitScale = TILE_SIZE / Math.max(floorSize.x, floorSize.z);
+  scene: THREE.Scene, library: ModelLibrary, layout: LevelLayout, lights: LightPool,
+): void {
+  scene.background = new THREE.Color(SKY);
+  scene.fog = new THREE.Fog(SKY, FOG_NEAR, FOG_FAR);
+  scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x5b6b34, 1.4));
+  const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
+  const centre = new THREE.Vector3((layout.cols * layout.tileSize) / 2, 0, (layout.rows * layout.tileSize) / 2);
+  sun.position.copy(centre).add(new THREE.Vector3(-35, 60, 25));
+  sun.target.position.copy(centre);
+  scene.add(sun, sun.target);
+  scene.add(buildGround(layout));
 
-  // Flame positions: pillar torches and wall torches, nudged off the wall into the room.
-  const torches = dressing
-    .filter((p) => p.model === "dd_torch")
-    .map((p) => ({ x: p.x + Math.sin(p.rotationY) * 0.3, y: p.y + 0.4, z: p.z + Math.cos(p.rotationY) * 0.3 }));
+  const pieces: StaticPiece[] = natureLayout(layout).map((p) => ({
+    model: p.model,
+    matrix: new THREE.Matrix4().compose(
+      new THREE.Vector3(p.x, 0, p.z),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.yaw),
+      new THREE.Vector3(p.scale, p.scale, p.scale),
+    ),
+  }));
 
-  scene.add(new THREE.HemisphereLight(0x8a8298, 0x2a2018, 0.9));
-  torches.forEach((at, i) => {
-    lights.add({
-      position: new THREE.Vector3(at.x, at.y, at.z),
-      color: TORCH_COLOR,
-      range: 12,
-      intensity: () => {
-        const t = time();
-        return 25 + Math.sin(t * 9 + i * 1.7) * 3 + Math.sin(t * 23 + i) * 2;
-      },
-    });
-  });
-
-  const bake: BakeLight[] = torches.map((at) => ({ ...at, ...TORCH_BAKE }));
-  const blocked = (x: number, z: number) => solidAt(layout, x, z);
-  const heights = new Map<string, { min: number; max: number }>();
-  const heightOf = (model: string) => {
-    let h = heights.get(model);
-    if (!h) {
-      const box = new THREE.Box3().setFromObject(library.get(model).scene);
-      h = { min: box.min.y * kitScale, max: box.max.y * kitScale };
-      heights.set(model, h);
+  const bounds = new Map<string, THREE.Box3>();
+  const boundsOf = (model: string) => {
+    let b = bounds.get(model);
+    if (!b) {
+      b = new THREE.Box3().setFromObject(library.get(model).scene);
+      bounds.set(model, b);
     }
-    return h;
+    return b;
   };
-  const sample = new THREE.Vector3();
-  const pieces: StaticPiece[] = dressing.map((p) => {
-    let { x, y, z } = p;
-    let yaw = p.rotationY;
-    // Where the piece's light is judged: a little in front of wall faces, mid-height otherwise.
-    sample.set(x, 1.5, z);
-    if (p.model.startsWith("dd_wall_")) {
-      sample.set(x + Math.sin(yaw) * 0.4, 2, z + Math.cos(yaw) * 0.4);
-      x += Math.sin(p.rotationY) * KIT.wallInset;
-      z += Math.cos(p.rotationY) * KIT.wallInset;
-      yaw += KIT.wallYawOffset;
-    }
-    if (p.model.startsWith("dd_floor_")) sample.y = 0.3;
-    if (p.model === "dd_ceiling") {
-      y += KIT.ceilingYOffset;
-      sample.y = TILE_SIZE - 0.3;
-    }
-    if (p.hang) {
-      // Top against the ceiling, but never lower than head height so players pass beneath.
-      const h = heightOf(p.model);
-      y += Math.max(TILE_SIZE - (y + h.max), HANG_CLEARANCE - (y + h.min));
-    }
-    const matrix = new THREE.Matrix4().compose(
-      new THREE.Vector3(x, y, z),
-      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
-      new THREE.Vector3(kitScale, kitScale, kitScale),
-    );
-    const tint = p.model === "dd_torch" ? new THREE.Color(1, 1, 1) : bakedTint(sample, bake, BAKE_AMBIENT, blocked);
-    tint.setRGB(Math.min(tint.r, BAKE_MAX), Math.min(tint.g, BAKE_MAX), Math.min(tint.b, BAKE_MAX));
-    return { model: p.model, matrix, tint };
-  });
-  // Crates to jump onto. The barrel and the chest are already placed as props; only the crates are
-  // stretched to their boxes.
-  const crateBounds = new Map<string, THREE.Box3>();
   for (const platform of layout.platforms) {
-    if (platform.model !== "dd_crate_a") continue;
-    let bounds = crateBounds.get(platform.model);
-    if (!bounds) {
-      bounds = new THREE.Box3().setFromObject(library.get(platform.model).scene);
-      crateBounds.set(platform.model, bounds);
-    }
-    const matrix = platformMatrix(platform, bounds);
-    const tint = bakedTint(sample.set(platform.x, platform.h, platform.z), bake, BAKE_AMBIENT, blocked);
-    tint.setRGB(Math.min(tint.r, BAKE_MAX), Math.min(tint.g, BAKE_MAX), Math.min(tint.b, BAKE_MAX));
-    pieces.push({ model: platform.model, matrix, tint });
+    pieces.push({ model: platform.model, matrix: platformMatrix(platform, boundsOf(platform.model)) });
+  }
+
+  // The way out is a wooden bridge with a pale green glow.
+  for (const exit of layout.exits) {
+    const b = boundsOf(EXIT_MODEL);
+    const c = b.getCenter(new THREE.Vector3());
+    pieces.push({ model: EXIT_MODEL, matrix: new THREE.Matrix4().makeTranslation(exit.x - c.x, -b.min.y - 0.4, exit.z - c.z) });
+    lights.add({ position: new THREE.Vector3(exit.x, 1.6, exit.z), color: new THREE.Color(0x4dff9a), range: 8, intensity: () => 10 });
   }
   scene.add(buildStaticBatch(library, pieces).group);
-
-  // The way out is a floor hatch with a pale green glow.
-  for (const exit of layout.exits) {
-    const hatch = library.instance("dd_floor_gate");
-    hatch.scale.setScalar(kitScale * 0.8);
-    hatch.updateMatrixWorld(true);
-    const centre = new THREE.Box3().setFromObject(hatch).getCenter(new THREE.Vector3());
-    hatch.position.set(exit.x - centre.x, 0.02, exit.z - centre.z);
-    scene.add(hatch);
-    lights.add({ position: new THREE.Vector3(exit.x, 1.2, exit.z), color: new THREE.Color(0x4dff9a), range: 8, intensity: () => 12 });
-  }
-  return { kitScale };
 }

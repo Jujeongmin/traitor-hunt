@@ -410,7 +410,8 @@ export class Server {
           joinLobby(match, seat);
           // The look and the name are copied in as you sit down, so a later change never repaints a
           // live match.
-          match.looks[seat] = await readCostume(seat);
+          const look = await readCostume(seat);
+          if (look) match.looks[seat] = look;
           const name = await readNickname(seat);
           if (name) match.names[seat] = name;
           const picked = await readPlayerClass(seat);

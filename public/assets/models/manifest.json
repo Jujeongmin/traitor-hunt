@@ -5,131 +5,6 @@
       "bytes": 477632,
       "animations": []
     },
-    "dd_arch_a": {
-      "url": "assets/models/dd_arch_a.glb",
-      "bytes": 671784,
-      "animations": []
-    },
-    "dd_arch_b": {
-      "url": "assets/models/dd_arch_b.glb",
-      "bytes": 981640,
-      "animations": []
-    },
-    "dd_arch_c": {
-      "url": "assets/models/dd_arch_c.glb",
-      "bytes": 981580,
-      "animations": []
-    },
-    "dd_arch_gate": {
-      "url": "assets/models/dd_arch_gate.glb",
-      "bytes": 602408,
-      "animations": []
-    },
-    "dd_barrel": {
-      "url": "assets/models/dd_barrel.glb",
-      "bytes": 1222960,
-      "animations": []
-    },
-    "dd_candles": {
-      "url": "assets/models/dd_candles.glb",
-      "bytes": 198592,
-      "animations": []
-    },
-    "dd_ceiling": {
-      "url": "assets/models/dd_ceiling.glb",
-      "bytes": 347232,
-      "animations": []
-    },
-    "dd_chain_a": {
-      "url": "assets/models/dd_chain_a.glb",
-      "bytes": 452560,
-      "animations": []
-    },
-    "dd_chain_c": {
-      "url": "assets/models/dd_chain_c.glb",
-      "bytes": 453488,
-      "animations": []
-    },
-    "dd_crate_a": {
-      "url": "assets/models/dd_crate_a.glb",
-      "bytes": 798044,
-      "animations": []
-    },
-    "dd_floor_a": {
-      "url": "assets/models/dd_floor_a.glb",
-      "bytes": 347276,
-      "animations": []
-    },
-    "dd_floor_gate": {
-      "url": "assets/models/dd_floor_gate.glb",
-      "bytes": 600848,
-      "animations": []
-    },
-    "dd_key_set": {
-      "url": "assets/models/dd_key_set.glb",
-      "bytes": 417572,
-      "animations": []
-    },
-    "dd_pillar_a": {
-      "url": "assets/models/dd_pillar_a.glb",
-      "bytes": 313576,
-      "animations": []
-    },
-    "dd_table_a": {
-      "url": "assets/models/dd_table_a.glb",
-      "bytes": 542072,
-      "animations": []
-    },
-    "dd_table_b": {
-      "url": "assets/models/dd_table_b.glb",
-      "bytes": 547308,
-      "animations": []
-    },
-    "dd_torch": {
-      "url": "assets/models/dd_torch.glb",
-      "bytes": 364440,
-      "animations": []
-    },
-    "dd_wall_a": {
-      "url": "assets/models/dd_wall_a.glb",
-      "bytes": 347248,
-      "animations": []
-    },
-    "dd_wall_a_corner": {
-      "url": "assets/models/dd_wall_a_corner.glb",
-      "bytes": 348948,
-      "animations": []
-    },
-    "dd_wall_b": {
-      "url": "assets/models/dd_wall_b.glb",
-      "bytes": 658636,
-      "animations": []
-    },
-    "dd_wall_c": {
-      "url": "assets/models/dd_wall_c.glb",
-      "bytes": 664856,
-      "animations": []
-    },
-    "dd_wall_d": {
-      "url": "assets/models/dd_wall_d.glb",
-      "bytes": 1255716,
-      "animations": []
-    },
-    "dd_wall_e": {
-      "url": "assets/models/dd_wall_e.glb",
-      "bytes": 1264152,
-      "animations": []
-    },
-    "explorer": {
-      "url": "assets/models/explorer.glb",
-      "bytes": 2406888,
-      "animations": [
-        "HumanM@Rifle_Aim01",
-        "HumanM@Rifle_Aim01_Shoot01",
-        "HumanM@Run01_Forward",
-        "HumanM@Death01"
-      ]
-    },
     "footman": {
       "url": "assets/models/footman.glb",
       "bytes": 247044,
@@ -218,7 +93,7 @@
     },
     "pt_apple_tree": {
       "url": "assets/models/pt_apple_tree.glb",
-      "bytes": 359112,
+      "bytes": 337760,
       "animations": []
     },
     "pt_bridge": {
@@ -226,24 +101,9 @@
       "bytes": 39668,
       "animations": []
     },
-    "pt_fence_1": {
-      "url": "assets/models/pt_fence_1.glb",
-      "bytes": 16012,
-      "animations": []
-    },
-    "pt_fence_2": {
-      "url": "assets/models/pt_fence_2.glb",
-      "bytes": 14460,
-      "animations": []
-    },
-    "pt_fence_3": {
-      "url": "assets/models/pt_fence_3.glb",
-      "bytes": 16440,
-      "animations": []
-    },
     "pt_fruit_tree": {
       "url": "assets/models/pt_fruit_tree.glb",
-      "bytes": 340740,
+      "bytes": 320120,
       "animations": []
     },
     "pt_gate_wood": {
@@ -253,12 +113,12 @@
     },
     "pt_grass": {
       "url": "assets/models/pt_grass.glb",
-      "bytes": 35928,
+      "bytes": 33592,
       "animations": []
     },
     "pt_logs": {
       "url": "assets/models/pt_logs.glb",
-      "bytes": 57180,
+      "bytes": 53504,
       "animations": []
     },
     "pt_menhir": {
@@ -268,27 +128,27 @@
     },
     "pt_mushroom": {
       "url": "assets/models/pt_mushroom.glb",
-      "bytes": 14996,
+      "bytes": 14396,
       "animations": []
     },
     "pt_ore_rock": {
       "url": "assets/models/pt_ore_rock.glb",
-      "bytes": 55768,
+      "bytes": 54052,
       "animations": []
     },
     "pt_pine": {
       "url": "assets/models/pt_pine.glb",
-      "bytes": 171208,
+      "bytes": 159372,
       "animations": []
     },
     "pt_pine_dead": {
       "url": "assets/models/pt_pine_dead.glb",
-      "bytes": 179704,
+      "bytes": 148508,
       "animations": []
     },
     "pt_poppy": {
       "url": "assets/models/pt_poppy.glb",
-      "bytes": 8164,
+      "bytes": 6204,
       "animations": []
     },
     "pt_river_rocks": {
@@ -303,53 +163,18 @@
     },
     "pt_shrub": {
       "url": "assets/models/pt_shrub.glb",
-      "bytes": 168648,
+      "bytes": 161728,
       "animations": []
     },
     "pt_shrub_dead": {
       "url": "assets/models/pt_shrub_dead.glb",
-      "bytes": 46368,
+      "bytes": 42532,
       "animations": []
     },
     "pt_tree_stump": {
       "url": "assets/models/pt_tree_stump.glb",
-      "bytes": 22724,
+      "bytes": 21276,
       "animations": []
-    },
-    "th_ohs03": {
-      "url": "assets/models/th_ohs03.glb",
-      "bytes": 17856,
-      "animations": []
-    },
-    "th_ohs06": {
-      "url": "assets/models/th_ohs06.glb",
-      "bytes": 13348,
-      "animations": []
-    },
-    "th_shield05": {
-      "url": "assets/models/th_shield05.glb",
-      "bytes": 14104,
-      "animations": []
-    },
-    "th_shield08": {
-      "url": "assets/models/th_shield08.glb",
-      "bytes": 12884,
-      "animations": []
-    },
-    "wpn_akm": {
-      "url": "assets/models/wpn_akm.glb",
-      "bytes": 619632,
-      "animations": []
-    },
-    "zombie1": {
-      "url": "assets/models/zombie1.glb",
-      "bytes": 781976,
-      "animations": [
-        "Z_Idle",
-        "Z_Walk_InPlace",
-        "Z_Attack",
-        "Z_FallingBack"
-      ]
     }
   }
 }

@@ -1,7 +1,6 @@
 import type { SolidTest } from "./movement";
 import { platformBlocks, platformsFor, type Platform } from "./platforms";
 
-export interface Placement { model: string; x: number; y: number; z: number; rotationY: number }
 export interface Point2 { x: number; z: number }
 export interface Gate { n: number; x: number; z: number }
 export interface LevelLayout {
@@ -9,7 +8,6 @@ export interface LevelLayout {
   cols: number;
   rows: number;
   solid: boolean[][];
-  placements: Placement[];
   playerSpawn: Point2;
   zombieSpawns: Point2[];
   exits: Point2[];
@@ -24,7 +22,6 @@ export interface LevelLayout {
 }
 
 export const TILE_SIZE = 4;
-const CEILING_HEIGHT_TILES = 1;
 
 export const LEVEL_1: string[] = [
   "###########",
@@ -55,18 +52,9 @@ export const RUINS: string[] = [
   "#########################",
 ];
 
-const PROP: Record<string, string> = { B: "dd_barrel", C: "chest_closed" };
 const GATE_SYMBOLS = new Set(["1", "2", "3"]);
 const FLOOR_SYMBOLS = new Set([".", "P", "Z", "B", "C", "E", "S", "D", "A", "W", "K", "c", "H", ...GATE_SYMBOLS]);
 const SOLID_SYMBOLS = new Set(["#", "T"]);
-
-// Neighbour offset -> rotation that turns a panel's +z toward the floor cell.
-const EDGES = [
-  { dc: 0, dr: -1, rotationY: 0 },
-  { dc: 0, dr: 1, rotationY: Math.PI },
-  { dc: -1, dr: 0, rotationY: Math.PI / 2 },
-  { dc: 1, dr: 0, rotationY: -Math.PI / 2 },
-];
 
 export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   const cols = rows[0]?.length ?? 0;
@@ -79,9 +67,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
 
   const center = (c: number, r: number): Point2 => ({ x: (c + 0.5) * tileSize, z: (r + 0.5) * tileSize });
   const solid = rows.map((row) => [...row].map((ch) => SOLID_SYMBOLS.has(ch)));
-  const isSolid = (c: number, r: number) => r < 0 || r >= rows.length || c < 0 || c >= cols || solid[r][c];
 
-  const placements: Placement[] = [];
   const zombieSpawns: Point2[] = [];
   const exits: Point2[] = [];
   const shards: Point2[] = [];
@@ -98,26 +84,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   rows.forEach((row, r) => {
     [...row].forEach((ch, c) => {
       const { x, z } = center(c, r);
-      if (ch === "T") {
-        placements.push({ model: "dd_pillar_a", x, y: 0, z, rotationY: 0 });
-        placements.push({ model: "dd_torch", x, y: tileSize * 0.5, z, rotationY: 0 });
-        return;
-      }
-      if (ch === "#") return;
-
-      placements.push({ model: "dd_floor_a", x, y: 0, z, rotationY: 0 });
-      placements.push({ model: "dd_ceiling", x, y: tileSize * CEILING_HEIGHT_TILES, z, rotationY: 0 });
-      for (const edge of EDGES) {
-        if (!isSolid(c + edge.dc, r + edge.dr)) continue;
-        placements.push({
-          model: "dd_wall_a",
-          x: x + (edge.dc * tileSize) / 2,
-          y: 0,
-          z: z + (edge.dr * tileSize) / 2,
-          rotationY: edge.rotationY,
-        });
-      }
-      if (PROP[ch]) placements.push({ model: PROP[ch], x, y: 0, z, rotationY: 0 });
+      if (SOLID_SYMBOLS.has(ch)) return;
       platforms.push(...platformsFor(ch, x, z));
       if (ch === "P") playerSpawn = { x, z };
       if (ch === "Z") zombieSpawns.push({ x, z });
@@ -134,7 +101,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   if (!playerSpawn) throw new Error("level has no player spawn (P)");
   gates.sort((a, b) => a.n - b.n);
   return {
-    tileSize, cols, rows: rows.length, solid, placements, playerSpawn, zombieSpawns, exits,
+    tileSize, cols, rows: rows.length, solid, playerSpawn, zombieSpawns, exits,
     shards, devices, altar, waveSpawns, bossSpawn, gates, platforms,
   };
 }

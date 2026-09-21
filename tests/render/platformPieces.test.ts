@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { platformMatrix } from "../../src/game/render/levelScene";
 import { LOW_H, type Platform } from "../../src/game/rules/platforms";
 
-const crate: Platform = { x: 6, z: 8, w: 1.4, d: 1.2, h: LOW_H, model: "dd_crate_a" };
+const crate: Platform = { x: 6, z: 8, w: 1.4, d: 1.2, h: LOW_H, model: "pt_logs" };
 // A model one unit wide, sitting on its own origin.
 const unit = new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
 

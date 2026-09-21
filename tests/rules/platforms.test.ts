@@ -3,7 +3,7 @@ import { GROUNDED, stepJump } from "../../src/game/rules/movement";
 import { HIGH_H, LOW_H, groundAt, platformsFor, type Platform } from "../../src/game/rules/platforms";
 import { RUINS, TILE_SIZE, parseLevel, solidWith } from "../../src/game/rules/levelLayout";
 
-const crate: Platform = { x: 10, z: 10, w: 1.4, d: 1.4, h: LOW_H, model: "dd_crate_a" };
+const crate: Platform = { x: 10, z: 10, w: 1.4, d: 1.4, h: LOW_H, model: "pt_logs" };
 
 describe("platformsFor", () => {
   it("puts a low crate in a c cell and a low step beside a high block in an H cell", () => {

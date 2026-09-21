@@ -59,8 +59,6 @@ export class MenuScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     container.appendChild(this.renderer.domElement);
-    this.scene.background = new THREE.Color(0x050404);
-    this.scene.fog = new THREE.FogExp2(0x050404, 0.06);
     this.camera.position.copy(CAMERA_HOME);
     this.camera.lookAt(CAMERA_LOOK);
     // Resize on the next frame, not inside the observer callback, so the browser never reports a ResizeObserver loop.
@@ -77,7 +75,7 @@ export class MenuScene {
     await library.preload(MENU_MODELS, onProgress);
     if (this.disposed) return;
     const layout = parseLevel(RUINS, TILE_SIZE);
-    buildLevelScene(this.scene, library, layout, this.lights, () => this.clock.elapsedTime);
+    buildLevelScene(this.scene, library, layout, this.lights);
     // A warm lamp on the squad so they read against the dark room.
     this.lights.add({
       position: SQUAD_LIGHT, color: new THREE.Color(0xffb070), range: 9,

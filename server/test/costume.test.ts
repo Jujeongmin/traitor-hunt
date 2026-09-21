@@ -38,14 +38,14 @@ describe("costumes in a match", () => {
     const match = await roomMatch(roomId);
     expect(match.looks[PLAYERS[0]]).toBe("heroine");
     // The others never picked one, so the match leaves them to their seat costume.
-    expect(match.looks[PLAYERS[1]]).toBe(COSTUMES[0].id);
+    expect(match.looks[PLAYERS[1]] ?? null).toBeNull();
   });
 
   test("a later change does not rewrite a match already under way", async (server) => {
     const roomId = await fillRoom(server);
     actAs(server, PLAYERS[0], roomId);
     await server.setCostume("heroine");
-    expect((await roomMatch(roomId)).looks[PLAYERS[0]]).toBe(COSTUMES[0].id);
+    expect((await roomMatch(roomId)).looks[PLAYERS[0]] ?? null).toBeNull();
   });
 
   test("takes only costumes it knows", async (server) => {

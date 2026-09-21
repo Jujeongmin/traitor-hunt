@@ -103,3 +103,20 @@ npm 패키지(@fontsource)로 넣었고 모두 SIL Open Font License 1.1이다(�
 | `explore.ogg` | Loopable Dungeon Ambience | JaggedStone | https://opengameart.org/content/loopable-dungeon-ambience |
 | `tension.ogg` | Post Apocalyptic Wastelands (Horror Atmosphere) | Juhani Junkala (SubspaceAudio) | https://opengameart.org/content/horror-atmosphere |
 | `boss.ogg` | Oldschool Horror Theme | josepharaoh99 수집, CC0 | https://opengameart.org/content/oldschool-horror-theme |
+
+## 야외·치비 전환 (2026-09-21)
+
+게임은 이제 아래 에셋만 싣는다. 위 표의 다른 에셋(Decrepit Dungeon, Adventure Character, Zombie, AKM 등)은
+더 이상 게임에 들어가지 않는다(원본은 Unity 프로젝트에 남아 있음).
+
+| 에셋 | 퍼블리셔 | 라이선스 표기 | 가격 | 패키지 안 별도 약관 | 게임 사용처 |
+|---|---|---|---|---|---|
+| RPG Tiny Hero Duo PBR Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 플레이어(hero_male, hero_female), 검·방패 |
+| Mini Legion Grunt PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 일반 몬스터(grunt) |
+| Mini Legion Footman PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 일반 몬스터(footman) |
+| Mini Legion Rock Golem PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 보스(golem) |
+| Low Poly Environment - Nature Free | Polytope Studio | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 나무·바위·풀·꽃·버섯·통나무·그루터기·선돌·광석·나무 문·다리 |
+| Treasure Chest - PBR | Thomas K. Kerff | Standard Unity Asset Store EULA / Extension Asset | 무료 | — | 올라서는 상자(chest_closed) |
+
+패키지 5개를 모두 풀어 readme·license 파일이 없는 것을 확인했다. 약관 원문(2.2.1)은 "electronic application or
+digital media"에 넣는 것을 허락하고 Unity 엔진을 조건으로 두지 않으며, 제품 안 수익화(유료 판매)도 허락한다.

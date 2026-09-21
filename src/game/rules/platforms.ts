@@ -1,6 +1,6 @@
 import { MAX_JUMP_RISE, PLAYER_RADIUS } from "./movement";
 
-// Things you can stand on: crates, a stepped block, and the old barrel and chest. Each is a box on
+// Things you can stand on: log piles, a boulder beside them, a stump and a chest. Each is a box on
 // the floor: x/z its centre, w along x, d along z, h its top. Players jump onto them; monsters and bots
 // walk around them, since they never leave the floor.
 export interface Platform {
@@ -9,12 +9,12 @@ export interface Platform {
   w: number;
   d: number;
   h: number;
-  // "dd_crate_a" is drawn stretched to the box; the barrel and chest keep their own models and shapes.
+  // The model drawn stretched to the box.
   model: string;
 }
 
-// A jump rises about 0.63 m, so a low crate is reached from the floor and the high block only from the
-// crate next to it.
+// A jump rises about 0.63 m, so a log pile is reached from the ground and the boulder only from the
+// logs next to it.
 export const LOW_H = 0.5;
 export const HIGH_H = 1.0;
 // A top this close to your feet or below them does not block you.
@@ -28,14 +28,14 @@ const CHEST = { w: 0.7, d: 0.45, h: 0.47 };
 export function platformsFor(symbol: string, x: number, z: number): Platform[] {
   switch (symbol) {
     case "c":
-      return [{ x, z, w: 1.4, d: 1.4, h: LOW_H, model: "dd_crate_a" }];
+      return [{ x, z, w: 1.4, d: 1.4, h: LOW_H, model: "pt_logs" }];
     case "H":
       return [
-        { x: x - 1.0, z, w: 1.2, d: 1.2, h: LOW_H, model: "dd_crate_a" },
-        { x: x + 0.7, z, w: 1.8, d: 1.8, h: HIGH_H, model: "dd_crate_a" },
+        { x: x - 1.0, z, w: 1.2, d: 1.2, h: LOW_H, model: "pt_logs" },
+        { x: x + 0.7, z, w: 1.8, d: 1.8, h: HIGH_H, model: "pt_rock" },
       ];
     case "B":
-      return [{ x, z, ...BARREL, model: "dd_barrel" }];
+      return [{ x, z, ...BARREL, model: "pt_tree_stump" }];
     case "C":
       return [{ x, z, ...CHEST, model: "chest_closed" }];
     default:

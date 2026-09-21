@@ -36,6 +36,8 @@ export const LOOK_SENSITIVITY = 0.0022;
 export const MATCH_MODELS = [...new Set([...LEVEL_MODELS, ...OBJECTIVE_MODELS, ...COSTUME_MODELS, ...MONSTER_MODELS])];
 
 const MONSTER_EYE = 1.5;
+// Outdoors nothing roofs the camera in; this only keeps it from flying off.
+const SKY_CEILING = 30;
 // Share of walking speed kept while the shield is up.
 const BLOCK_WALK = 0.55;
 const POSSESSED_SPEED_FACTOR = 1.3;
@@ -190,8 +192,6 @@ export class MatchView {
     container.appendChild(this.renderer.domElement);
     this.input = new FpsInput(this.renderer.domElement);
     this.pose = { ...this.layout.playerSpawn, yaw: 0 };
-    this.scene.background = new THREE.Color(0x050404);
-    this.scene.fog = new THREE.FogExp2(0x050404, 0.07);
     this.scene.add(this.camera);
     // Resize on the next frame, not inside the observer callback, so the browser never reports a ResizeObserver loop.
     this.resizeObserver = new ResizeObserver(() => {
@@ -208,9 +208,9 @@ export class MatchView {
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
-    const { kitScale } = buildLevelScene(this.scene, library, this.layout, this.lights, () => this.clock.elapsedTime);
+    buildLevelScene(this.scene, library, this.layout, this.lights);
     this.addCameraLamp();
-    this.props = new ObjectiveProps(this.scene, this.layout, library, kitScale, this.lights);
+    this.props = new ObjectiveProps(this.scene, this.layout, library, this.lights);
     this.props.onLand = () => {
       this.shakeUntil = performance.now() + SHAKE_MS;
       playThud();
@@ -487,7 +487,7 @@ export class MatchView {
     // Over the shoulder of whatever you drive: your body, or the monster you possess.
     const monster = possession ? match.monsters[possession.monsterId] : undefined;
     const body = monster ? { x: monster.x, z: monster.z, y: MONSTER_EYE - CHASE.height } : this.pose;
-    const cam = chaseCamera(body, this.yaw, this.pitch, this.solid, TILE_SIZE);
+    const cam = chaseCamera(body, this.yaw, this.pitch, this.solid, SKY_CEILING);
     this.camera.position.set(cam.x, cam.y, cam.z);
     const shake = this.shakeUntil - performance.now();
     if (shake > 0) {
