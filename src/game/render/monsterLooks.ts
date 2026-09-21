@@ -1,4 +1,4 @@
-import type { MonsterKind } from "../match/types";
+import type { MonsterKind } from "../world/types";
 import type { MonsterLook } from "./MonsterActor";
 
 // The Ultimate Monsters pack (Quaternius, CC0). Common monsters take turns by id, so a crowd is

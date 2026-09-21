@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEAL_RADIUS } from "../../src/game/match/constants";
+import { SEAL_RADIUS } from "../../src/game/rules/obstacles";
 import { RUINS, TILE_SIZE, parseLevel, solidAt, solidWith } from "../../src/game/rules/levelLayout";
 import { FOOTPRINT, natureLayout } from "../../src/game/rules/nature";
 import { altarRing, obstaclesFor } from "../../src/game/rules/obstacles";

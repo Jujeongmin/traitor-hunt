@@ -1,0 +1,180 @@
+import { useEffect, useRef, useState } from "react";
+import { playMusic } from "../game/audio/music";
+import { trackFor } from "../game/audio/musicTrack";
+import type { PlayerClass } from "../game/combat/classes";
+import type { Costume } from "../game/render/costumes";
+import { WorldView, type WorldHud } from "../game/render/WorldView";
+import type { ZoneEntry } from "../game/world/zones";
+import type { WorldClient, WorldState } from "../net/worldClient";
+import { SettingsPanel } from "./SettingsPanel";
+
+interface WorldScreenProps {
+  client: WorldClient;
+  playerClass: PlayerClass;
+  costume: Costume;
+  name: string;
+  owned: boolean;
+  onExit: () => void;
+}
+
+const TRAVEL_PROBLEM: Record<string, string> = {
+  not_owned: "정식판을 구매하면 들어갈 수 있는 구역이에요",
+  zone_full: "모든 채널이 가득 찼어요. 잠시 뒤 다시 시도해 주세요",
+  not_near: "포털 가까이 서 주세요",
+};
+
+const ENTER_PROBLEM: Record<string, string> = {
+  unavailable: "월드에 들어가지 못했어요",
+};
+
+// The world: enters on mount, shows the zone you are in (one WorldView per zone and channel), and
+// takes you through portals.
+export function WorldScreen({ client, playerClass, costume, name, owned, onExit }: WorldScreenProps) {
+  const [state, setState] = useState<WorldState>(client.state);
+  const [problem, setProblem] = useState<{ text: string; at: number } | null>(null);
+
+  useEffect(() => {
+    const off = client.onChange(setState);
+    void client.enter();
+    return () => {
+      off();
+      void client.leave();
+    };
+  }, [client]);
+
+  useEffect(() => {
+    playMusic(trackFor(state.entry?.zone ?? null));
+  }, [state.entry?.zone]);
+
+  if (state.phase === "error") {
+    return (
+      <div className="overlay">
+        <div className="solid-panel world-panel">
+          <p>{ENTER_PROBLEM[state.error ?? ""] ?? `월드에 들어가지 못했어요 (${state.error})`}</p>
+          <button type="button" className="text-button" onClick={onExit}>메뉴로</button>
+        </div>
+      </div>
+    );
+  }
+  if (!state.entry) return <div className="overlay">월드에 들어가는 중…</div>;
+  return (
+    <ZoneScreen
+      key={state.entry.roomId}
+      entry={state.entry}
+      client={client}
+      playerClass={playerClass}
+      costume={costume}
+      name={name}
+      owned={owned}
+      travelling={state.phase === "travelling"}
+      problem={problem}
+      onProblem={(code) => setProblem({ text: TRAVEL_PROBLEM[code] ?? "지금은 갈 수 없어요", at: performance.now() })}
+      onExit={onExit}
+    />
+  );
+}
+
+interface ZoneScreenProps extends Omit<WorldScreenProps, "onExit"> {
+  entry: ZoneEntry;
+  travelling: boolean;
+  problem: { text: string; at: number } | null;
+  onProblem: (code: string) => void;
+  onExit: () => void;
+}
+
+// How long a refused portal's message stays up.
+const PROBLEM_MS = 3000;
+
+function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelling, problem, onProblem, onExit }: ZoneScreenProps) {
+  const host = useRef<HTMLDivElement>(null);
+  const view = useRef<WorldView | null>(null);
+  const [hud, setHud] = useState<WorldHud | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [ready, setReady] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [settings, setSettings] = useState(false);
+  const [now, setNow] = useState(() => performance.now());
+
+  useEffect(() => {
+    const next = new WorldView(host.current!, client, {
+      entry, playerClass, costume, name, owned,
+      onProgress: (done, total) => setProgress(done / total),
+      onTravel: (to) => {
+        void client.travel(to).then((code) => {
+          if (code) {
+            view.current?.travelRefused();
+            onProblem(code);
+          }
+        });
+      },
+    });
+    view.current = next;
+    if (import.meta.env.DEV) (window as unknown as { __world?: unknown }).__world = next.debugHandle();
+    const off = next.onHud((h) => {
+      setHud(h);
+      setNow(performance.now());
+    });
+    void next.start().then(() => setReady(true));
+    return () => {
+      off();
+      next.dispose();
+      view.current = null;
+    };
+    // One view per zone: the key on this component remounts it for a new entry.
+  }, []);
+
+  // Escape opens the menu (the pointer lock lets go of the mouse first).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenu((m) => !m);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const showProblem = problem && now - problem.at < PROBLEM_MS;
+  return (
+    <div className="app" ref={host}>
+      <div className="ui">
+      {!ready && <div className="overlay">숲을 불러오는 중… {Math.round(progress * 100)}%</div>}
+      {travelling && <div className="overlay">이동하는 중…</div>}
+      {hud && (
+        <>
+          <div className="hud-top band">
+            <b>{hud.zone}</b>
+            <span>채널 {hud.channel}</span>
+            <span>{hud.players}명</span>
+          </div>
+          <button type="button" className="brush-button small hud-menu-button" onClick={() => setMenu(true)}>메뉴</button>
+          {hud.portal && (
+            <div className="hud-prompt band">
+              {hud.portal.locked ? `${hud.portal.to} — 정식판이 필요해요` : `${hud.portal.to}(으)로 가는 길`}
+            </div>
+          )}
+          {showProblem && <div className="hud-error band">{problem.text}</div>}
+          {hud.blocking && <div className="hud-shield band">막는 중</div>}
+          <div className={`hud-skill${hud.skill.readyInMs > 0 ? " cooling" : ""}`}>
+            <span className="hud-skill-key">1</span>
+            <b>{hud.skill.name}</b>
+            <span>{hud.skill.readyInMs > 0 ? `${Math.ceil(hud.skill.readyInMs / 1000)}초` : "준비됨"}</span>
+            <i style={{ width: `${Math.round((1 - hud.skill.readyInMs / hud.skill.cooldownMs) * 100)}%` }} />
+          </div>
+          <div className="crosshair" />
+        </>
+      )}
+      {menu && (
+        <div className="menu-modal" onClick={() => setMenu(false)}>
+          <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
+            <h2>메뉴</h2>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1 스킬</p>
+            <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
+            <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
+            <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>
+          </div>
+        </div>
+      )}
+      {settings && <SettingsPanel onClose={() => setSettings(false)} />}
+      </div>
+    </div>
+  );
+}

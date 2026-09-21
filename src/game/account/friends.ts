@@ -1,4 +1,4 @@
-import { RuleViolation } from "../match/types";
+import { RuleViolation } from "../world/types";
 
 export const FRIEND_LIMIT = 100;
 // Pending requests one account can have waiting for it.

@@ -1,10 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { CLASSES, CLASS_BLURB, CLASS_LABEL, WEAPONS } from "../game/match/classes";
+import { useEffect, useRef } from "react";
 import {
   COSTUMES, PARTS, PART_KEYS, optionOf, randomCostume, withPart, type Costume, type PartKey,
 } from "../game/render/costumes";
-import { SKILLS } from "../game/match/skills";
-import { myClass, onMyClass, setMyClass } from "./profile";
 
 interface WardrobeProps {
   costume: Costume;
@@ -22,10 +19,8 @@ interface WardrobeProps {
 const SPIN_PER_PIXEL = 0.012;
 
 // The wardrobe: a screen of its own where your hero stands on the left, turning as you drag, and the
-// right side picks your class and each part of your look. Every change is kept at once.
+// right side picks each part of your look. Every change is kept at once.
 export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: WardrobeProps) {
-  const [picked, setPicked] = useState(myClass());
-  useEffect(() => onMyClass(setPicked), []);
   const drag = useRef<number | null>(null);
 
   // Escape leaves, like the other screens.
@@ -64,26 +59,6 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
           <h2>{onStart ? "캐릭터 외형 정하기" : "캐릭터 꾸미기"}</h2>
           <button type="button" className="text-button" onClick={onClose}>{onStart ? "취소" : "완료"}</button>
         </header>
-
-        <section>
-          <h3>직업</h3>
-          <div className="wardrobe-classes">
-            {CLASSES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={`wardrobe-card${c === picked ? " picked" : ""}`}
-                onClick={() => setMyClass(c)}
-                aria-pressed={c === picked}
-              >
-                <b>{CLASS_LABEL[c]}</b>
-                <span>{CLASS_BLURB[c]}</span>
-                <small>{WEAPONS[c].name} · 공격 {WEAPONS[c].damage} · {WEAPONS[c].ranged ? "원거리" : "근접"}</small>
-                <em>스킬 {SKILLS[c].name}: {SKILLS[c].blurb} (재사용 {SKILLS[c].cooldownMs / 1000}초)</em>
-              </button>
-            ))}
-          </div>
-        </section>
 
         <section>
           <h3>모습</h3>

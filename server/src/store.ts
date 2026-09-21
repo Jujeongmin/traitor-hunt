@@ -2,22 +2,20 @@ import { isOnline, readFriendLists, type FriendEntry, type FriendSide } from "..
 import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
-import { levelOf, xpOf } from "../../src/game/account/level";
+import { levelOf, readXp } from "../../src/game/account/level";
 import { DEFAULT_WORLD, readWorld, type World } from "../../src/game/account/worlds";
 import { playsFree, type PurchaseEvent } from "../../src/game/account/purchase";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
-import { CLASSES, readClass, type PlayerClass } from "../../src/game/match/classes";
-import { isBot } from "../../src/game/match/lifecycle";
-import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
+import { CLASSES, readClass, type PlayerClass } from "../../src/game/combat/classes";
+import { RuleViolation, readSwing, type Pose } from "../../src/game/world/types";
+import {
+  CHANNEL_CAPACITY, MAX_CHANNELS, channelRoomId, readZone, zoneLayout, type ZoneId, type ZoneLook,
+} from "../../src/game/world/zones";
+import { solidAt } from "../../src/game/rules/levelLayout";
 import { readJumpY } from "../../src/game/rules/movement";
 import { maxFeetY } from "../../src/game/rules/platforms";
-import { addResult, readProfile } from "../../src/game/match/profile";
-import {
-  RuleViolation, readSwing, type PlayerResult, type Pose, type Poses, type PublicMatch, type SecretMatch, type SecretRef,
-} from "../../src/game/match/types";
 
-export const RESULTS_COLLECTION = "match_results";
 // One row per purchase the platform reported, so a replayed receipt is noticed.
 const PURCHASES_COLLECTION = "purchases";
 // One row per account, so the board is a short read instead of a scan over every account.
@@ -25,117 +23,17 @@ const RANKING_COLLECTION = "ranking";
 // Read a few more rows than the board shows, so a row that has slipped down still lands in order.
 const RANKING_READ = RANKING_SIZE * 5;
 
-// The one map everyone plays. Poses are checked against its platforms.
-export const LEVEL = parseLevel(RUINS, TILE_SIZE);
-
-export function token(length: number): string {
-  let out = "";
-  for (let i = 0; i < length; i++) out += Math.floor(Math.random() * 36).toString(36);
-  return out;
-}
-
-// The world is part of the room id, so matchmaking can keep each server's lobbies apart.
-export function newRoomId(now: number, world: string): string {
-  return `de-${world}-${now.toString(36)}-${token(6)}`;
-}
-
-export function withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
-  return $lock(`de-room-${roomId}`, fn);
-}
-
-export function withMatchmakingLock<T>(fn: () => Promise<T>): Promise<T> {
-  return $lock("de-matchmaking", fn);
-}
-
-function isMatch(value: unknown): value is PublicMatch {
-  return !!value && typeof value === "object" && (value as { version?: unknown }).version === 1;
-}
-
-export async function readMatch(roomId: string): Promise<PublicMatch | null> {
-  const state = await $global.getRoomState(roomId);
-  return isMatch(state.match) ? state.match : null;
-}
-
-export async function writeMatch(roomId: string, match: PublicMatch): Promise<void> {
-  await $global.updateRoomState(roomId, { match });
-}
-
-export async function listLobbies(world: string): Promise<{ roomId: string; match: PublicMatch }[]> {
-  const lobbies: { roomId: string; match: PublicMatch }[] = [];
-  for (const state of await $global.getAllRoomStates()) {
-    if (typeof state.roomId !== "string" || !state.roomId.startsWith(`de-${world}-`)) continue;
-    if (isMatch(state.match) && state.match.phase === "lobby") {
-      lobbies.push({ roomId: state.roomId, match: state.match });
-    }
-  }
-  return lobbies;
-}
-
-// Readable by any client that learns the name: obscurity only, by design (see plan decisions).
-export async function createSecret(secret: SecretMatch): Promise<SecretRef> {
-  const collection = `ds_${token(24)}`;
-  const item = await $global.addCollectionItem(collection, { secret });
-  return { collection, id: item.__id };
-}
-
-export async function readSecret(match: PublicMatch): Promise<SecretMatch | null> {
-  const ref = match.secretRef;
-  if (!ref) return null;
-  const item = await $global.getCollectionItem(ref.collection, ref.id);
-  return (item.secret as SecretMatch | undefined) ?? null;
-}
-
-export async function writeSecret(match: PublicMatch, secret: SecretMatch): Promise<void> {
-  const ref = match.secretRef;
-  if (ref) await $global.updateCollectionItem(ref.collection, { __id: ref.id, secret });
-}
-
-export async function deleteSecret(match: PublicMatch): Promise<void> {
-  if (match.secretRef) await $global.deleteCollection(match.secretRef.collection);
-}
-
-export function isPose(value: unknown): value is Pose {
-  if (!value || typeof value !== "object") return false;
-  const p = value as Record<string, unknown>;
-  return [p.x, p.z, p.yaw].every((n) => typeof n === "number" && Number.isFinite(n));
-}
-
-export async function readPose(roomId: string, account: string): Promise<Pose | null> {
-  const pose: unknown = (await $global.getRoomUserState(roomId, account)).pose;
-  return isPose(pose)
-    ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill) }
-    : null;
-}
-
-export async function readPoses(roomId: string, accounts: string[]): Promise<Poses> {
-  const poses: Poses = {};
-  for (const account of accounts) poses[account] = await readPose(roomId, account);
-  return poses;
-}
-
-export async function writePose(roomId: string, account: string, pose: Pose, at: number): Promise<void> {
-  // Trust the height only as far as the map allows: what is under them plus a jump.
-  const y = Math.min(readJumpY(pose.y), maxFeetY(LEVEL.platforms, pose.x, pose.z));
-  const block = pose.block === true;
-  const swing = readSwing(pose.swing);
-  const skill = readSwing(pose.skill);
-  await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, block, swing, skill, at } });
-}
-
-// Writes this account's line on the board. Called whenever its XP or its name changes; a fresh
-// account that has never finished a match leaves no row behind.
+// Writes this account's line on the board. Called whenever its XP or its name changes; an account
+// with no XP yet leaves no row behind.
 export async function writeRanking(account: string): Promise<void> {
   const state = await $global.getUserState(account);
-  const profile = readProfile(state.profile);
-  const xp = xpOf(profile);
+  const xp = readXp(state.xp);
   if (xp <= 0) return;
   const row: RankRow = {
     account,
     nickname: typeof state.nickname === "string" ? state.nickname : null,
     xp,
     level: levelOf(xp).level,
-    games: profile.games,
-    wins: profile.wins,
   };
   const id = typeof state.rankingId === "string" ? state.rankingId : null;
   if (id) {
@@ -168,19 +66,9 @@ export async function grantPurchase(event: PurchaseEvent): Promise<boolean> {
   return true;
 }
 
-// The XP of an account, read from the matches it has finished.
-export async function readXp(account: string): Promise<number> {
-  return xpOf(readProfile((await $global.getUserState(account)).profile));
-}
-
-export async function saveResults(matchId: string, results: PlayerResult[]): Promise<void> {
-  for (const result of results) {
-    if (isBot(result.account)) continue;
-    await $global.addCollectionItem(RESULTS_COLLECTION, { ...result, matchId });
-    const state = await $global.getUserState(result.account);
-    await $global.updateUserState(result.account, { profile: addResult(readProfile(state.profile), result) });
-    await writeRanking(result.account);
-  }
+// The XP a character has earned.
+export async function readAccountXp(account: string): Promise<number> {
+  return readXp((await $global.getUserState(account)).xp);
 }
 
 // One item per taken nickname, looked up by its case-insensitive key.
@@ -315,4 +203,62 @@ export async function partyMember(account: string, now: number): Promise<PartyMe
     online: isOnline(state.lastSeenAt, now),
     activity: readActivity(state.activity),
   };
+}
+
+// Where a character last stood, so it comes back to the same spot.
+export interface Spot { zone: ZoneId; x: number; z: number }
+
+export async function readSavedSpot(account: string): Promise<Spot | null> {
+  const raw = (await $global.getUserState(account)).spot as Partial<Spot> | undefined;
+  const zone = readZone(raw?.zone);
+  if (!zone || typeof raw?.x !== "number" || typeof raw?.z !== "number") return null;
+  // A spot that is no longer open ground (the map changed) sends you to the zone's own spawn.
+  if (solidAt(zoneLayout(zone), raw.x, raw.z)) return { zone, ...zoneLayout(zone).playerSpawn };
+  return { zone, x: raw.x, z: raw.z };
+}
+
+export async function saveSpot(account: string, spot: Spot): Promise<void> {
+  await $global.updateUserState(account, { spot, zone: spot.zone });
+}
+
+// Joins the first channel of a zone on this server that has room, counting from 1. You never
+// count against a channel you are already in.
+export async function joinChannel(world: string, zone: ZoneId, account: string): Promise<{ roomId: string; channel: number }> {
+  return $lock(`rpg-join-${world}-${zone}`, async () => {
+    for (let channel = 1; channel <= MAX_CHANNELS; channel++) {
+      const roomId = channelRoomId(world, zone, channel);
+      const members = await $global.getRoomUserAccounts(roomId);
+      if (members.includes(account) || members.length < CHANNEL_CAPACITY) {
+        await $global.joinRoom(roomId);
+        return { roomId, channel };
+      }
+    }
+    throw new RuleViolation("zone_full");
+  });
+}
+
+// What the others in a zone see of you: name, class, costume and level.
+export async function zoneLook(account: string): Promise<ZoneLook> {
+  const state = await $global.getUserState(account);
+  return {
+    name: typeof state.nickname === "string" ? state.nickname : account,
+    costume: costumeById(state.costume)?.id ?? COSTUMES[0].id,
+    playerClass: readClass(state.playerClass) ?? CLASSES[0],
+    level: levelOf(readXp(state.xp)).level,
+  };
+}
+
+// Stores a reported pose, held to the zone: inside the map, and no higher than what is underfoot
+// plus a jump. Returns where it put you and when your spot was last saved.
+export async function writeZonePose(
+  roomId: string, account: string, zone: ZoneId, pose: Pose, now: number,
+): Promise<{ x: number; z: number; savedAt: number }> {
+  const layout = zoneLayout(zone);
+  const x = Math.min(Math.max(pose.x, 0), layout.cols * layout.tileSize);
+  const z = Math.min(Math.max(pose.z, 0), layout.rows * layout.tileSize);
+  const y = Math.min(readJumpY(pose.y), maxFeetY(layout.platforms, x, z));
+  const state = await $global.updateRoomUserState(roomId, account, {
+    pose: { x, z, yaw: pose.yaw, y, block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill), at: now },
+  });
+  return { x, z, savedAt: typeof state.savedAt === "number" ? state.savedAt : 0 };
 }

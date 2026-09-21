@@ -16,20 +16,19 @@ describe("CallThrottle", () => {
 });
 
 describe("LocalTransport", () => {
-  it("remembers the room from findMatch and forgets it after leaveMatch", async () => {
+  it("remembers the room from enterWorld and forgets it after leaveWorld", async () => {
     const world = new LocalWorld(new Server());
     const t = new LocalTransport(world, "test-a");
-    const { roomId } = await t.call<{ roomId: string }>("findMatch");
-    const snap = await t.call<{ roomId: string }>("getMatchState");
-    expect(snap.roomId).toBe(roomId);
-    await t.call("leaveMatch");
-    await expect(t.call("getMatchState")).rejects.toThrow("unavailable");
+    await t.call<{ roomId: string }>("enterWorld");
+    await expect(t.call("reportPose", [{ x: 5, z: 5, yaw: 0 }])).resolves.toBeUndefined();
+    await t.call("leaveWorld");
+    await expect(t.call("reportPose", [{ x: 5, z: 5, yaw: 0 }])).rejects.toThrow("unavailable");
   });
 
   it("does not wait for or report errors when no response is needed", async () => {
     const world = new LocalWorld(new Server());
     const t = new LocalTransport(world, "test-a");
-    await expect(t.call("escape", [], { needResponse: false })).resolves.toBeUndefined();
+    await expect(t.call("travel", ["moon"], { needResponse: false })).resolves.toBeUndefined();
     await world.idle();
   });
 
@@ -66,13 +65,13 @@ describe("LocalTransport", () => {
     const a = new LocalTransport(world, "test-a");
     const states: Record<string, unknown>[] = [];
     const users: unknown[][] = [];
-    const { roomId } = await a.call<{ roomId: string }>("findMatch");
+    const roomId = "rpg-w1-village-1";
     a.subscribeRoomState(roomId, (s) => states.push(s));
     a.subscribeRoomUsers(roomId, (u) => users.push(u));
+    await a.call("enterWorld");
     await a.call("reportPose", [{ x: 1, z: 2, yaw: 0 }]);
-    await a.call("syncMatch");
     expect(users.at(-1)).toMatchObject([{ account: "test-a", pose: { x: 1, z: 2, yaw: 0 } }]);
-    expect(states.at(-1)).toMatchObject({ roomId });
+    expect(states.at(-1)).toMatchObject({ roomId, $users: ["test-a"] });
   });
 
   it("passes only its own account state", async () => {

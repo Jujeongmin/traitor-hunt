@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Pose } from "../match/types";
+import type { Pose } from "../world/types";
 import type { Costume } from "./costumes";
 import { applyCostume } from "./dyes";
 import type { HeroRig } from "./heroes";
@@ -14,7 +14,7 @@ const FALL_RATE = 6;
 // Still this far from where the pose says (metres) counts as walking.
 const MOVING = 0.03;
 
-export type PlayerStatus = "active" | "dead" | "escaped";
+export type PlayerStatus = "active" | "dead";
 
 export interface PlayerModel {
   object: THREE.Object3D;
@@ -94,12 +94,11 @@ export class PlayerActor {
     this.object.visible = false;
   }
 
-  // A tag over an exposed traitor or a bound player.
-  mark(revealed: boolean, bound: boolean): void {
-    const text = this.dead ? "" : revealed ? "배신자" : bound ? "묶임" : "";
+  // The name over the head; empty hides it.
+  label(text: string, color = "#f2e8d5"): void {
     if (text === this.tagText) return;
     this.tagText = text;
-    setLabel(this.tag, text, revealed ? "#ff6b5a" : "#ffb35a");
+    setLabel(this.tag, text, color);
   }
 
   private static animate({ object, clips, costume, rig }: PlayerModel): Animated {
@@ -123,7 +122,7 @@ export class PlayerActor {
   }
 
   sync(pose: Pose | null, status: PlayerStatus, dt: number): void {
-    if (!pose || status === "escaped") {
+    if (!pose) {
       this.object.visible = false;
       return;
     }

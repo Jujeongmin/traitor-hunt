@@ -1,5 +1,4 @@
-import { isActive } from "../match/lifecycle";
-import type { PublicMatch } from "../match/types";
+import type { ZoneId } from "../world/zones";
 
 // The four pieces of music the game owns. All four are CC0 (see docs/licenses).
 export type Track = "menu" | "explore" | "tension" | "boss";
@@ -11,18 +10,17 @@ export const MUSIC_FILES: Record<Track, string> = {
   boss: "assets/music/boss.ogg",
 };
 
-// What should be playing: the menu piece everywhere outside a live match, and inside one the piece
-// that fits the objective. A player who is down or already out hears the menu piece again.
-export function trackFor(match: PublicMatch | null, account: string): Track {
-  if (!match || match.phase !== "playing" || !isActive(match, account)) return "menu";
-  switch (match.objectives.stage) {
-    case "shards":
-    case "devices":
+// What should be playing in a zone: the calm piece in the village, the wandering one in the fields,
+// the boss's in the boss's clearing. Outside the world (the menus) the menu piece plays.
+export function trackFor(zone: ZoneId | null): Track {
+  switch (zone) {
+    case null:
+    case "village":
+      return "menu";
+    case "forest1":
+    case "forest2":
       return "explore";
     case "boss":
       return "boss";
-    case "seal":
-    case "exit":
-      return "tension";
   }
 }

@@ -1,5 +1,5 @@
 import type { FriendEntry, FriendsView } from "../game/account/friends";
-import { errorCode } from "./matchClient";
+import { errorCode } from "./errors";
 import type { MatchTransport } from "./transport";
 
 const PROBLEMS: Record<string, string> = {

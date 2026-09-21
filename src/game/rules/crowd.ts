@@ -1,4 +1,4 @@
-import type { MonsterKind } from "../match/types";
+import type { MonsterKind } from "../world/types";
 
 // Bodies do not walk through each other: a step that would end inside another body is refused,
 // unless it moves away from that body (so two that already overlap can always part).

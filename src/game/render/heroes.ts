@@ -1,5 +1,5 @@
-import { CLASSES, WEAPONS, type PlayerClass } from "../match/classes";
-import { SKILLS } from "../match/skills";
+import { CLASSES, WEAPONS, type PlayerClass } from "../combat/classes";
+import { SKILLS } from "../combat/skills";
 import type { ShotKind } from "./effects";
 
 // The RPG Character Pack (Quaternius, CC0): one hero model per class, and which of its clips play

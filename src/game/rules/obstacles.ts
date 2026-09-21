@@ -1,4 +1,5 @@
-import { SEAL_RADIUS } from "../match/constants";
+// How far the ring of small stones stands from the altar stone.
+export const SEAL_RADIUS = 6;
 import type { LevelLayout, Point2 } from "./levelLayout";
 
 // Standing stones on open ground that nobody walks through: the two rune stones, the altar stone

@@ -12,7 +12,6 @@ describe("partyLineup", () => {
 
   it("puts you first, then the others in party order with their costumes", () => {
     const view: PartyView = {
-      match: null,
       invites: [],
       party: {
         leader: "a",

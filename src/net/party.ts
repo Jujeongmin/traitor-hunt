@@ -1,7 +1,7 @@
 import type { Activity, PartyView } from "../game/account/party";
 import { COSTUMES, costumeById, type Costume } from "../game/render/costumes";
-import { classForSeat, readClass, type PlayerClass } from "../game/match/classes";
-import { errorCode } from "./matchClient";
+import { classForSeat, readClass, type PlayerClass } from "../game/combat/classes";
+import { errorCode } from "./errors";
 import type { MatchTransport } from "./transport";
 
 const PROBLEMS: Record<string, string> = {
@@ -30,7 +30,7 @@ export class PartyClient {
 
   async start(): Promise<void> {
     this.unsubscribe = this.transport.subscribeMyState((state) => {
-      const seen = JSON.stringify([state.party ?? null, state.partyInvites ?? null, state.partyMatch ?? null]);
+      const seen = JSON.stringify([state.party ?? null, state.partyInvites ?? null]);
       if (seen === this.seen) return;
       this.seen = seen;
       void this.sync().catch(() => undefined);
@@ -52,7 +52,7 @@ export class PartyClient {
     };
   }
 
-  // Tells the party whether you are at the menu; the leader cannot start while anyone is in a match.
+  // Tells the party whether you are on the menu or out in the world.
   async setActivity(activity: Activity): Promise<void> {
     if (activity === this.activity) return;
     this.activity = activity;

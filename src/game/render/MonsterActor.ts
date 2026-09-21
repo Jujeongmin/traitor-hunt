@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MonsterState } from "../match/types";
+import type { MonsterState } from "../world/types";
 import { ActionBlender, clipByName, ownMaterials, skinnedHeight } from "./skinned";
 import { playHit } from "../audio/sfx";
 

@@ -179,6 +179,8 @@ export class LocalWorld {
         return id;
       },
       leaveRoom: async () => this.leaveAll(account) ?? "",
+      getRoomUserAccounts: async (roomId: string) => [...(this.rooms.get(roomId)?.members ?? [])],
+      countRoomUsers: async (roomId: string) => this.rooms.get(roomId)?.members.length ?? 0,
       getUserState: async (user: string) => copy(this.userStates.get(user) ?? {}),
       updateUserState: async (user: string, patch: Json) => {
         const state = this.userStates.get(user) ?? {};

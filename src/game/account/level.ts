@@ -1,22 +1,13 @@
-import type { Profile } from "../match/profile";
-
-// What a match pays. Playing to the end is worth something on its own; winning, getting out alive
-// and clearing monsters are worth more.
-export const XP_PER_GAME = 10;
-export const XP_PER_WIN = 20;
-export const XP_PER_ESCAPE = 10;
-export const XP_PER_MONSTER_KILL = 2;
+// A character's experience and the level it adds up to. XP is saved on the account as one number;
+// hunting (phase 2) and quests add to it.
 
 // Level 1 ends at this much XP, and every level after asks for one step more than the last.
 export const FIRST_LEVEL_XP = 60;
 export const LEVEL_STEP_XP = 30;
 
-// Levels are read from the counters a match already saves, so no account needs converting.
-export function xpOf(profile: Profile): number {
-  return profile.games * XP_PER_GAME
-    + profile.wins * XP_PER_WIN
-    + profile.escapes * XP_PER_ESCAPE
-    + profile.monsterKills * XP_PER_MONSTER_KILL;
+// Saved XP, trusted only as a whole, non-negative number.
+export function readXp(raw: unknown): number {
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
 }
 
 export interface LevelView {

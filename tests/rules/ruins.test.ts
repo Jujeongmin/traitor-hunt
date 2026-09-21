@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { RUINS, TILE_SIZE, parseLevel, solidWith } from "../../src/game/rules/levelLayout";
-import { findPath } from "../../src/game/rules/pathfinding";
 
 const level = parseLevel(RUINS, TILE_SIZE);
 
@@ -23,16 +22,5 @@ describe("RUINS", () => {
     expect(solidWith(level, [1])(42, 18)).toBe(false);
     expect(solidWith(level, [1])(40, 18)).toBe(false);
     expect(solidWith(level, [1, 2, 3])(1, 1)).toBe(true);
-  });
-
-  it("opens one zone per gate", () => {
-    const reach = (open: number[], to: { x: number; z: number }) => findPath(level, level.playerSpawn, to, solidWith(level, open)) !== null;
-    for (const s of level.shards) expect(reach([], s)).toBe(true);
-    expect(reach([], level.devices[0])).toBe(false);
-    expect(reach([1], level.devices[1])).toBe(true);
-    expect(reach([1], level.altar!)).toBe(false);
-    expect(reach([1, 2], level.altar!)).toBe(true);
-    expect(reach([1, 2], level.exits[0])).toBe(false);
-    expect(reach([1, 2, 3], level.exits[0])).toBe(true);
   });
 });

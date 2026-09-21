@@ -1,6 +1,6 @@
 import type { LevelView } from "./level";
 
-import { RuleViolation } from "../match/types";
+import { RuleViolation } from "../world/types";
 
 export const NICKNAME_MIN = 2;
 export const NICKNAME_MAX = 12;
@@ -27,11 +27,15 @@ export interface AccountView {
   account: string;
   // Null until the player picks one; the menu asks for it before online play.
   nickname: string | null;
-  // Earned in matches (see level.ts), so the menu can show how far along you are.
+  // Earned out in the world (see level.ts), so the menu can show how far along you are.
   xp: number;
   level: LevelView;
-  // Bought the full game (online play); practice is free either way.
+  // Bought the full game (the paid zones and levels).
   owned: boolean;
   // The server picked when you last started (see worlds.ts); null if you never picked one.
   world: string | null;
+  // The class the character was made with; null until one is picked (a new character).
+  playerClass: string | null;
+  // The costume id saved with the character; null until one is saved.
+  costume: string | null;
 }

@@ -1,68 +1,29 @@
 import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
-import { levelOf, xpOf } from "../../src/game/account/level";
+import { levelOf } from "../../src/game/account/level";
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
-import { readClass } from "../../src/game/match/classes";
-import { rankOf, type StatsView } from "../../src/game/account/ranking";
+import { readClass } from "../../src/game/combat/classes";
+import { rankOf, type RankingView } from "../../src/game/account/ranking";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
 import { readWorld } from "../../src/game/account/worlds";
 import {
-  addInvite, checkInvite, joinParty, kickFromParty, leaveParty, readActivity, readPartyMatch, type Party,
-  type PartyView,
+  addInvite, checkInvite, joinParty, kickFromParty, leaveParty, type Party, type PartyView,
 } from "../../src/game/account/party";
 import { costumeById } from "../../src/game/render/costumes";
-import { MATCH_PLAYERS, PROTOCOL_VERSION } from "../../src/game/match/constants";
+import { PROTOCOL_VERSION, RuleViolation, isPose } from "../../src/game/world/types";
 import {
-  applyMonsterPoses, monsterAttack, reachExit, strikeMonster, useSkill, type MonsterPoseUpdate,
-} from "../../src/game/match/damage";
+  START_ZONE, ZONES, arrivalFrom, portalsOf, readChannelRoom, readZone, zoneLayout, type ZoneEntry, type ZoneId,
+} from "../../src/game/world/zones";
 import {
-  createLobby, fillWithBots, isBot, joinLobby, leaveLobby, matchHost, monsterSpawnsFor, startMatch,
-} from "../../src/game/match/lifecycle";
-import { readProfile } from "../../src/game/match/profile";
-import { advanceObjectives, operateObjective, skipToStage } from "../../src/game/match/objectives";
-import { markLeft, resolveOutcome, settleResults } from "../../src/game/match/outcome";
-import { releasePossession, startPossession } from "../../src/game/match/possession";
-import {
-  RuleViolation, STAGES, type MatchEvent, type PublicMatch, type SecretMatch, type Stage,
-} from "../../src/game/match/types";
-import { privateView, type PrivateView } from "../../src/game/match/view";
-import { stepVote } from "../../src/game/match/vote";
-import {
-  LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
-  partyMember, readAccountWorld, readCostume, readPlayerClass, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
-  readRanking, writeRanking, grantPurchase, ownsFullGame,
-  readSecret, readXp, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
-  writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
+  claimNickname, findNickname, friendEntry, grantPurchase, joinChannel, markSeen, ownsFullGame, partyMember,
+  readAccountWorld, readAccountXp, readFriendSide, readNickname, readPartyInvites, readPartyOf, readRanking,
+  readSavedSpot, saveSpot, withFriendsLock, withNicknameLock, withPartyLock, writeFriendSide, writeParty,
+  writePartyInvites, writeRanking, writeZonePose, zoneLook,
 } from "./store";
 
-const SPAWNS = monsterSpawnsFor(LEVEL);
-
-interface RoomContext {
-  roomId: string;
-  account: string;
-  match: PublicMatch;
-  secret: SecretMatch | null;
-  now: number;
-  events: MatchEvent[];
-}
-
-export interface MatchSnapshot {
-  roomId: string;
-  serverNow: number;
-  match: PublicMatch;
-  you: PrivateView;
-}
-
-function clock(match: PublicMatch): number {
-  return Date.now() + match.devClockOffsetMs;
-}
-
-function currentRoom(): string {
-  const roomId = $sender.roomId;
-  if (typeof roomId !== "string" || roomId.length === 0) throw new RuleViolation("unavailable");
-  return roomId;
-}
+// How often a walking character's spot is saved to the account (the room keeps the live pose).
+const SAVE_SPOT_MS = 5_000;
 
 function requireText(value: unknown): string {
   if (typeof value !== "string" || value.length === 0 || value.length > 128) throw new RuleViolation("unavailable");
@@ -83,152 +44,32 @@ async function betweenFriends<T>(other: string, rule: (me: FriendSide, them: Fri
   });
 }
 
-// Your account as the menu sees it: your name and the level your finished matches add up to.
+// Your account as the menu sees it: your character and how far along it is.
 async function accountView(account: string, nickname: string | null): Promise<AccountView> {
-  const xp = await readXp(account);
-  const world = readWorld((await $global.getUserState(account)).world)?.id ?? null;
-  return { account, nickname, xp, level: levelOf(xp), owned: await ownsFullGame(account), world };
+  const state = await $global.getUserState(account);
+  const xp = await readAccountXp(account);
+  return {
+    account, nickname, xp, level: levelOf(xp), owned: await ownsFullGame(account),
+    world: readWorld(state.world)?.id ?? null,
+    playerClass: readClass(state.playerClass),
+    costume: costumeById(state.costume)?.id ?? null,
+  };
 }
 
-// Who findMatch seats: you alone, or your party if you lead one and everyone is back at the menu.
-async function partySeats(account: string, now: number): Promise<string[]> {
-  const stored = await readPartyOf(account);
-  if (!stored) return [account];
-  if (stored.party.leader !== account) throw new RuleViolation("not_leader");
-  for (const member of stored.party.members) {
-    if (member === account) continue;
-    const state = await $global.getUserState(member);
-    if (!isOnline(state.lastSeenAt, now) || readActivity(state.activity) !== "menu") throw new RuleViolation("party_busy");
-  }
-  return stored.party.members;
-}
-
-function requireLive(ctx: RoomContext): SecretMatch {
-  if (ctx.match.phase !== "playing" || !ctx.secret) throw new RuleViolation("not_playing");
-  return ctx.secret;
-}
-
-function requireTestAccount(): void {
-  if (!$sender.account.startsWith("test-")) throw new RuleViolation("unavailable");
-}
-
-// Every in-room request: lock, load, apply rules, settle the clock, save, then notify.
-// `account` is who acts: the caller, or a bot the host is acting for.
-async function inRoom<T>(work: (ctx: RoomContext) => T | Promise<T>, account: string = $sender.account): Promise<T> {
-  const roomId = currentRoom();
-  return withRoomLock(roomId, async () => {
-    const match = await readMatch(roomId);
-    if (!match) throw new RuleViolation("unavailable");
-    const ctx: RoomContext = {
-      roomId, account, match, secret: await readSecret(match), now: clock(match), events: [],
-    };
-    const value = await work(ctx);
-    await startWithBots(ctx.match, ctx.now);
-    advanceObjectives(ctx.match, null, LEVEL, ctx.now);
-    ctx.events.push(...resolveOutcome(ctx.match, ctx.secret, ctx.now));
-    await commit(ctx);
-    notify(ctx);
-    return value;
+// Puts you in a channel of `zone` at (x, z): the first channel of your server with room to spare.
+async function enter(account: string, zone: ZoneId, x: number, z: number): Promise<ZoneEntry> {
+  if (ZONES[zone].paid && !(await ownsFullGame(account))) throw new RuleViolation("not_owned");
+  const world = (await readAccountWorld(account)).id;
+  const { roomId, channel } = await joinChannel(world, zone, account);
+  const now = Date.now();
+  await $global.updateRoomUserState(roomId, account, {
+    pose: { x, z, yaw: 0, y: 0, block: false, swing: 0, skill: 0, at: now },
+    look: await zoneLook(account),
+    savedAt: now,
   });
-}
-
-// Once the lobby has waited long enough, bots take the empty seats and the match starts.
-async function startWithBots(match: PublicMatch, now: number): Promise<boolean> {
-  if (!fillWithBots(match, now)) return false;
-  match.secretRef = await createSecret(startMatch(match, now, Math.random, SPAWNS));
-  return true;
-}
-
-// What one seat can do in a match. The public methods run these for the caller; botCall runs
-// the same ones for a bot, on behalf of the host whose client drives the bots.
-const seatActions = {
-  async getMatchState(account: string): Promise<MatchSnapshot> {
-    return inRoom((ctx) => ({
-      roomId: ctx.roomId,
-      serverNow: ctx.now,
-      match: ctx.match,
-      you: privateView(ctx.match, ctx.secret, ctx.account),
-    }), account);
-  },
-
-  async syncMatch(account: string): Promise<void> {
-    await inRoom(() => undefined, account);
-  },
-
-  async reportPose(account: string, pose: unknown): Promise<void> {
-    const roomId = currentRoom();
-    if (!isPose(pose)) throw new RuleViolation("unavailable");
-    await writePose(roomId, account, pose, Date.now());
-  },
-
-  async strikeMonster(account: string, monsterId: unknown): Promise<void> {
-    const id = requireText(monsterId);
-    await inRoom(async (ctx) => {
-      const secret = requireLive(ctx);
-      const poses = await readPoses(ctx.roomId, ctx.match.players);
-      ctx.events.push(...strikeMonster(ctx.match, secret, ctx.account, id, poses[ctx.account] ?? null, poses, ctx.now));
-    }, account);
-  },
-
-  async useSkill(account: string): Promise<void> {
-    await inRoom(async (ctx) => {
-      const secret = requireLive(ctx);
-      const poses = await readPoses(ctx.roomId, ctx.match.players);
-      ctx.events.push(...useSkill(ctx.match, secret, ctx.account, poses[ctx.account] ?? null, poses, ctx.now));
-    }, account);
-  },
-
-  async interact(account: string): Promise<void> {
-    await inRoom(async (ctx) => {
-      const secret = requireLive(ctx);
-      const pose = await readPose(ctx.roomId, ctx.account);
-      operateObjective(ctx.match, secret, ctx.account, pose, LEVEL, ctx.now);
-    }, account);
-  },
-
-  async escape(account: string): Promise<void> {
-    await inRoom(async (ctx) => {
-      const secret = requireLive(ctx);
-      const pose = await readPose(ctx.roomId, ctx.account);
-      ctx.events.push(...reachExit(ctx.match, secret, ctx.account, pose, LEVEL.exits, ctx.now));
-    }, account);
-  },
-};
-
-async function commit(ctx: RoomContext): Promise<void> {
-  const { roomId, match, secret } = ctx;
-  if (secret && match.phase === "ended" && match.secretRef) {
-    const results = settleResults(match, secret);
-    match.results = results;
-    await saveResults(roomId, results);
-    await deleteSecret(match);
-    match.secretRef = null;
-  } else if (secret) {
-    await writeSecret(match, secret);
-  }
-  await writeMatch(roomId, match);
-}
-
-function notify(ctx: RoomContext): void {
-  const { match, secret, events } = ctx;
-  const privates = new Set<string>();
-  for (const event of events) {
-    switch (event.type) {
-      case "private":
-        privates.add(event.account);
-        break;
-      case "pain":
-        for (const to of event.to) $room.sendMessageToUser("pain", to, { x: event.x, z: event.z });
-        break;
-      case "possession":
-        $room.broadcastToRoom("possession", { monsterId: event.monsterId, active: event.active, endsAt: event.endsAt });
-        break;
-      case "ended":
-        $room.broadcastToRoom("ended", { result: match.result, results: match.results });
-        break;
-    }
-  }
-  for (const account of privates) $room.sendMessageToUser("private", account, privateView(match, secret, account));
+  await saveSpot(account, { zone, x, z });
+  await $global.updateUserState(account, { activity: "world" });
+  return { roomId, zone, channel, x, z };
 }
 
 export class Server {
@@ -250,13 +91,12 @@ export class Server {
     return accountView(account, name);
   }
 
-  // Your own record, where you sit on the board, and the board itself.
-  async getStats(): Promise<StatsView> {
+  // Your level, where you sit on the board, and the board itself.
+  async getRanking(): Promise<RankingView> {
     const account = $sender.account;
-    const profile = readProfile((await $global.getUserState(account)).profile);
-    const xp = xpOf(profile);
+    const xp = await readAccountXp(account);
     const board = await readRanking();
-    return { profile, xp, level: levelOf(xp), rank: rankOf(board, account), board };
+    return { xp, level: levelOf(xp), rank: rankOf(board, account), board };
   }
 
   // Marks you online (the menu calls it every HEARTBEAT_MS) and returns your lists with names and presence.
@@ -321,13 +161,69 @@ export class Server {
     await $global.updateUserState($sender.account, { costume: costume.id });
   }
 
-  // Marks you online (and at the menu or in a match), drops party members who went quiet,
-  // and returns your party, your invites and any match your leader seated you in.
+  // Into the world: back where you last stood, or in the village the first time (and when the
+  // zone you were in has since locked).
+  async enterWorld(): Promise<ZoneEntry> {
+    const account = $sender.account;
+    const spot = await readSavedSpot(account);
+    const owned = await ownsFullGame(account);
+    if (spot && (!ZONES[spot.zone].paid || owned)) return enter(account, spot.zone, spot.x, spot.z);
+    const home = zoneLayout(START_ZONE).playerSpawn;
+    return enter(account, START_ZONE, home.x, home.z);
+  }
+
+  // Through a portal: only to a zone next to the one you are in, and only while standing at that
+  // zone's portal.
+  async travel(to: unknown): Promise<ZoneEntry> {
+    const account = $sender.account;
+    const target = readZone(to);
+    const roomId = $sender.roomId;
+    const here = readChannelRoom(roomId);
+    if (!target || !here || !roomId) throw new RuleViolation("no_zone");
+    const portal = portalsOf(here.zone).find((p) => p.to === target);
+    if (!portal) throw new RuleViolation("no_zone");
+    const pose = (await $global.getRoomUserState(roomId, account)).pose;
+    if (!isPose(pose) || Math.hypot(pose.x - portal.x, pose.z - portal.z) > zoneLayout(here.zone).tileSize) {
+      throw new RuleViolation("not_near");
+    }
+    const at = arrivalFrom(target, here.zone);
+    return enter(account, target, at.x, at.z);
+  }
+
+  async leaveWorld(): Promise<void> {
+    const account = $sender.account;
+    const roomId = $sender.roomId;
+    const here = readChannelRoom(roomId);
+    if (here && roomId) {
+      const pose = (await $global.getRoomUserState(roomId, account)).pose;
+      if (isPose(pose)) await saveSpot(account, { zone: here.zone, x: pose.x, z: pose.z });
+      await $global.leaveRoom();
+    }
+    await $global.updateUserState(account, { activity: "menu" });
+  }
+
+  // Where you are in your zone. The room carries it to everyone there; the account keeps a copy
+  // every SAVE_SPOT_MS so you come back to the same spot.
+  async reportPose(raw: unknown): Promise<void> {
+    const roomId = $sender.roomId;
+    const here = readChannelRoom(roomId);
+    if (!here || !roomId || !isPose(raw)) throw new RuleViolation("unavailable");
+    const account = $sender.account;
+    const now = Date.now();
+    const saved = await writeZonePose(roomId, account, here.zone, raw, now);
+    if (now - saved.savedAt >= SAVE_SPOT_MS) {
+      await saveSpot(account, { zone: here.zone, x: saved.x, z: saved.z });
+      await $global.updateRoomUserState(roomId, account, { savedAt: now });
+    }
+  }
+
+  // Marks you online (and on the menu or in the world), drops party members who went quiet,
+  // and returns your party and your invites.
   async syncParty(activity?: unknown): Promise<PartyView> {
     const account = $sender.account;
     const now = Date.now();
     await markSeen(account, now);
-    if (activity === "menu" || activity === "match") await $global.updateUserState(account, { activity });
+    if (activity === "menu" || activity === "world") await $global.updateUserState(account, { activity });
     return withPartyLock(async () => {
       let stored = await readPartyOf(account);
       if (stored) {
@@ -349,7 +245,6 @@ export class Server {
           members: await Promise.all(stored.party.members.map((m) => partyMember(m, now))),
         },
         invites: await Promise.all(invites.map(async (i) => ({ account: i.from, nickname: await readNickname(i.from) }))),
-        match: readPartyMatch((await $global.getUserState(account)).partyMatch, now),
       };
     });
   }
@@ -407,197 +302,6 @@ export class Server {
       const mine = await readPartyOf(account);
       if (!mine) throw new RuleViolation("unavailable");
       await writeParty(mine, kickFromParty(mine.party, account, who));
-    });
-  }
-
-  // Seats you, or as a party leader your whole party, in one lobby; the others follow with joinPartyMatch.
-  async findMatch(): Promise<{ roomId: string }> {
-    const account = $sender.account;
-    const now = Date.now();
-    const seats = await partySeats(account, now);
-    // Online play is the paid game. A leader who owns it brings the whole party along.
-    if (!(await ownsFullGame(account))) throw new RuleViolation("not_owned");
-    // The leader's server decides where the whole party plays.
-    const world = (await readAccountWorld(account)).id;
-    const roomId = await withMatchmakingLock(async () => {
-      const lobbies = await listLobbies(world);
-      const missing = (players: string[]) => seats.filter((s) => !players.includes(s)).length;
-      const target = lobbies.find((l) => missing(l.match.players) === 0)
-        ?? lobbies.find((l) => l.match.players.length + missing(l.match.players) <= MATCH_PLAYERS);
-      const id = target?.roomId ?? newRoomId(now, world);
-      await $global.joinRoom(id);
-      await withRoomLock(id, async () => {
-        const match = (await readMatch(id)) ?? createLobby(now);
-        for (const seat of seats) {
-          joinLobby(match, seat);
-          // The look and the name are copied in as you sit down, so a later change never repaints a
-          // live match.
-          const look = await readCostume(seat);
-          if (look) match.looks[seat] = look;
-          const name = await readNickname(seat);
-          if (name) match.names[seat] = name;
-          const picked = await readPlayerClass(seat);
-          if (picked) match.classes[seat] = picked;
-        }
-        if (match.players.length === MATCH_PLAYERS) {
-          match.secretRef = await createSecret(startMatch(match, clock(match), Math.random, SPAWNS));
-        }
-        await writeMatch(id, match);
-      });
-      return id;
-    });
-    for (const member of seats) {
-      if (member !== account) await $global.updateUserState(member, { partyMatch: { roomId, at: now } });
-    }
-    return { roomId };
-  }
-
-  // Follows your party leader into the room they seated you in.
-  async joinPartyMatch(): Promise<{ roomId: string }> {
-    const account = $sender.account;
-    const seat = readPartyMatch((await $global.getUserState(account)).partyMatch, Date.now());
-    const match = seat ? await readMatch(seat.roomId) : null;
-    if (!seat || !match || match.phase === "ended" || !match.players.includes(account)) {
-      throw new RuleViolation("unavailable");
-    }
-    await $global.joinRoom(seat.roomId);
-    await $global.updateUserState(account, { partyMatch: null });
-    return { roomId: seat.roomId };
-  }
-
-  async leaveMatch(): Promise<void> {
-    await inRoom((ctx) => {
-      if (ctx.match.phase === "lobby") leaveLobby(ctx.match, ctx.account);
-      else ctx.events.push(...markLeft(ctx.match, ctx.secret, ctx.account, ctx.now));
-    });
-    await $global.leaveRoom();
-  }
-
-  async getMatchState(): Promise<MatchSnapshot> {
-    return seatActions.getMatchState($sender.account);
-  }
-
-  async syncMatch(): Promise<void> {
-    await seatActions.syncMatch($sender.account);
-  }
-
-  // The host's client drives the bots: it moves, shoots and uses things for them through here.
-  async botCall(bot: unknown, action: unknown, args: unknown): Promise<unknown> {
-    const account = requireText(bot);
-    if (typeof action !== "string" || !Object.prototype.hasOwnProperty.call(seatActions, action)) {
-      throw new RuleViolation("unavailable");
-    }
-    const match = await readMatch(currentRoom());
-    if (!match || !isBot(account) || !match.players.includes(account) || matchHost(match) !== $sender.account) {
-      throw new RuleViolation("not_authority");
-    }
-    const run = seatActions[action as keyof typeof seatActions] as (who: string, ...rest: unknown[]) => Promise<unknown>;
-    return run(account, ...(Array.isArray(args) ? args : []));
-  }
-
-  async devAdvanceClock(ms: number): Promise<number> {
-    requireTestAccount();
-    if (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0) throw new RuleViolation("unavailable");
-    return inRoom((ctx) => {
-      ctx.match.devClockOffsetMs += ms;
-      ctx.now += ms;
-      return ctx.now;
-    });
-  }
-
-  async devSetStage(stage: unknown): Promise<void> {
-    requireTestAccount();
-    if (typeof stage !== "string" || !(STAGES as readonly string[]).includes(stage)) {
-      throw new RuleViolation("unavailable");
-    }
-    await inRoom((ctx) => {
-      requireLive(ctx);
-      skipToStage(ctx.match, LEVEL, stage as Stage, ctx.now);
-    });
-  }
-
-  async reportPose(pose: unknown): Promise<void> {
-    await seatActions.reportPose($sender.account, pose);
-  }
-
-  async reportMonsters(updates: unknown): Promise<void> {
-    if (!Array.isArray(updates) || updates.length > 32) throw new RuleViolation("unavailable");
-    const valid = updates.filter((u): u is MonsterPoseUpdate => isPose(u) && typeof (u as { id?: unknown }).id === "string");
-    await inRoom((ctx) => {
-      const secret = requireLive(ctx);
-      ctx.events.push(...applyMonsterPoses(ctx.match, secret, ctx.account, valid, ctx.now));
-    });
-  }
-
-  async possess(monsterId: unknown): Promise<PrivateView> {
-    const id = requireText(monsterId);
-    return inRoom(async (ctx) => {
-      const secret = requireLive(ctx);
-      const body = await readPose(ctx.roomId, ctx.account);
-      ctx.events.push(...startPossession(ctx.match, secret, ctx.account, id, body, ctx.now));
-      return privateView(ctx.match, secret, ctx.account);
-    });
-  }
-
-  async release(): Promise<PrivateView> {
-    return inRoom((ctx) => {
-      const secret = requireLive(ctx);
-      ctx.events.push(...releasePossession(ctx.match, secret, ctx.account, ctx.now));
-      return privateView(ctx.match, secret, ctx.account);
-    });
-  }
-
-  async strikeMonster(monsterId: unknown): Promise<void> {
-    await seatActions.strikeMonster($sender.account, monsterId);
-  }
-
-  async attackWithMonster(monsterId: unknown, target: unknown): Promise<void> {
-    const id = requireText(monsterId);
-    const who = requireText(target);
-    await inRoom(async (ctx) => {
-      const secret = requireLive(ctx);
-      const to = await readPose(ctx.roomId, who);
-      ctx.events.push(...monsterAttack(ctx.match, secret, ctx.account, id, who, to, ctx.now));
-    });
-  }
-
-  async useSkill(): Promise<void> {
-    await seatActions.useSkill($sender.account);
-  }
-
-  async interact(): Promise<void> {
-    await seatActions.interact($sender.account);
-  }
-
-  async escape(): Promise<void> {
-    await seatActions.escape($sender.account);
-  }
-
-  // Platform hook (every 200-1000 ms per active room). Drives the clock-based rules:
-  // the lobby's bot fill, plate votes, the seal channel and the deadline. Saves only when something changed.
-  async $roomTick(_deltaMillis: number, roomId: string): Promise<void> {
-    const peek = await readMatch(roomId);
-    if (peek?.phase === "lobby") {
-      await withRoomLock(roomId, async () => {
-        const match = await readMatch(roomId);
-        if (match && (await startWithBots(match, clock(match)))) await writeMatch(roomId, match);
-      });
-      return;
-    }
-    if (!peek || peek.phase !== "playing") return;
-    await withRoomLock(roomId, async () => {
-      const match = await readMatch(roomId);
-      const secret = match ? await readSecret(match) : null;
-      if (!match || !secret || match.phase !== "playing") return;
-      const before = JSON.stringify([match, secret]);
-      const now = clock(match);
-      const ctx: RoomContext = { roomId, account: "", match, secret, now, events: [] };
-      const poses = await readPoses(roomId, match.players);
-      ctx.events.push(...stepVote(match, secret, poses, LEVEL, now));
-      advanceObjectives(match, poses, LEVEL, now);
-      ctx.events.push(...resolveOutcome(match, secret, now));
-      // No $room outside a request: clients see the changes through the room state.
-      if (JSON.stringify([match, secret]) !== before) await commit(ctx);
     });
   }
 }

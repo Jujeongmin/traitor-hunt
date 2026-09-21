@@ -1,4 +1,4 @@
-import { classForSeat, readClass, type PlayerClass } from "../game/match/classes";
+import { classForSeat, readClass, type PlayerClass } from "../game/combat/classes";
 import { COSTUMES, costumeById, type Costume } from "../game/render/costumes";
 
 // Your own look, kept in this browser until the account profile lands on the server.

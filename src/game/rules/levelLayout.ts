@@ -20,6 +20,8 @@ export interface LevelLayout {
   gates: Gate[];
   // Crates and blocks to jump onto (see platforms.ts).
   platforms: Platform[];
+  // O cells: the ways to other zones, in reading order (see zones.ts).
+  portals: Point2[];
 }
 
 export const TILE_SIZE = 4;
@@ -54,7 +56,7 @@ export const RUINS: string[] = [
 ];
 
 const GATE_SYMBOLS = new Set(["1", "2", "3"]);
-const FLOOR_SYMBOLS = new Set([".", "P", "Z", "B", "C", "E", "S", "D", "A", "W", "K", "c", "H", ...GATE_SYMBOLS]);
+const FLOOR_SYMBOLS = new Set([".", "P", "Z", "B", "C", "E", "S", "D", "A", "W", "K", "c", "H", "O", ...GATE_SYMBOLS]);
 const SOLID_SYMBOLS = new Set(["#", "T"]);
 
 export function parseLevel(rows: string[], tileSize: number): LevelLayout {
@@ -76,6 +78,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   const waveSpawns: Point2[] = [];
   const gates: Gate[] = [];
   const platforms: Platform[] = [];
+  const portals: Point2[] = [];
   // Asserted so TS keeps the wide types; they are assigned inside the callbacks below.
   let altar = null as Point2 | null;
   let bossSpawn = null as Point2 | null;
@@ -95,6 +98,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
       if (ch === "A") altar = { x, z };
       if (ch === "W") waveSpawns.push({ x, z });
       if (ch === "K") bossSpawn = { x, z };
+      if (ch === "O") portals.push({ x, z });
       if (GATE_SYMBOLS.has(ch)) gates.push({ n: Number(ch), x, z });
     });
   });
@@ -103,7 +107,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   gates.sort((a, b) => a.n - b.n);
   return {
     tileSize, cols, rows: rows.length, solid, playerSpawn, zombieSpawns, exits,
-    shards, devices, altar, waveSpawns, bossSpawn, gates, platforms,
+    shards, devices, altar, waveSpawns, bossSpawn, gates, platforms, portals,
   };
 }
 
