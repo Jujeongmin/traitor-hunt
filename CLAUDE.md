@@ -1,6 +1,7 @@
-# Traitor Hunt
+# Grove Hunters
 
-Verse8 multiplayer FPS (Vite + React + TypeScript + three.js, server in `server/src/server.ts`).
+Verse8 web MMORPG (Vite + React + TypeScript + three.js, server in `server/src/server.ts`). The repo keeps its old
+working name, traitor-hunt.
 
 **Before any work, read [docs/VERSE8-EDITOR.md](docs/VERSE8-EDITOR.md).** Every GitLab `develop` push auto-deploys
 and must run in the Verse8 editor as-is.

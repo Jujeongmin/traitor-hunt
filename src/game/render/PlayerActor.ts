@@ -30,6 +30,10 @@ export interface PlayerModel {
 const RELEASE_SECONDS = 0.25;
 // Shots leave from about chest height.
 const SHOT_HEIGHT = 0.9;
+// An attack or skill holds you in place this long (at most its clip); moving after that cuts the rest
+// of the clip short, so a hero never slides along the ground mid-swing.
+const ATTACK_COMMIT = 0.45;
+const SKILL_COMMIT = 0.8;
 
 interface Animated {
   mixer: THREE.AnimationMixer;
@@ -78,6 +82,7 @@ export class PlayerActor {
   // Shots waiting for the bow or staff to let go: seconds left, and how far each flies.
   private pendingShots: { left: number; reach: number }[] = [];
   private swingLeft = 0;
+  private commitLeft = 0;
   private nextAttack = 0;
 
   constructor(readonly account: string, model: PlayerModel | null) {
@@ -92,6 +97,11 @@ export class PlayerActor {
       o.frustumCulled = false;
     });
     this.object.visible = false;
+  }
+
+  // Whether an attack or skill still holds this hero in place.
+  get rooted(): boolean {
+    return this.commitLeft > 0 && !this.dead;
   }
 
   // The name over the head; empty hides it.
@@ -159,6 +169,7 @@ export class PlayerActor {
       const attack = a.attacks[this.nextAttack];
       this.nextAttack = (this.nextAttack + 1) % a.attacks.length;
       this.swingLeft = attack.getClip().duration;
+      this.commitLeft = Math.min(this.swingLeft, ATTACK_COMMIT);
       if (a.blender.active === attack) attack.reset().play();
       else a.blender.fadeTo(attack, 0.05);
       if (this.rig?.shot) this.pendingShots.push({ left: RELEASE_SECONDS, reach: this.rig.reach });
@@ -168,6 +179,7 @@ export class PlayerActor {
     const skill = pose.skill ?? 0;
     if (this.lastSkill !== null && skill > this.lastSkill && !this.dead) {
       this.swingLeft = a.skill.getClip().duration;
+      this.commitLeft = Math.min(this.swingLeft, SKILL_COMMIT);
       if (a.blender.active === a.skill) a.skill.reset().play();
       else a.blender.fadeTo(a.skill, 0.05);
       if (this.rig && this.effects) this.effects.ring(p, this.rig.skillRing.radius, this.rig.skillRing.color);
@@ -176,6 +188,10 @@ export class PlayerActor {
     this.lastSkill = skill;
     this.fireShots(dt, pose.yaw);
     this.swingLeft = Math.max(0, this.swingLeft - dt);
+    this.commitLeft = Math.max(0, this.commitLeft - dt);
+    const moving = Math.hypot(dx, dz) >= MOVING;
+    // Walking off once the swing has landed ends it.
+    if (this.swingLeft > 0 && this.commitLeft === 0 && moving) this.swingLeft = 0;
 
     if (this.dead) a.blender.fadeTo(a.death, 0.1);
     else if (this.swingLeft > 0) {

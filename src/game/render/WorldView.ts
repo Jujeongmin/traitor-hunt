@@ -220,6 +220,8 @@ export class WorldView {
 
     const dead = state.me?.dead === true;
     const here = state.phase === "in" && !this.travelling && !dead;
+    // Mid-swing you stand still (and turn only through the attack itself).
+    const rooted = this.me?.rooted === true;
     if (this.input.consumePress("KeyF")) this.toggleAuto();
     let facingYaw = this.yaw;
     if (here) {
@@ -230,7 +232,9 @@ export class WorldView {
       const speed = WALK_SPEED * (this.input.blocking ? GUARD_WALK : 1);
       const move = this.input.moveInput();
       const chase = this.auto && move.forward === 0 && move.strafe === 0 ? this.autoChase(state.monsters) : null;
-      if (chase) {
+      if (rooted) {
+        facingYaw = chase ? chase.yaw : this.pose.yaw;
+      } else if (chase) {
         facingYaw = chase.yaw;
         // The camera swings round behind you to the fight, unless you are looking about yourself.
         if (look.dx === 0) {
@@ -336,9 +340,6 @@ export class WorldView {
       this.lastSkillAt = now;
       this.skills += 1;
       playSkill();
-      if (skill.arc >= Math.PI * 2 || skill.heal > 0) {
-        this.effects.ring(new THREE.Vector3(this.pose.x, 0, this.pose.z), skill.reach, skill.heal > 0 ? 0x9dffb0 : 0xffc870);
-      }
       void this.client.useSkill(yaw).then((r) => this.gained(r));
     }
     return yaw;

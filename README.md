@@ -1,7 +1,8 @@
-# Traitor Hunt
+# Grove Hunters (초록숲 사냥꾼)
 
-4인 협동 3D FPS 탈출 게임. 봉인된 고대 지하 유적에 들어간 현대 무장 팀 네 명 중 한 명은 몰래 정해진 배신자이고, 멀리 있는 몬스터에 빙의해 팀을 방해할 수 있다.
-빙의한 몬스터가 입는 피해는 배신자 본인의 몸에도 전해진다. Verse8 배포 대상, Vite + React + TypeScript + Three.js.
+숲을 무대로 한 웹 MMORPG. 마을에서 시작해 숲 필드 1(무료), 숲 필드 2, 버섯왕의 공터(정식판)로 나아가며 몬스터를
+사냥해 레벨을 올린다. 직업 6개, 서버마다 캐릭터 여러 개, 채널당 20명. Verse8 배포 대상,
+Vite + React + TypeScript + Three.js. (저장소 이름 `traitor-hunt`는 예전 작업명이다.)
 
 - 기획: [docs/superpowers/specs/2026-09-17-traitor-hunt-design.md](docs/superpowers/specs/2026-09-17-traitor-hunt-design.md)
 - 구현 계획: [docs/superpowers/plans/](docs/superpowers/plans/)
