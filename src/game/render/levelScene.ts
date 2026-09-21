@@ -4,13 +4,16 @@ import type { LevelLayout } from "../rules/levelLayout";
 import { NATURE_MODELS, cellNoise, natureLayout } from "../rules/nature";
 import type { Platform } from "../rules/platforms";
 import { buildStaticBatch, type StaticPiece } from "./staticBatch";
+import { HORIZON, skyTexture } from "./sky";
 
 // The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
 // same as ever; solid cells are drawn as trees and rocks instead of stone walls.
 const PLATFORM_MODELS = ["pt_logs", "pt_rock", "pt_tree_stump", "chest_closed"];
 export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS])];
 
-export const SKY = 0xa8cde6;
+export const SKY = HORIZON;
+// Where the sunlight comes from, relative to the middle of the map.
+const SUN_OFFSET = new THREE.Vector3(-35, 60, 25);
 const FOG_NEAR = 28;
 const FOG_FAR = 78;
 // Open ground is sunlit grass; the forest floor under the trees is darker.
@@ -67,12 +70,12 @@ function buildGround(layout: LevelLayout): THREE.Mesh {
 // Builds the sky, the sun, the ground, the forest and the platforms. Shared by the world view and
 // the menus.
 export function buildLevelScene(scene: THREE.Scene, library: ModelLibrary, layout: LevelLayout): void {
-  scene.background = new THREE.Color(SKY);
+  scene.background = skyTexture(SUN_OFFSET) ?? new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, FOG_NEAR, FOG_FAR);
   scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x5b6b34, 1.4));
   const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
   const centre = new THREE.Vector3((layout.cols * layout.tileSize) / 2, 0, (layout.rows * layout.tileSize) / 2);
-  sun.position.copy(centre).add(new THREE.Vector3(-35, 60, 25));
+  sun.position.copy(centre).add(SUN_OFFSET);
   sun.target.position.copy(centre);
   scene.add(sun, sun.target);
   scene.add(buildGround(layout));
