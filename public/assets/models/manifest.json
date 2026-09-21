@@ -7,7 +7,7 @@
     },
     "footman": {
       "url": "assets/models/footman.glb",
-      "bytes": 247044,
+      "bytes": 249312,
       "animations": [
         "Footman_Idle",
         "Footman_Walk",
@@ -22,7 +22,7 @@
     },
     "golem": {
       "url": "assets/models/golem.glb",
-      "bytes": 190936,
+      "bytes": 195808,
       "animations": [
         "Idle",
         "Walk",
@@ -35,7 +35,7 @@
     },
     "grunt": {
       "url": "assets/models/grunt.glb",
-      "bytes": 218040,
+      "bytes": 221928,
       "animations": [
         "Idle",
         "Walk",
@@ -49,7 +49,7 @@
     },
     "hero": {
       "url": "assets/models/hero.glb",
-      "bytes": 800912,
+      "bytes": 842984,
       "animations": [
         "Idle_Normal_SwordAndShield",
         "Idle_Battle_SwordAndShiled",

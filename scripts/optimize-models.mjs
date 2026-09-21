@@ -12,6 +12,7 @@ import { dedup, prune, quantize, resample, simplify, textureCompress, weld } fro
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
 import sharp from "sharp";
 import { buildManifest } from "./lib/manifest.mjs";
+import { smoothNormals } from "./lib/smoothNormals.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const srcDir = join(root, "art-src/_glb");
@@ -39,6 +40,17 @@ for (const file of readdirSync(srcDir).filter((f) => f.endsWith(".glb"))) {
   if (name.startsWith("pt_")) {
     for (const mesh of doc.getRoot().listMeshes()) {
       for (const prim of mesh.listPrimitives()) prim.setAttribute("COLOR_0", null);
+    }
+  }
+
+  // The characters are authored flat-shaded; soften their facets but keep the real edges.
+  if (skinned) {
+    for (const mesh of doc.getRoot().listMeshes()) {
+      for (const prim of mesh.listPrimitives()) {
+        const position = prim.getAttribute("POSITION");
+        const normal = prim.getAttribute("NORMAL");
+        if (position && normal) normal.setArray(smoothNormals(position.getArray(), normal.getArray()));
+      }
     }
   }
 
