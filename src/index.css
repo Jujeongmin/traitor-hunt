@@ -458,7 +458,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .wardrobe-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .wardrobe-parts li {
-  display: grid; grid-template-columns: 44px 26px 1fr 26px; align-items: center; gap: 6px;
+  display: grid; grid-template-columns: 56px 26px 1fr 26px; align-items: center; gap: 6px;
   padding: 3px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.04);
 }
 .wardrobe-part-label { font: 700 12px var(--font-head); color: var(--ink-dim); }

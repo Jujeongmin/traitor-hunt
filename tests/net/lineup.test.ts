@@ -17,8 +17,8 @@ describe("partyLineup", () => {
       party: {
         leader: "a",
         members: [
-          { account: "a", nickname: "Hunter", costume: "11111111", online: true, activity: "menu" },
-          { account: "me", nickname: "유적왕", costume: "00000000", online: true, activity: "menu" },
+          { account: "a", nickname: "Hunter", costume: "111111110000", online: true, activity: "menu" },
+          { account: "me", nickname: "유적왕", costume: "000000000000", online: true, activity: "menu" },
           { account: "b", nickname: null, costume: "pirate", online: true, activity: "menu" },
         ],
       },

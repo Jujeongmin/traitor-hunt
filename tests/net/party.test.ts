@@ -65,12 +65,12 @@ describe("PartyClient", () => {
   it("shows each member's costume", async () => {
     const world = new LocalWorld(new Server());
     const [hunter, seeker] = await lobby(world, "Hunter", "Seeker");
-    await seeker.setCostume("11111111");
+    await seeker.setCostume("111111110000");
     await hunter.invite("test-1");
     await world.idle();
     await seeker.accept("test-0");
     await world.idle();
-    expect(hunter.view?.party?.members.map((m) => m.costume)).toEqual(["00000000", "11111111"]);
+    expect(hunter.view?.party?.members.map((m) => m.costume)).toEqual(["000000000000", "111111110000"]);
   });
 
   it("explains failures in Korean", async () => {

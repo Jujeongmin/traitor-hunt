@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CLASSES, CLASS_LABEL, WEAPONS, type PlayerClass } from "../game/match/classes";
 import {
-  COSTUMES, PARTS, PART_KEYS, randomCostume, withPart, type Costume, type PartKey,
+  COSTUMES, PARTS, PART_KEYS, optionOf, randomCostume, withPart, type Costume, type PartKey,
 } from "../game/render/costumes";
 import { myClass, onMyClass, setMyClass } from "./profile";
 
@@ -88,7 +88,7 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
         </section>
 
         <section>
-          <h3>외형</h3>
+          <h3>모양</h3>
           <div className="wardrobe-presets">
             {COSTUMES.map((c) => (
               <button
@@ -102,20 +102,12 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
             ))}
             <button type="button" className="wardrobe-chip" onClick={() => onPick(randomCostume())}>무작위</button>
           </div>
-          <ul className="wardrobe-parts">
-            {PART_KEYS.map((key: PartKey) => {
-              const part = PARTS[key];
-              const option = part.options[costume.parts[key]];
-              return (
-                <li key={key}>
-                  <span className="wardrobe-part-label">{part.label}</span>
-                  <button type="button" className="wardrobe-arrow" aria-label={`${part.label} 이전`} onClick={() => onPick(withPart(costume, key, -1))}>‹</button>
-                  <span className="wardrobe-part-value">{option.name}</span>
-                  <button type="button" className="wardrobe-arrow" aria-label={`${part.label} 다음`} onClick={() => onPick(withPart(costume, key, 1))}>›</button>
-                </li>
-              );
-            })}
-          </ul>
+          <PartRows keys={SHAPE_KEYS} costume={costume} onPick={onPick} />
+        </section>
+
+        <section>
+          <h3>색</h3>
+          <PartRows keys={COLOUR_KEYS} costume={costume} onPick={onPick} />
         </section>
 
         {onStart && <button type="button" className="brush-button wardrobe-start" onClick={onStart}>게임 시작</button>}
@@ -125,5 +117,27 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
         </p>
       </aside>
     </div>
+  );
+}
+
+const SHAPE_KEYS = PART_KEYS.filter((k) => PARTS[k].group === "shape");
+const COLOUR_KEYS = PART_KEYS.filter((k) => PARTS[k].group === "colour");
+
+// One row per part: its name, and arrows that step through its options.
+function PartRows({ keys, costume, onPick }: { keys: PartKey[]; costume: Costume; onPick: (c: Costume) => void }) {
+  return (
+    <ul className="wardrobe-parts">
+      {keys.map((key) => {
+        const part = PARTS[key];
+        return (
+          <li key={key}>
+            <span className="wardrobe-part-label">{part.label}</span>
+            <button type="button" className="wardrobe-arrow" aria-label={`${part.label} 이전`} onClick={() => onPick(withPart(costume, key, -1))}>‹</button>
+            <span className="wardrobe-part-value">{optionOf(costume, key).name}</span>
+            <button type="button" className="wardrobe-arrow" aria-label={`${part.label} 다음`} onClick={() => onPick(withPart(costume, key, 1))}>›</button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

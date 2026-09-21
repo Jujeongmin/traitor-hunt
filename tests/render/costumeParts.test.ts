@@ -9,15 +9,15 @@ describe("costume parts", () => {
   });
 
   it("encodes a costume as one digit per part and reads it back", () => {
-    const id = encodeCostume({ head: 1, hair: 0, eyes: 1, mouth: 0, body: 1, cloak: 2, weapon: 1, shield: 0 });
+    const id = encodeCostume({ head: 1, hair: 0, eyes: 1, mouth: 0, body: 1, cloak: 2, weapon: 1, shield: 0, hairColor: 3, skin: 2, clothColor: 5, cloakColor: 6 });
     expect(id).toHaveLength(PART_KEYS.length);
     const costume = costumeById(id)!;
-    expect(costume.parts).toEqual({ head: 1, hair: 0, eyes: 1, mouth: 0, body: 1, cloak: 2, weapon: 1, shield: 0 });
+    expect(costume.parts).toEqual({ head: 1, hair: 0, eyes: 1, mouth: 0, body: 1, cloak: 2, weapon: 1, shield: 0, hairColor: 3, skin: 2, clothColor: 5, cloakColor: 6 });
     expect(costume.id).toBe(id);
   });
 
   it("turns away ids that are not a costume", () => {
-    for (const bad of ["", "abc", "99999999", "0000000", "000000000", 42, null]) expect(costumeById(bad)).toBeNull();
+    for (const bad of ["", "abc", "999999999999", "0000000", "000000000", "00000000000", 42, null]) expect(costumeById(bad)).toBeNull();
   });
 
   it("still reads the two named costumes as presets", () => {
@@ -26,12 +26,18 @@ describe("costume parts", () => {
   });
 
   it("shows exactly one mesh per part, and none for a missing cloak", () => {
-    const costume = costumeById(encodeCostume({ head: 0, hair: 1, eyes: 0, mouth: 1, body: 0, cloak: 2, weapon: 0, shield: 1 }))!;
+    const costume = costumeById(encodeCostume({ head: 0, hair: 1, eyes: 0, mouth: 1, body: 0, cloak: 2, weapon: 0, shield: 1, hairColor: 0, skin: 0, clothColor: 0, cloakColor: 0 }))!;
     const shown = shownMeshes(costume);
     expect(shown.has(PARTS.hair.options[1].mesh!)).toBe(true);
     expect(shown.has(PARTS.hair.options[0].mesh!)).toBe(false);
     expect([...shown].filter((m) => m.startsWith("Cloak"))).toEqual([]);
-    expect(shown.size).toBe(PART_KEYS.length - 1);
+    expect(shown.size).toBe(PART_KEYS.filter((k) => PARTS[k].group === "shape").length - 1);
+  });
+
+  it("reads ids saved before the colour parts in the pack colours", () => {
+    const costume = costumeById("11111111")!;
+    expect(costume.id).toBe(COSTUMES[1].id);
+    expect(costume.parts.hairColor).toBe(0);
   });
 
   it("steps one part to its next option and wraps round", () => {

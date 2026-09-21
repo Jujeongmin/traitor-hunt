@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Pose } from "../match/types";
 import { PART_MESHES, shownMeshes, type Costume } from "./costumes";
+import { applyDyes } from "./dyes";
 import { createLabel, setLabel } from "./labels";
 import { ActionBlender, clipByName, skinnedHeight } from "./skinned";
 
@@ -107,6 +108,7 @@ export class PlayerActor {
     object.traverse((o) => {
       if (PART_MESHES.has(o.name)) o.visible = shown.has(o.name);
     });
+    applyDyes(object, costume);
     object.scale.setScalar(PLAYER_HEIGHT / skinnedHeight(object));
     const mixer = new THREE.AnimationMixer(object);
     const action = (name: string) => mixer.clipAction(clipByName(clips, name));
