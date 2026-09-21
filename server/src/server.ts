@@ -2,6 +2,7 @@ import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
 import { levelOf, xpOf } from "../../src/game/account/level";
+import { readClass } from "../../src/game/match/classes";
 import { rankOf, type StatsView } from "../../src/game/account/ranking";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
 import {
@@ -27,7 +28,7 @@ import { privateView, type PrivateView } from "../../src/game/match/view";
 import { stepVote } from "../../src/game/match/vote";
 import {
   LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
-  partyMember, readCostume, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
+  partyMember, readCostume, readPlayerClass, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
   readRanking, writeRanking,
   readSecret, readXp, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
   writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
@@ -278,6 +279,12 @@ export class Server {
     await betweenFriends(requireText(account), removeFriend);
   }
 
+  async setClass(id: unknown): Promise<void> {
+    const picked = readClass(id);
+    if (!picked) throw new RuleViolation("unavailable");
+    await $global.updateUserState($sender.account, { playerClass: picked });
+  }
+
   async setCostume(id: unknown): Promise<void> {
     if (!COSTUMES.some((c) => c.id === id)) throw new RuleViolation("unavailable");
     await $global.updateUserState($sender.account, { costume: id });
@@ -393,6 +400,8 @@ export class Server {
           match.looks[seat] = await readCostume(seat);
           const name = await readNickname(seat);
           if (name) match.names[seat] = name;
+          const picked = await readPlayerClass(seat);
+          if (picked) match.classes[seat] = picked;
         }
         if (match.players.length === MATCH_PLAYERS) {
           match.secretRef = await createSecret(startMatch(match, clock(match), Math.random, SPAWNS));

@@ -78,6 +78,10 @@ export class PartyClient {
     await this.transport.call("kickFromParty", [account]);
   }
 
+  async setClass(id: string): Promise<void> {
+    await this.transport.call("setClass", [id]);
+  }
+
   async setCostume(id: string): Promise<void> {
     await this.transport.call("setCostume", [id]);
   }

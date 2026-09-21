@@ -4,6 +4,11 @@ import {
 import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
 import { MAX_JUMP_RISE } from "../../src/game/rules/movement";
 import { HIGH_H, LOW_H } from "../../src/game/rules/platforms";
+import { WEAPONS, classForSeat } from "../../src/game/match/classes";
+
+// The weapon a seat carries when its player picked no class.
+const weaponAt = async (roomId: string, account: string) =>
+  WEAPONS[classForSeat((await roomMatch(roomId)).players.indexOf(account))];
 
 const LEVEL = parseLevel(RUINS, TILE_SIZE);
 const platformAt = (h: number) => LEVEL.platforms.find((p) => p.h === h)!;
@@ -104,11 +109,12 @@ describe("possession", () => {
     const privates = messages.sent.filter((m) => m.type === "private");
     expect(privates.length > 0 && privates.every((m) => m.account === traitor)).toBe(true);
 
+    const weapon = await weaponAt(roomId, shooter);
     actAs(server, traitor, roomId);
     const you = (await server.getMatchState()).you;
-    expect(you.hp).toBe(86);
+    expect(you.hp).toBe(100 - Math.round(weapon.damage * 0.4));
     expect(you.possession.monsterId).toBe("zombie-0");
-    expect((await roomMatch(roomId)).monsters["zombie-0"].hp).toBe(66);
+    expect((await roomMatch(roomId)).monsters["zombie-0"].hp).toBe(100 - weapon.damage);
   });
 
   test("the traitor can let go early", async (server) => {
@@ -155,9 +161,10 @@ describe("monsters", () => {
     const shooter = PLAYERS.filter((p) => p !== traitor)[0];
     await placeAll(server, roomId, { [shooter]: { x: 34, z: 20 } });
     actAs(server, shooter, roomId);
-    for (let i = 0; i < 3; i++) {
+    const weapon = await weaponAt(roomId, shooter);
+    for (let i = 0; i < Math.ceil(100 / weapon.damage); i++) {
       await server.fireAtMonster("zombie-0");
-      await server.devAdvanceClock(100);
+      await server.devAdvanceClock(weapon.intervalMs);
     }
     const zombie = (await roomMatch(roomId)).monsters["zombie-0"];
     expect(zombie.alive).toBe(false);

@@ -1,5 +1,6 @@
 import { Server } from "../../server/src/server";
 import { BotBrain } from "../game/bots/botBrain";
+import type { PlayerClass } from "../game/match/classes";
 import type { Pose } from "../game/match/types";
 import type { LevelLayout } from "../game/rules/levelLayout";
 import { HostDirector } from "./hostDirector";
@@ -14,6 +15,8 @@ const ROOM_TICK_MS = 1000;
 export interface PracticeOptions {
   bots?: number;
   autopilot?: boolean;
+  // The class you picked in the menu; the practice room seats you with it.
+  playerClass?: PlayerClass;
 }
 
 interface Seat {
@@ -42,6 +45,9 @@ export class PracticeSession {
   }
 
   async start(): Promise<void> {
+    if (this.options.playerClass) {
+      await new LocalTransport(this.world, PRACTICE_ACCOUNT).call("setClass", [this.options.playerClass]);
+    }
     await this.human.join();
     const count = this.options.bots ?? PRACTICE_BOTS;
     for (let i = 1; i <= count; i++) {

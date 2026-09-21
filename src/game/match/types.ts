@@ -72,6 +72,8 @@ export interface PublicMatch {
   looks: Record<string, string>;
   // Account -> their nickname, copied in as they sit down; bots and the nameless are left out.
   names: Record<string, string>;
+  // Account -> the class they picked (see classes.ts); a seat without one takes its seat's class.
+  classes: Record<string, string>;
   createdAt: number;
   startedAt: number | null;
   endsAt: number | null;

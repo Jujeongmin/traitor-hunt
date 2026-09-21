@@ -1,6 +1,7 @@
 import type { MatchClient, PainEvent } from "../../net/matchClient";
 import { EXIT_RADIUS, INTERACT_RANGE, MONSTER_STATS, POSSESS_RANGE, RANGE_SLACK } from "../match/constants";
 import { isActive, isBound } from "../match/lifecycle";
+import { weaponOf } from "../match/damage";
 import { BOSS_ID } from "../match/objectives";
 import type { MonsterState, Pose, Poses, PublicMatch, Vec2 } from "../match/types";
 import { distance } from "../match/view";
@@ -160,7 +161,8 @@ export class BotBrain {
     this.turnToward(aim, dt);
     if (now < this.target.readyAt || now < this.nextShotAt) return true;
     if (Math.abs(angleBetween(this.pose!.yaw, aim)) > AIM_TOLERANCE) return true;
-    this.nextShotAt = now + this.between(HUMAN.fireMs);
+    // Never faster than the weapon allows, or the server turns the shot away.
+    this.nextShotAt = now + Math.max(this.between(HUMAN.fireMs), weaponOf(match, this.client.account).intervalMs);
     const hitChance = Math.min(0.85, Math.max(0.35, 0.9 - seen.distance * 0.04));
     if (this.rng() < hitChance) this.run(() => this.client.fireAtMonster(seen.id));
     return true;

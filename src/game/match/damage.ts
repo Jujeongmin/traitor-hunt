@@ -1,5 +1,6 @@
+import { WEAPONS, classFor, type Weapon } from "./classes";
 import {
-  AKM_DAMAGE, AKM_FIRE_INTERVAL_MS, AKM_RANGE, EXIT_RADIUS, LINK_DAMAGE_RATIO,
+  EXIT_RADIUS, LINK_DAMAGE_RATIO,
   MONSTER_DEATH_BODY_DAMAGE, MONSTER_STATS, PAIN_RADIUS, RANGE_SLACK,
 } from "./constants";
 import { isActive, isBound, matchHost } from "./lifecycle";
@@ -42,10 +43,11 @@ export function shootMonster(
   const monster = match.monsters[monsterId];
   if (!monster) throw new RuleViolation("no_monster");
   if (!monster.alive) throw new RuleViolation("monster_dead");
-  if (distance(from, monster) > AKM_RANGE + RANGE_SLACK) throw new RuleViolation("out_of_range");
+  const weapon = weaponOf(match, shooter);
+  if (distance(from, monster) > weapon.range + RANGE_SLACK) throw new RuleViolation("out_of_range");
 
   secret.lastShotAt[shooter] = now;
-  const dealt = Math.min(AKM_DAMAGE, monster.hp);
+  const dealt = Math.min(weapon.damage, monster.hp);
   monster.hp -= dealt;
   const stats = secret.stats[shooter];
   stats.monsterDamage += dealt;
@@ -111,6 +113,11 @@ export function reachExit(
   return events;
 }
 
+// The weapon a player carries, by the class the match recorded for their seat.
+export function weaponOf(match: PublicMatch, account: string): Weapon {
+  return WEAPONS[classFor(match.classes, account, match.players.indexOf(account))];
+}
+
 function beginShot(match: PublicMatch, secret: SecretMatch, shooter: string, shooterPose: Pose | null, now: number): Pose {
   if (match.phase !== "playing") throw new RuleViolation("not_playing");
   if (!isActive(match, shooter)) throw new RuleViolation("unavailable");
@@ -118,7 +125,7 @@ function beginShot(match: PublicMatch, secret: SecretMatch, shooter: string, sho
   // A possessing traitor's body stands frozen; it cannot shoot.
   if (secret.possession && secret.traitor === shooter) throw new RuleViolation("unavailable");
   const last = secret.lastShotAt[shooter];
-  if (last !== undefined && now - last < AKM_FIRE_INTERVAL_MS) throw new RuleViolation("too_fast");
+  if (last !== undefined && now - last < weaponOf(match, shooter).intervalMs) throw new RuleViolation("too_fast");
   if (!shooterPose) throw new RuleViolation("out_of_range");
   return shooterPose;
 }

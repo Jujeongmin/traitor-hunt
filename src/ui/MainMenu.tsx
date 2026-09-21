@@ -181,7 +181,7 @@ export function MainMenu({
           {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
         </button>
         <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving || !!matching}>연습 (봇 3명)</button>
-        <button type="button" className="brush-button" onClick={() => setSheet("costume")}>코스튬</button>
+        <button type="button" className="brush-button" onClick={() => setSheet("costume")}>직업 · 코스튬</button>
         <button type="button" className="brush-button" onClick={() => setSheet("stats")}>전적 · 랭킹</button>
         <button type="button" className="brush-button" onClick={() => setSheet("help")}>게임 방법</button>
         {onlineNote && <p className="note">{onlineNote}</p>}

@@ -12,6 +12,24 @@ describe("names in a match", () => {
   });
 });
 
+describe("classes in a match", () => {
+  test("the lobby carries the class each player picked; the rest take their seat class", async (server) => {
+    server.connect({ account: PLAYERS[0] });
+    await server.setClass("archer");
+    const roomId = await fillRoom(server);
+    const match = await roomMatch(roomId);
+    expect(match.classes[PLAYERS[0]]).toBe("archer");
+    expect(match.classes[PLAYERS[1]] ?? null).toBeNull();
+  });
+
+  test("takes only classes it knows, and the account remembers it", async (server) => {
+    server.connect({ account: PLAYERS[0] });
+    expect(await errorOf(server.setClass("gunner"))).toContain("unavailable");
+    await server.setClass("mage");
+    expect((await $global.getUserState(PLAYERS[0])).playerClass).toBe("mage");
+  });
+});
+
 describe("costumes in a match", () => {
   test("the match carries what each player picked, so everyone sees the same look", async (server) => {
     server.connect({ account: PLAYERS[0] });

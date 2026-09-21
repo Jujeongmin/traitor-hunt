@@ -5,6 +5,7 @@ import {
 import { levelOf, xpOf } from "../../src/game/account/level";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
+import { readClass, type PlayerClass } from "../../src/game/match/classes";
 import { isBot } from "../../src/game/match/lifecycle";
 import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
 import { readJumpY } from "../../src/game/rules/movement";
@@ -259,6 +260,11 @@ export async function readPartyInvites(account: string, now: number): Promise<Pa
 
 export async function writePartyInvites(account: string, invites: PartyInvite[]): Promise<void> {
   await $global.updateUserState(account, { partyInvites: invites });
+}
+
+// The class an account picked in the menu, or null for anyone who never picked.
+export async function readPlayerClass(account: string): Promise<PlayerClass | null> {
+  return readClass((await $global.getUserState(account)).playerClass);
 }
 
 // The costume an account picked in the menu, or the first one for anyone who never picked.

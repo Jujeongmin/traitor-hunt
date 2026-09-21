@@ -1,3 +1,4 @@
+import { classForSeat, readClass, type PlayerClass } from "../game/match/classes";
 import { COSTUMES, type Costume } from "../game/render/costumes";
 
 // Your own look, kept in this browser until the account profile lands on the server.
@@ -33,5 +34,39 @@ export function onMyCostume(listener: (costume: Costume) => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
+  };
+}
+
+const CLASS_KEY = "traitor-hunt:class";
+const classListeners = new Set<(c: PlayerClass) => void>();
+
+function loadClass(): PlayerClass {
+  try {
+    return readClass(localStorage.getItem(CLASS_KEY)) ?? classForSeat(0);
+  } catch {
+    return classForSeat(0);
+  }
+}
+
+let currentClass = loadClass();
+
+export function myClass(): PlayerClass {
+  return currentClass;
+}
+
+export function setMyClass(next: PlayerClass): void {
+  currentClass = next;
+  try {
+    localStorage.setItem(CLASS_KEY, next);
+  } catch {
+    // Without storage the choice still holds until the page closes.
+  }
+  for (const listener of classListeners) listener(currentClass);
+}
+
+export function onMyClass(listener: (c: PlayerClass) => void): () => void {
+  classListeners.add(listener);
+  return () => {
+    classListeners.delete(listener);
   };
 }

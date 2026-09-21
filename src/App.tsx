@@ -15,6 +15,7 @@ import type { ClientState } from "./net/matchClient";
 import { loadStats } from "./net/account";
 import { useAccount } from "./ui/useAccount";
 import { useUiScale } from "./ui/useUiScale";
+import { myClass } from "./ui/profile";
 import { useFriends } from "./ui/useFriends";
 import { useParty } from "./ui/useParty";
 
@@ -130,7 +131,7 @@ function PracticeMatch({ onExit }: { onExit: () => void }) {
   const [session, setSession] = useState<PracticeSession | null>(null);
 
   useEffect(() => {
-    const next = new PracticeSession(layout);
+    const next = new PracticeSession(layout, { playerClass: myClass() });
     let live = true;
     void next.start().then(() => {
       if (live) setSession(next);

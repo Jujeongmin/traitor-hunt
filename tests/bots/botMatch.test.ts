@@ -32,6 +32,13 @@ describe("practice session", () => {
     session.dispose();
   });
 
+  it("seats you with the class you picked", async () => {
+    const session = new PracticeSession(layout, { playerClass: "archer" });
+    await session.start();
+    expect(session.human.state.match!.classes["test-you"]).toBe("archer");
+    session.dispose();
+  });
+
   it("plays a whole match with bots on every seat and gets through the objectives", async () => {
     vi.useFakeTimers({ now: 1_000_000 });
     const session = new PracticeSession(layout, { autopilot: true });

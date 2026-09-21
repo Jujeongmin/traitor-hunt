@@ -1,6 +1,7 @@
+import { WEAPONS, classForSeat } from "../../src/game/match/classes";
 import { describe, expect, it } from "vitest";
 import {
-  AKM_DAMAGE, MONSTER_DEATH_BODY_DAMAGE, MONSTER_STATS, POSSESS_COOLDOWN_MS, POSSESS_DURATION_MS,
+  MONSTER_DEATH_BODY_DAMAGE, ZOMBIE_HP, MONSTER_STATS, POSSESS_COOLDOWN_MS, POSSESS_DURATION_MS,
   ZOMBIE_ATTACK_DAMAGE, ZOMBIE_ATTACK_INTERVAL_MS,
 } from "../../src/game/match/constants";
 import {
@@ -11,6 +12,8 @@ import { startPossession } from "../../src/game/match/possession";
 import type { Pose, Poses } from "../../src/game/match/types";
 
 const T = 100_000; // well after the first possession is ready
+// "a" sits in seat 0 and picked nothing, so it carries that seat's weapon.
+const W = WEAPONS[classForSeat(0)];
 const at = (x: number, z: number): Pose => ({ x, z, yaw: 0 });
 
 // Traitor is "c". zombie-0 at (10,10), zombie-1 at (50,10).
@@ -60,20 +63,22 @@ describe("monsterAuthority / applyMonsterPoses", () => {
 });
 
 describe("shootMonster", () => {
-  it("damages, records and kills on the third hit", () => {
+  it("damages, records and kills once enough hits land", () => {
     const { match, secret, poses } = playing();
-    for (let i = 0; i < 3; i++) shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + i * 100);
+    const shots = Math.ceil(ZOMBIE_HP / W.damage);
+    for (let i = 0; i < shots; i++) shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + i * W.intervalMs);
     expect(match.monsters["zombie-0"]).toMatchObject({ hp: 0, alive: false });
-    expect(secret.stats.a).toMatchObject({ monsterDamage: 100, monsterKills: 1 });
-    expect(secret.lastShotAt.a).toBe(T + 200);
-    expect(() => shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + 300)).toThrow("monster_dead");
+    expect(secret.stats.a).toMatchObject({ monsterDamage: ZOMBIE_HP, monsterKills: 1 });
+    expect(secret.lastShotAt.a).toBe(T + (shots - 1) * W.intervalMs);
+    expect(() => shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + shots * W.intervalMs))
+      .toThrow("monster_dead");
   });
 
   it("enforces the fire interval", () => {
     const { match, secret, poses } = playing();
     shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T);
-    expect(() => shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + 99)).toThrow("too_fast");
-    expect(() => shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + 100)).not.toThrow();
+    expect(() => shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + W.intervalMs - 1)).toThrow("too_fast");
+    expect(() => shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + W.intervalMs)).not.toThrow();
   });
 
   it("checks range from the shooter's reported position", () => {
@@ -96,7 +101,7 @@ describe("shootMonster", () => {
   it("hurts the possessing body and makes it scream to nearby players", () => {
     const { match, secret, poses } = possessing();
     const events = shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + 1);
-    const link = Math.round(AKM_DAMAGE * 0.4);
+    const link = Math.round(W.damage * 0.4);
     expect(events).toEqual([
       { type: "pain", x: 5, z: 10, to: ["a", "b"] },
       { type: "private", account: "c" },
@@ -108,9 +113,9 @@ describe("shootMonster", () => {
 
   it("hits the body harder and ends the possession when the possessed monster dies", () => {
     const { match, secret, poses } = possessing();
-    match.monsters["zombie-0"].hp = 30;
+    match.monsters["zombie-0"].hp = 20;
     const events = shootMonster(match, secret, "a", "zombie-0", poses.a, poses, T + 1);
-    expect(secret.hp.c).toBe(100 - (Math.round(30 * 0.4) + MONSTER_DEATH_BODY_DAMAGE));
+    expect(secret.hp.c).toBe(100 - (Math.round(20 * 0.4) + MONSTER_DEATH_BODY_DAMAGE));
     expect(secret.possession).toBeNull();
     expect(secret.readyAt).toBe(T + 1 + POSSESS_COOLDOWN_MS);
     expect(events).toContainEqual({ type: "possession", monsterId: "zombie-0", active: false, endsAt: null });

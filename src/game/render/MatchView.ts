@@ -2,10 +2,11 @@ import * as THREE from "three";
 import type { ClientPhase, ClientState, MatchClient } from "../../net/matchClient";
 import { ModelLibrary } from "../assets/ModelLibrary";
 import {
-  AKM_FIRE_INTERVAL_MS, AKM_RANGE, DEVICE_COUNT, EXIT_RADIUS, MONSTER_STATS, POSSESS_RANGE, RANGE_SLACK,
+  DEVICE_COUNT, EXIT_RADIUS, MONSTER_STATS, POSSESS_RANGE, RANGE_SLACK,
   SEAL_DURATION_MS, SEAL_RADIUS, SHARD_COUNT, VOTE_DECIDE_HOLD_MS,
 } from "../match/constants";
 import { botFillInMs, isActive, isBound } from "../match/lifecycle";
+import { weaponOf } from "../match/damage";
 import { bearingTo, guideFor } from "../match/guide";
 import { BOSS_ID, interactableNear, type Interactable } from "../match/objectives";
 import type { MatchResult, MonsterKind, PlayerResult, Pose, Possession, PublicMatch, Stage } from "../match/types";
@@ -15,7 +16,7 @@ import { ZOMBIE_HEIGHT, ZOMBIE_RADIUS, resolveShot, type HitTarget, type Ray3 } 
 import { RUINS, TILE_SIZE, parseLevel, solidWith, spawnPoint, type LevelLayout } from "../rules/levelLayout";
 import { groundAt, platformBlocks } from "../rules/platforms";
 import {
-  EYE_HEIGHT, GROUNDED, PLAYER_RADIUS, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
+  GROUNDED, PLAYER_RADIUS, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
 import { FpsInput } from "./FpsInput";
 import { LightPool } from "./lightPool";
@@ -23,8 +24,7 @@ import { MonsterActor, type MonsterLook } from "./MonsterActor";
 import { OBJECTIVE_MODELS, ObjectiveProps } from "./ObjectiveProps";
 import { RemotePlayerActor, type PlayerStatus } from "./RemotePlayerActor";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
-import { Viewmodel } from "./Viewmodel";
-import { FirstPersonArms, type Grips } from "./FirstPersonArms";
+import { CHASE, chaseCamera } from "../rules/chaseCamera";
 import { wearing } from "./costumes";
 import { displayName, ownName } from "./names";
 import { playScream, playThud } from "./scream";
@@ -165,11 +165,8 @@ export class MatchView {
     this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, 0);
   private library: ModelLibrary | null = null;
   private props: ObjectiveProps | null = null;
-  private viewmodel: Viewmodel | null = null;
-  // Built once your seat is known, in the costume the others see you in.
-  private arms: FirstPersonArms | null = null;
-  private armsTried = false;
-  private readonly grips: Grips = { right: new THREE.Vector3(), left: new THREE.Vector3() };
+  // How far behind the player the camera sits this frame (walls pull it in).
+  private cameraDistance = CHASE.distance;
   private pose: Pose;
   private air: Airborne = GROUNDED;
   private yaw = 0;
@@ -221,7 +218,6 @@ export class MatchView {
       this.shakeUntil = performance.now() + SHAKE_MS;
       playThud();
     };
-    this.viewmodel = new Viewmodel(this.camera, library.instance("wpn_akm"));
     this.offPain = this.client.onPain(() => {
       this.painAt = performance.now();
       playScream();
@@ -329,21 +325,6 @@ export class MatchView {
       this.props?.update(match, now, dt, match.players.map((p) => displayName(p, me)));
       this.placeCamera(match, possession);
     }
-    const moving = !bound && this.air.y === 0 && (move.forward !== 0 || move.strafe !== 0);
-    this.viewmodel?.setVisible(active && !possession);
-    this.viewmodel?.update(dt, moving);
-    if (match && !this.armsTried && this.library && match.players.includes(me)) {
-      this.armsTried = true;
-      this.arms = FirstPersonArms.create(
-        this.camera, this.library.instance("explorer"), this.library.get("explorer").animations,
-        wearing(match.looks, me, match.players.indexOf(me)),
-      );
-    }
-    if (this.arms && this.viewmodel) {
-      this.arms.setVisible(active && !possession);
-      this.camera.updateMatrixWorld(true);
-      this.arms.update(dt, this.viewmodel.grips(this.grips));
-    }
 
     this.lights.update(this.camera.position);
 
@@ -392,26 +373,30 @@ export class MatchView {
     }
     if (!this.pendingAction && pressInteract) this.perform(() => this.client.interact());
     if (!this.pendingAction && pressEscape) this.perform(() => this.client.escape());
-    if (this.input.firing && this.client.serverNow() - this.lastShotAt >= AKM_FIRE_INTERVAL_MS) {
+    if (this.input.firing && this.client.serverNow() - this.lastShotAt >= weaponOf(match, this.client.account).intervalMs) {
       void this.shoot(match);
     }
   }
 
   private shoot(match: PublicMatch): Promise<string | null> {
     this.lastShotAt = this.client.serverNow();
-    this.viewmodel?.fire();
     this.camera.updateMatrixWorld();
     this.camera.getWorldDirection(this.aim);
+    // Aim through the crosshair, but start level with the player so nothing between the camera and
+    // your back can be hit.
+    const d = this.cameraDistance;
     const ray: Ray3 = {
-      ox: this.camera.position.x, oy: this.camera.position.y, oz: this.camera.position.z,
+      ox: this.camera.position.x + this.aim.x * d,
+      oy: this.camera.position.y + this.aim.y * d,
+      oz: this.camera.position.z + this.aim.z * d,
       dx: this.aim.x, dy: this.aim.y, dz: this.aim.z,
     };
     const targets: HitTarget[] = [];
     for (const [id, m] of Object.entries(match.monsters)) {
       if (m.alive) targets.push({ id, x: m.x, z: m.z, ...HIT_SHAPE[m.kind], alive: true });
     }
-    // Bullets fly over the crates: only walls and closed gates stop them.
-    const hit = resolveShot(ray, targets, this.solid, AKM_RANGE, TILE_SIZE);
+    // Shots fly over the crates: only walls and closed gates stop them.
+    const hit = resolveShot(ray, targets, this.solid, weaponOf(match, this.client.account).range, TILE_SIZE);
     if (!hit) return Promise.resolve("miss");
     // Guns only hurt monsters: nobody can shoot another player, the traitor included.
     return this.client.fireAtMonster(hit.id).then((code) => {
@@ -500,17 +485,20 @@ export class MatchView {
         this.players.set(account, actor);
       }
       const status: PlayerStatus = match.dead.includes(account) ? "dead" : match.escaped.includes(account) ? "escaped" : "active";
-      // My own body is only drawn while I look out through a monster.
-      const pose = account === me ? (possession ? this.pose : null) : (state.poses[account] ?? null);
+      // The camera sits behind you, so your own body is drawn from your local pose.
+      const pose = account === me ? this.pose : (state.poses[account] ?? null);
       actor.sync(pose, status, dt);
       actor.mark(match.revealed === account, isBound(match, account, now));
     }
   }
 
   private placeCamera(match: PublicMatch, possession: Possession | null): void {
+    // Over the shoulder of whatever you drive: your body, or the monster you possess.
     const monster = possession ? match.monsters[possession.monsterId] : undefined;
-    if (monster) this.camera.position.set(monster.x, MONSTER_EYE, monster.z);
-    else this.camera.position.set(this.pose.x, EYE_HEIGHT + (this.pose.y ?? 0), this.pose.z);
+    const body = monster ? { x: monster.x, z: monster.z, y: MONSTER_EYE - CHASE.height } : this.pose;
+    const cam = chaseCamera(body, this.yaw, this.pitch, this.solid, TILE_SIZE);
+    this.cameraDistance = cam.distance;
+    this.camera.position.set(cam.x, cam.y, cam.z);
     const shake = this.shakeUntil - performance.now();
     if (shake > 0) {
       const size = SHAKE_SIZE * (shake / SHAKE_MS);

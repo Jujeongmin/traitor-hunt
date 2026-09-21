@@ -6,7 +6,6 @@ import { displayName } from "../game/render/names";
 import { playMusic } from "../game/audio/music";
 import { trackFor } from "../game/audio/musicTrack";
 import { Hud } from "./Hud";
-import { TuningPanel } from "./TuningPanel";
 
 const JOIN_ERROR: Record<string, string> = {
   party_busy: "파티원이 아직 게임 중이에요",
@@ -65,20 +64,6 @@ export function MatchScreen({ client, onFrame, onExit, tutorial }: MatchScreenPr
     if (result && document.pointerLockElement) document.exitPointerLock();
   }, [result]);
 
-  // Dev builds (the editor preview included): the backquote key opens the first-person tuning sliders.
-  const [tuning, setTuning] = useState(false);
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const toggle = (e: KeyboardEvent) => {
-      if (e.code !== "Backquote") return;
-      setTuning((open) => {
-        if (!open && document.pointerLockElement) document.exitPointerLock();
-        return !open;
-      });
-    };
-    window.addEventListener("keydown", toggle);
-    return () => window.removeEventListener("keydown", toggle);
-  }, []);
 
   // The music follows the objective: the ruins, the tension at the altar, the boss.
   useEffect(() => {
@@ -93,7 +78,6 @@ export function MatchScreen({ client, onFrame, onExit, tutorial }: MatchScreenPr
     <div className="app" ref={host}>
       <div className="ui">
       {ready && hud && !result && <Hud hud={hud} now={now} />}
-      {tuning && <TuningPanel onClose={() => setTuning(false)} />}
       {!ready && !loadError && (
         <div className="overlay"><span className="band">유적으로 내려가는 중… {progress.done}/{progress.total}</span></div>
       )}

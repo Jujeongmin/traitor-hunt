@@ -27,6 +27,7 @@ export function createLobby(now: number): PublicMatch {
     players: [],
     looks: {},
     names: {},
+    classes: {},
     createdAt: now,
     startedAt: null,
     endsAt: null,

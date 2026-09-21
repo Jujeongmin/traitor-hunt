@@ -3,7 +3,7 @@ import { HEARTBEAT_MS } from "../game/account/friends";
 import type { Activity, PartyView } from "../game/account/party";
 import { PartyClient } from "../net/party";
 import type { MatchTransport } from "../net/transport";
-import { myCostume, onMyCostume } from "./profile";
+import { myClass, myCostume, onMyClass, onMyCostume } from "./profile";
 
 // Lives for the whole app like useFriends; also tells the server your costume so the party sees it.
 export function useParty(transport: MatchTransport | null, activity: Activity) {
@@ -20,11 +20,15 @@ export function useParty(transport: MatchTransport | null, activity: Activity) {
     const wear = (id: string) => void next.setCostume(id).catch(() => undefined);
     wear(myCostume().id);
     const offCostume = onMyCostume((c) => wear(c.id));
+    const pick = (id: string) => void next.setClass(id).catch(() => undefined);
+    pick(myClass());
+    const offClass = onMyClass(pick);
     void next.start().catch(() => undefined);
     const beat = window.setInterval(() => void next.sync().catch(() => undefined), HEARTBEAT_MS);
     return () => {
       window.clearInterval(beat);
       offCostume();
+      offClass();
       off();
       next.dispose();
     };
