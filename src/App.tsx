@@ -21,11 +21,11 @@ const DEV_LOCAL = devLocalTransport();
 export default function App() {
   const [inWorld, setInWorld] = useState(false);
   const [returning, setReturning] = useState(false);
-  const { server, connected } = useGameServer();
+  const { server, connected, joinRoom, leaveRoom } = useGameServer();
   useUiScale();
   const transport = useMemo(
-    () => DEV_LOCAL ?? (ONLINE_AVAILABLE && connected ? new Verse8Transport(server) : null),
-    [connected, server],
+    () => DEV_LOCAL ?? (ONLINE_AVAILABLE && connected ? new Verse8Transport(server, { joinRoom, leaveRoom }) : null),
+    [connected, server, joinRoom, leaveRoom],
   );
   const { view, failed, pickWorld, checkName, create, select, refresh } = useAccount(transport);
   const purchase = usePurchase(transport, refresh);

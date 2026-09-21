@@ -73,7 +73,7 @@ export class WorldClient {
       if (version?.protocol !== PROTOCOL_VERSION) {
         throw new Error(`server protocol ${version?.protocol}, client protocol ${PROTOCOL_VERSION}`);
       }
-      this.arrive(await this.transport.call<ZoneEntry>("enterWorld"));
+      await this.moveTo(await this.transport.call<ZoneEntry>("enterWorld"));
     } catch (error) {
       this.fail(error);
     }
@@ -84,7 +84,7 @@ export class WorldClient {
     if (this.current.phase !== "in") return "unavailable";
     this.set({ phase: "travelling" });
     try {
-      this.arrive(await this.transport.call<ZoneEntry>("travel", [to]));
+      await this.moveTo(await this.transport.call<ZoneEntry>("travel", [to]));
       return null;
     } catch (error) {
       this.set({ phase: "in" });
@@ -95,7 +95,9 @@ export class WorldClient {
   async leave(): Promise<void> {
     this.unlisten();
     this.set({ phase: "idle", entry: null, others: [] });
+    // Keeps your spot from inside the room, then leaves it.
     await this.transport.call("leaveWorld").catch(() => undefined);
+    this.transport.leaveRoom();
   }
 
   // Every POSE_THROTTLE_MS while moving, every IDLE_POSE_MS while standing still; a guard, an attack
@@ -120,6 +122,13 @@ export class WorldClient {
   dispose(): void {
     this.unlisten();
     this.listeners.clear();
+  }
+
+  // Joins the room the server picked and stands your character in it (Verse8 2.0: the client joins).
+  private async moveTo(entry: ZoneEntry): Promise<void> {
+    await this.transport.joinRoom(entry.roomId);
+    await this.transport.call("arrive");
+    this.arrive(entry);
   }
 
   private arrive(entry: ZoneEntry): void {

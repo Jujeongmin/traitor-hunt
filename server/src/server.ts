@@ -17,7 +17,7 @@ import {
   START_ZONE, ZONES, arrivalFrom, portalsOf, readChannelRoom, readZone, zoneLayout, type ZoneEntry, type ZoneId,
 } from "../../src/game/world/zones";
 import {
-  claimName, findNickname, friendEntry, grantPurchase, joinChannel, markSeen, ownsFullGame, partyMember,
+  claimName, findNickname, friendEntry, grantPurchase, markSeen, ownsFullGame, partyMember, pickChannel,
   readAccountWorld, readFriendSide, readNickname, readPartyInvites, readPartyOf, readProfile, readRanking,
   returnSpot, saveProfile, saveSpot, token, withFriendsLock, withNicknameLock, withPartyLock, withProfileLock, writeFriendSide,
   writeParty, writePartyInvites, writeZonePose, zoneLook,
@@ -69,19 +69,22 @@ async function playing(account: string): Promise<Character> {
   return active;
 }
 
-// Puts your character in a channel of `zone` at (x, z): the first channel of your server with room.
+// Picks a channel of `zone` for your character and keeps (x, z) as its spot. The client then joins
+// the room and calls arrive, which puts you there.
 async function enter(account: string, character: Character, zone: ZoneId, x: number, z: number): Promise<ZoneEntry> {
   if (ZONES[zone].paid && !(await ownsFullGame(account))) throw new RuleViolation("not_owned");
-  const { roomId, channel } = await joinChannel(character.world, zone, account);
-  const now = Date.now();
-  await $global.updateRoomUserState(roomId, account, {
-    pose: { x, z, yaw: 0, y: 0, block: false, swing: 0, skill: 0, at: now },
-    look: zoneLook(character),
-    savedAt: now,
-  });
+  const { roomId, channel } = await pickChannel(character.world, zone, account);
   await saveSpot(account, { zone, x, z });
   await $global.updateUserState(account, { activity: "world" });
   return { roomId, zone, channel, x, z };
+}
+
+// The caller's channel room, from inside it.
+function currentChannel(): { roomId: string; zone: ZoneId } {
+  const roomId = $sender.roomId;
+  const here = readChannelRoom(roomId);
+  if (!here || !roomId) throw new RuleViolation("unavailable");
+  return { roomId, zone: here.zone };
 }
 
 export class Server {
@@ -216,12 +219,11 @@ export class Server {
   async travel(to: unknown): Promise<ZoneEntry> {
     const account = $sender.account;
     const target = readZone(to);
-    const roomId = $sender.roomId;
-    const here = readChannelRoom(roomId);
-    if (!target || !here || !roomId) throw new RuleViolation("no_zone");
+    const here = readChannelRoom($sender.roomId);
+    if (!target || !here) throw new RuleViolation("no_zone");
     const portal = portalsOf(here.zone).find((p) => p.to === target);
     if (!portal) throw new RuleViolation("no_zone");
-    const pose = (await $global.getRoomUserState(roomId, account)).pose;
+    const pose = (await $room.getMyState()).pose;
     if (!isPose(pose) || Math.hypot(pose.x - portal.x, pose.z - portal.z) > zoneLayout(here.zone).tileSize) {
       throw new RuleViolation("not_near");
     }
@@ -229,14 +231,30 @@ export class Server {
     return enter(account, await playing(account), target, at.x, at.z);
   }
 
+  // After the client has joined the room enterWorld or travel picked: stands your character at
+  // its spot for everyone in the room to see.
+  async arrive(): Promise<{ x: number; z: number }> {
+    const account = $sender.account;
+    const { zone } = currentChannel();
+    const character = await playing(account);
+    // The spot enter kept; a room of another zone (a stale join) starts at that zone's spawn.
+    const spot = character.spot?.zone === zone ? character.spot : { zone, ...zoneLayout(zone).playerSpawn };
+    const now = Date.now();
+    await $room.updateMyState({
+      pose: { x: spot.x, z: spot.z, yaw: 0, y: 0, block: false, swing: 0, skill: 0, at: now },
+      look: zoneLook(character),
+      savedAt: now,
+    });
+    return { x: spot.x, z: spot.z };
+  }
+
+  // Back to the menu: keeps where you stood. The client leaves the room itself.
   async leaveWorld(): Promise<void> {
     const account = $sender.account;
-    const roomId = $sender.roomId;
-    const here = readChannelRoom(roomId);
-    if (here && roomId) {
-      const pose = (await $global.getRoomUserState(roomId, account)).pose;
+    const here = readChannelRoom($sender.roomId);
+    if (here) {
+      const pose = (await $room.getMyState()).pose;
       if (isPose(pose)) await saveSpot(account, { zone: here.zone, x: pose.x, z: pose.z });
-      await $global.leaveRoom();
     }
     await $global.updateUserState(account, { activity: "menu" });
   }
@@ -244,16 +262,26 @@ export class Server {
   // Where you are in your zone. The room carries it to everyone there; the account keeps a copy
   // every SAVE_SPOT_MS so you come back to the same spot.
   async reportPose(raw: unknown): Promise<void> {
-    const roomId = $sender.roomId;
-    const here = readChannelRoom(roomId);
-    if (!here || !roomId || !isPose(raw)) throw new RuleViolation("unavailable");
-    const account = $sender.account;
+    if (!isPose(raw)) throw new RuleViolation("unavailable");
+    const { zone } = currentChannel();
     const now = Date.now();
-    const saved = await writeZonePose(roomId, account, here.zone, raw, now);
-    if (now - saved.savedAt >= SAVE_SPOT_MS) {
-      await saveSpot(account, { zone: here.zone, x: saved.x, z: saved.z });
-      await $global.updateRoomUserState(roomId, account, { savedAt: now });
+    const saved = await writeZonePose(zone, raw, now);
+    const savedAt = (await $room.getMyState()).savedAt;
+    if (now - (typeof savedAt === "number" ? savedAt : 0) >= SAVE_SPOT_MS) {
+      await saveSpot($sender.account, { zone, x: saved.x, z: saved.z });
+      await $room.updateMyState({ savedAt: now }, { returnState: false });
     }
+  }
+
+  // Verse8 calls this when someone leaves a room for good (after the reconnect grace period):
+  // their last spot in a channel is kept, whatever way they left.
+  async onRoomLeave(roomId: string, account: string): Promise<void> {
+    const here = readChannelRoom(roomId);
+    if (!here) return;
+    const pose = (await $room.getUserState(account)).pose;
+    const { active } = await readProfile(account);
+    if (!active || active.world !== here.world || !isPose(pose)) return;
+    await saveSpot(account, { zone: here.zone, x: pose.x, z: pose.z });
   }
 
   // Marks you online (and on the menu or in the world), drops party members who went quiet,

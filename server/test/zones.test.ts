@@ -1,8 +1,16 @@
 import { CHANNEL_CAPACITY, arrivalFrom, portalsOf, zoneLayout } from "../../src/game/world/zones";
-import { errorOf, inRoom, makeCharacter } from "./helpers";
+import { enterAs, errorOf, join, makeCharacter } from "./helpers";
 
 // A real wallet account: it does not play for free like the test- accounts.
 const BUYER = "0x1111111111111111111111111111111111111111";
+
+// Stands at the portal to `to` and goes through, as the client does.
+async function through(server: any, account: string, entry: any, to: string): Promise<any> {
+  const portal = portalsOf(entry.zone).find((p) => p.to === to)!;
+  await server.reportPose({ x: portal.x, z: portal.z, yaw: 0 });
+  const next = await server.travel(to);
+  return join(server, account, next, entry.roomId);
+}
 
 describe("entering the world", () => {
   test("a new character starts in the village, channel 1 of its server, showing its look", async (server) => {
@@ -12,7 +20,8 @@ describe("entering the world", () => {
     const entry = await server.enterWorld();
     const spawn = zoneLayout("village").playerSpawn;
     expect(entry).toEqual({ roomId: "rpg-w2-village-1", zone: "village", channel: 1, x: spawn.x, z: spawn.z });
-    const mine = await $global.getRoomUserState(entry.roomId, "test-a");
+    await join(server, "test-a", entry);
+    const mine = await $room.getMyState();
     expect(mine.look).toMatchObject({ name: "새싹", playerClass: "ranger", level: 1 });
     expect(mine.pose).toMatchObject({ x: spawn.x, z: spawn.z });
   });
@@ -32,61 +41,55 @@ describe("entering the world", () => {
   test("a full channel sends the next player to the next one", async (server) => {
     for (let i = 0; i < CHANNEL_CAPACITY; i++) {
       await makeCharacter(server, `test-p${i}`, `손님${i}`);
-      expect((await server.enterWorld()).channel).toBe(1);
+      expect((await enterAs(server, `test-p${i}`)).channel).toBe(1);
     }
     await makeCharacter(server, "test-late", "늦은손님");
+    server.connect({ account: "test-late" });
     expect((await server.enterWorld()).channel).toBe(2);
   });
 
-  test("comes back where it left", async (server) => {
+  test("comes back where it left, by leaving or by just going away", async (server) => {
     await makeCharacter(server, "test-a", "에이");
-    const entry = await server.enterWorld();
-    inRoom(server, "test-a", entry.roomId);
+    await enterAs(server, "test-a");
     await server.reportPose({ x: 10, z: 13, yaw: 1 });
     await server.leaveWorld();
     server.connect({ account: "test-a" });
-    expect(await server.enterWorld()).toMatchObject({ zone: "village", x: 10, z: 13 });
+    const back = await server.enterWorld();
+    expect(back).toMatchObject({ zone: "village", x: 10, z: 13 });
+
+    // A closed tab: no leaveWorld, only the platform's leave hook.
+    await join(server, "test-a", back);
+    await server.reportPose({ x: 14, z: 13, yaw: 1 });
+    await server.simulateLeave(back.roomId, "test-a");
+    server.connect({ account: "test-a" });
+    expect(await server.enterWorld()).toMatchObject({ zone: "village", x: 14, z: 13 });
   });
 });
 
 describe("portals", () => {
   test("take you to the next zone only while you stand at the portal", async (server) => {
     await makeCharacter(server, "test-a", "에이");
-    const entry = await server.enterWorld();
-    inRoom(server, "test-a", entry.roomId);
+    const entry = await enterAs(server, "test-a");
     expect(await errorOf(server.travel("forest1"))).toContain("not_near");
-    const portal = portalsOf("village").find((p) => p.to === "forest1")!;
-    await server.reportPose({ x: portal.x, z: portal.z, yaw: 0 });
-    const field = await server.travel("forest1");
+    const field = await through(server, "test-a", entry, "forest1");
     const at = arrivalFrom("forest1", "village");
     expect(field).toMatchObject({ zone: "forest1", roomId: "rpg-w1-forest1-1", x: at.x, z: at.z });
+    expect((await $room.getMyState()).pose).toMatchObject({ x: at.x, z: at.z });
   });
 
   test("lead nowhere but the zones next door", async (server) => {
     await makeCharacter(server, "test-a", "에이");
-    const entry = await server.enterWorld();
-    inRoom(server, "test-a", entry.roomId);
+    await enterAs(server, "test-a");
     expect(await errorOf(server.travel("boss"))).toContain("no_zone");
     expect(await errorOf(server.travel("moon"))).toContain("no_zone");
   });
 
   test("the second field needs the full game", async (server) => {
     await makeCharacter(server, BUYER, "구매자");
-    const into = async (account: string) => {
-      server.connect({ account });
-      let entry = await server.enterWorld();
-      // Walks on from wherever it came back in.
-      const path = ["village", "forest1", "forest2"];
-      for (const to of path.slice(path.indexOf(entry.zone) + 1)) {
-        inRoom(server, account, entry.roomId);
-        const portal = portalsOf(entry.zone).find((p) => p.to === to)!;
-        await server.reportPose({ x: portal.x, z: portal.z, yaw: 0 });
-        entry = await server.travel(to);
-      }
-      return entry;
-    };
-    expect(await errorOf(into(BUYER))).toContain("not_owned");
+    const field = await through(server, BUYER, await enterAs(server, BUYER), "forest1");
+    expect(await errorOf(through(server, BUYER, field, "forest2"))).toContain("not_owned");
     await server.$onItemPurchased({ account: BUYER, purchaseId: 7, productId: "full-game", quantity: 1 });
-    expect((await into(BUYER)).zone).toBe("forest2");
+    server.connect({ account: BUYER, roomId: field.roomId });
+    expect((await through(server, BUYER, field, "forest2")).zone).toBe("forest2");
   });
 });

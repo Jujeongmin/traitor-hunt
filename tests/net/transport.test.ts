@@ -20,9 +20,14 @@ describe("LocalTransport", () => {
     const world = new LocalWorld(new Server());
     const t = new LocalTransport(world, "test-a");
     await t.call("createCharacter", ["에이", "warrior", "0000"]);
-    await t.call<{ roomId: string }>("enterWorld");
+    const { roomId } = await t.call<{ roomId: string }>("enterWorld");
+    await t.joinRoom(roomId);
+    await t.call("arrive");
     await expect(t.call("reportPose", [{ x: 5, z: 5, yaw: 0 }])).resolves.toBeUndefined();
     await t.call("leaveWorld");
+    t.leaveRoom();
+    await world.idle();
+    expect(world.roomState(roomId).$users).toEqual([]);
     await expect(t.call("reportPose", [{ x: 5, z: 5, yaw: 0 }])).rejects.toThrow("unavailable");
   });
 
@@ -71,6 +76,8 @@ describe("LocalTransport", () => {
     a.subscribeRoomUsers(roomId, (u) => users.push(u));
     await a.call("createCharacter", ["에이", "warrior", "0000"]);
     await a.call("enterWorld");
+    await a.joinRoom(roomId);
+    await a.call("arrive");
     await a.call("reportPose", [{ x: 1, z: 2, yaw: 0 }]);
     expect(users.at(-1)).toMatchObject([{ account: "test-a", pose: { x: 1, z: 2, yaw: 0 } }]);
     expect(states.at(-1)).toMatchObject({ roomId, $users: ["test-a"] });
@@ -100,7 +107,8 @@ describe("Verse8Transport", () => {
       onRoomMessage: vi.fn(() => off),
       subscribeGlobalMyState: vi.fn(() => off),
     };
-    const t = new Verse8Transport(server as unknown as Verse8Server);
+    const rooms = { joinRoom: vi.fn(async () => undefined), leaveRoom: vi.fn() };
+    const t = new Verse8Transport(server as unknown as Verse8Server, rooms);
     expect(t.account).toBe("0xabc");
     await expect(t.call("reportPose", [1], { needResponse: false, throttle: 100 })).resolves.toBe("ok");
     expect(server.remoteFunction).toHaveBeenCalledWith("reportPose", [1], { needResponse: false, throttle: 100 });
@@ -113,5 +121,9 @@ describe("Verse8Transport", () => {
     expect(server.subscribeRoomState).toHaveBeenCalledWith("r", cb);
     expect(server.subscribeRoomAllUserStates).toHaveBeenCalledWith("r", cb);
     expect(server.onRoomMessage).toHaveBeenCalledWith("r", "pain", cb);
+    await t.joinRoom("rpg-w1-village-1");
+    t.leaveRoom();
+    expect(rooms.joinRoom).toHaveBeenCalledWith("rpg-w1-village-1");
+    expect(rooms.leaveRoom).toHaveBeenCalled();
   });
 });

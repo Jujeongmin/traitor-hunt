@@ -12,7 +12,9 @@
   "include": [
     "src/**/*",
     "test/**/*",
-    "../src/game/match/**/*",
+    "../src/game/account/**/*",
+    "../src/game/world/**/*",
+    "../src/game/combat/**/*",
     "../src/game/rules/**/*",
     "./node_modules/@agent8/gameserver-node/types/**/*.d.ts"
   ]

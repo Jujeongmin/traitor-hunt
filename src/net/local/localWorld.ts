@@ -59,12 +59,42 @@ export class LocalWorld {
   call(account: string, roomId: string | null, name: string, args: unknown[] = []): Promise<unknown> {
     return this.enqueue(async () => {
       const fn = (this.server as Record<string, unknown>)[name];
-      if (typeof fn !== "function" || name.startsWith("$") || name === "constructor") {
+      if (typeof fn !== "function" || name.startsWith("$") || name.startsWith("onRoom") || name === "constructor") {
         throw new Error(`unknown server function: ${name}`);
       }
       const result = await this.withContext(account, roomId, () => (fn as AnyFunction).apply(this.server, copy(args)));
       return copy(result);
     });
+  }
+
+  // A client joining a room, as the Verse8 2.0 platform does it: the room lists them, then the
+  // server's onRoomJoin hook runs (inside the room).
+  join(account: string, roomId: string): Promise<void> {
+    return this.enqueue(async () => {
+      const room = this.room(roomId);
+      if (!room.members.includes(account)) room.members.push(account);
+      this.dirtyRooms.add(roomId);
+      await this.hook("onRoomJoin", account, roomId);
+    }) as Promise<void>;
+  }
+
+  // Leaving for good: onRoomLeave runs while the room still holds their state, then they go.
+  leave(account: string, roomId: string): Promise<void> {
+    return this.enqueue(async () => {
+      const room = this.rooms.get(roomId);
+      if (!room?.members.includes(account)) return;
+      await this.hook("onRoomLeave", account, roomId);
+      room.members = room.members.filter((m) => m !== account);
+      this.dirtyRooms.add(roomId);
+      this.flush();
+    }) as Promise<void>;
+  }
+
+  private async hook(name: string, account: string, roomId: string): Promise<void> {
+    const fn = (this.server as Record<string, unknown>)[name];
+    // Hooks run as the platform, not as the player (see the Verse8 docs on $sender in hooks).
+    if (typeof fn === "function") await this.withContext("$system", roomId, () => (fn as AnyFunction).call(this.server, roomId, account));
+    else this.flush();
   }
 
   tick(roomId: string): Promise<void> {
@@ -102,8 +132,8 @@ export class LocalWorld {
     const saved = GLOBAL_NAMES.map((name) => scope[name]);
     const sender = { account, roomId: roomId ?? undefined };
     scope.$sender = sender;
-    scope.$global = this.globalApi(account);
-    scope.$room = this.roomApi(() => sender.roomId);
+    scope.$global = this.globalApi();
+    scope.$room = this.roomApi(() => sender.roomId, account);
     scope.$lock = async (_key: string, work: () => unknown) => work();
     try {
       return await fn();
@@ -134,18 +164,7 @@ export class LocalWorld {
     return items;
   }
 
-  private leaveAll(account: string): string | null {
-    let left: string | null = null;
-    for (const [roomId, room] of this.rooms) {
-      if (!room.members.includes(account)) continue;
-      room.members = room.members.filter((m) => m !== account);
-      this.dirtyRooms.add(roomId);
-      left = roomId;
-    }
-    return left;
-  }
-
-  private globalApi(account: string) {
+  private globalApi() {
     const merge = (target: Json, patch: Json) => {
       for (const [key, value] of Object.entries(patch)) {
         if (value === undefined) delete target[key];
@@ -153,32 +172,7 @@ export class LocalWorld {
       }
     };
     return {
-      getRoomState: async (roomId: string) => this.roomState(roomId),
-      updateRoomState: async (roomId: string, patch: Json) => {
-        const room = this.room(roomId);
-        merge(room.state, patch);
-        this.dirtyRooms.add(roomId);
-        return copy(room.state);
-      },
-      getAllRoomStates: async () =>
-        [...this.rooms.entries()].filter(([, r]) => r.members.length > 0).map(([id]) => this.roomState(id)),
-      getRoomUserState: async (roomId: string, user: string) => copy(this.rooms.get(roomId)?.users.get(user) ?? {}),
-      updateRoomUserState: async (roomId: string, user: string, patch: Json) => {
-        const room = this.room(roomId);
-        const state = room.users.get(user) ?? {};
-        merge(state, patch);
-        room.users.set(user, state);
-        this.dirtyUsers.add(roomId);
-        return copy(state);
-      },
-      joinRoom: async (roomId?: string) => {
-        const id = roomId ?? `room-${++this.seq}`;
-        this.leaveAll(account);
-        this.room(id).members.push(account);
-        this.dirtyRooms.add(id);
-        return id;
-      },
-      leaveRoom: async () => this.leaveAll(account) ?? "",
+      getAllRoomIds: async () => [...this.rooms.entries()].filter(([, r]) => r.members.length > 0).map(([id]) => id),
       getRoomUserAccounts: async (roomId: string) => [...(this.rooms.get(roomId)?.members ?? [])],
       countRoomUsers: async (roomId: string) => this.rooms.get(roomId)?.members.length ?? 0,
       getUserState: async (user: string) => copy(this.userStates.get(user) ?? {}),
@@ -221,12 +215,44 @@ export class LocalWorld {
     };
   }
 
-  private roomApi(currentRoom: () => string | undefined) {
+  // $room as Verse8 2.0 has it: always the caller's current room.
+  private roomApi(currentRoom: () => string | undefined, account: string) {
+    const here = () => {
+      const roomId = currentRoom();
+      if (!roomId) throw new Error("not in a room");
+      return { roomId, room: this.room(roomId) };
+    };
     const push = (to: string | null, type: string, message: unknown) => {
       const roomId = currentRoom();
       if (roomId) this.pendingMessages.push({ kind: "message", roomId, to, type, message: copy(message) });
     };
+    const merge = (target: Json, patch: Json) => {
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined) delete target[key];
+        else target[key] = copy(value);
+      }
+    };
+    const updateUser = (user: string, patch: Json) => {
+      const { roomId, room } = here();
+      const state = room.users.get(user) ?? {};
+      merge(state, patch);
+      room.users.set(user, state);
+      this.dirtyUsers.add(roomId);
+      return copy(state);
+    };
     return {
+      getRoomState: async () => this.roomState(here().roomId),
+      updateRoomState: async (patch: Json) => {
+        const { roomId, room } = here();
+        merge(room.state, patch);
+        this.dirtyRooms.add(roomId);
+        return copy(room.state);
+      },
+      getUserState: async (user: string) => copy(here().room.users.get(user) ?? {}),
+      updateUserState: async (user: string, patch: Json) => updateUser(user, patch),
+      getMyState: async () => copy(here().room.users.get(account) ?? {}),
+      updateMyState: async (patch: Json) => updateUser(account, patch),
+      getAllUserStates: async () => [...here().room.users.entries()].map(([user, state]) => ({ account: user, ...copy(state) })),
       broadcastToRoom: (type: string, message: unknown) => push(null, type, message),
       sendMessageToUser: (type: string, to: string, message: unknown) => push(to, type, message),
     };

@@ -6,8 +6,14 @@ export type Verse8Server = Pick<
   "account" | "remoteFunction" | "subscribeRoomState" | "subscribeRoomAllUserStates" | "onRoomMessage" | "subscribeGlobalMyState"
 >;
 
+// Room joins go through the useGameServer hook, so its store tracks the room and reconnects to it.
+export interface RoomControl {
+  joinRoom(roomId: string): Promise<void>;
+  leaveRoom(): void;
+}
+
 export class Verse8Transport implements MatchTransport {
-  constructor(private readonly server: Verse8Server) {}
+  constructor(private readonly server: Verse8Server, private readonly rooms: RoomControl) {}
 
   get account(): string {
     return this.server.account;
@@ -31,5 +37,13 @@ export class Verse8Transport implements MatchTransport {
 
   subscribeMyState(cb: (state: Record<string, unknown>) => void): () => void {
     return this.server.subscribeGlobalMyState(cb);
+  }
+
+  joinRoom(roomId: string): Promise<void> {
+    return this.rooms.joinRoom(roomId);
+  }
+
+  leaveRoom(): void {
+    this.rooms.leaveRoom();
   }
 }

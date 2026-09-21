@@ -263,20 +263,16 @@ export async function saveSpot(account: string, spot: Spot): Promise<void> {
   await updateActive(account, (c) => ({ ...c, spot }));
 }
 
-// Joins the first channel of a zone on this server that has room, counting from 1. You never
-// count against a channel you are already in.
-export async function joinChannel(world: string, zone: ZoneId, account: string): Promise<{ roomId: string; channel: number }> {
-  return $lock(`rpg-join-${world}-${zone}`, async () => {
-    for (let channel = 1; channel <= MAX_CHANNELS; channel++) {
-      const roomId = channelRoomId(world, zone, channel);
-      const members = await $global.getRoomUserAccounts(roomId);
-      if (members.includes(account) || members.length < CHANNEL_CAPACITY) {
-        await $global.joinRoom(roomId);
-        return { roomId, channel };
-      }
-    }
-    throw new RuleViolation("zone_full");
-  });
+// The first channel of a zone on this server that has room, counting from 1. The client joins it
+// (Verse8 2.0 moves room joins to the client), so two players picked at the same moment can both
+// land in the last seat: the cap is soft by one or two.
+export async function pickChannel(world: string, zone: ZoneId, account: string): Promise<{ roomId: string; channel: number }> {
+  for (let channel = 1; channel <= MAX_CHANNELS; channel++) {
+    const roomId = channelRoomId(world, zone, channel);
+    const members = await $global.getRoomUserAccounts(roomId);
+    if (members.includes(account) || members.length < CHANNEL_CAPACITY) return { roomId, channel };
+  }
+  throw new RuleViolation("zone_full");
 }
 
 // What the others in a zone see of a character: name, class, costume and level.
@@ -284,17 +280,16 @@ export function zoneLook(c: Character): ZoneLook {
   return { name: c.name, costume: c.costume, playerClass: c.playerClass, level: levelOf(c.xp).level };
 }
 
-// Stores a reported pose, held to the zone: inside the map, and no higher than what is underfoot
-// plus a jump. Returns where it put you and when your spot was last saved.
-export async function writeZonePose(
-  roomId: string, account: string, zone: ZoneId, pose: Pose, now: number,
-): Promise<{ x: number; z: number; savedAt: number }> {
+// Stores the caller's reported pose in their room, held to the zone: inside the map, and no higher
+// than what is underfoot plus a jump. Returns where it put them.
+export async function writeZonePose(zone: ZoneId, pose: Pose, now: number): Promise<{ x: number; z: number }> {
   const layout = zoneLayout(zone);
   const x = Math.min(Math.max(pose.x, 0), layout.cols * layout.tileSize);
   const z = Math.min(Math.max(pose.z, 0), layout.rows * layout.tileSize);
   const y = Math.min(readJumpY(pose.y), maxFeetY(layout.platforms, x, z));
-  const state = await $global.updateRoomUserState(roomId, account, {
-    pose: { x, z, yaw: pose.yaw, y, block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill), at: now },
-  });
-  return { x, z, savedAt: typeof state.savedAt === "number" ? state.savedAt : 0 };
+  await $room.updateMyState(
+    { pose: { x, z, yaw: pose.yaw, y, block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill), at: now } },
+    { returnState: false },
+  );
+  return { x, z };
 }

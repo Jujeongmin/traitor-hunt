@@ -4,10 +4,14 @@ import { LocalWorld, type WorldEvent } from "../../src/net/local/localWorld";
 
 const PLAYERS = ["test-a", "test-b", "test-c", "test-d"];
 
-// Makes a character for the account, then walks it into the world.
+// Makes a character for the account, then walks it into the world as a Verse8 2.0 client does:
+// the server picks the room, the client joins it and arrives from inside.
 async function enter(world: LocalWorld, account: string): Promise<{ roomId: string }> {
   await world.call(account, null, "createCharacter", [`p${account.replace(/[^a-z0-9]/g, "")}`, "warrior", "0000"]);
-  return (await world.call(account, null, "enterWorld")) as { roomId: string };
+  const entry = (await world.call(account, null, "enterWorld")) as { roomId: string };
+  await world.join(account, entry.roomId);
+  await world.call(account, entry.roomId, "arrive");
+  return entry;
 }
 
 async function enterAll(world: LocalWorld): Promise<string> {
@@ -85,6 +89,7 @@ describe("LocalWorld", () => {
     const world = new LocalWorld(new Server());
     const first = await enter(world, "test-x");
     await world.call("test-x", first.roomId, "leaveWorld");
+    await world.leave("test-x", first.roomId);
     expect(world.roomState(first.roomId).$users).toEqual([]);
   });
 });

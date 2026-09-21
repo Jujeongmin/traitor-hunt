@@ -16,12 +16,7 @@ export class LocalTransport implements MatchTransport {
     if (options.throttle && !this.throttle.allow(options.throttleKey ?? name, options.throttle, this.now())) {
       return Promise.resolve(undefined as T);
     }
-    const pending = this.world.call(this.account, this.roomId, name, args).then((result) => {
-      // The calls that move you between rooms, as the real platform tracks it for you.
-      if (name === "enterWorld" || name === "travel") this.roomId = (result as { roomId: string }).roomId;
-      if (name === "leaveWorld") this.roomId = null;
-      return result as T;
-    });
+    const pending = this.world.call(this.account, this.roomId, name, args).then((result) => result as T);
     if (options.needResponse === false) {
       pending.catch(() => undefined);
       return Promise.resolve(undefined as T);
@@ -47,6 +42,18 @@ export class LocalTransport implements MatchTransport {
         cb(e.message);
       }
     });
+  }
+
+  async joinRoom(roomId: string): Promise<void> {
+    if (this.roomId && this.roomId !== roomId) await this.world.leave(this.account, this.roomId);
+    this.roomId = roomId;
+    await this.world.join(this.account, roomId);
+  }
+
+  leaveRoom(): void {
+    const roomId = this.roomId;
+    this.roomId = null;
+    if (roomId) void this.world.leave(this.account, roomId);
   }
 
   subscribeMyState(cb: (state: Record<string, unknown>) => void): () => void {

@@ -17,4 +17,8 @@ export interface MatchTransport {
   onRoomMessage(roomId: string, type: string, cb: (message: unknown) => void): () => void;
   // Your own account's server state (nickname, friend lists), pushed whenever it changes.
   subscribeMyState(cb: (state: Record<string, unknown>) => void): () => void;
+  // Verse8 2.0: the server picks a room and the client joins it; calls made while in a room run
+  // with that room as $room. Joining another room leaves the one you were in.
+  joinRoom(roomId: string): Promise<void>;
+  leaveRoom(): void;
 }
