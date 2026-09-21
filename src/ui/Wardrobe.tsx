@@ -60,7 +60,7 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online }: WardrobeP
         <span className="wardrobe-hint">드래그해서 돌려 보기</span>
       </div>
 
-      <aside className="wardrobe-panel dark-panel">
+      <aside className="wardrobe-panel">
         <header className="wardrobe-head">
           <h2>캐릭터 꾸미기</h2>
           <button type="button" className="text-button" onClick={onClose}>완료</button>

@@ -429,9 +429,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
   font-size: 12px; color: var(--ink-dim); text-shadow: var(--shadow); pointer-events: none;
 }
+/* A solid panel, not the ragged brush band: it sits over bright grass and sky, and every line must read. */
 .wardrobe-panel {
-  width: 46%; max-width: 420px; margin: 14px 14px 14px 0; padding: 18px 20px;
-  display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+  width: 46%; max-width: 420px; margin: 14px 14px 14px 0; padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
+  background: rgba(14, 11, 9, 0.9); border: 1px solid rgba(255, 179, 90, 0.25); border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45); backdrop-filter: blur(4px);
 }
 .wardrobe-head { display: flex; align-items: center; justify-content: space-between; }
 .wardrobe-head h2 { margin: 0; font: 700 18px var(--font-head); }
