@@ -16,7 +16,7 @@ import {
   CHANNEL_CAPACITY, MAX_CHANNELS, channelRoomId, zoneLayout, type ZoneId, type ZoneLook,
 } from "../../src/game/world/zones";
 import { solidAt } from "../../src/game/rules/levelLayout";
-import { readJumpY } from "../../src/game/rules/movement";
+import { WALK_SPEED, readJumpY } from "../../src/game/rules/movement";
 import { maxFeetY } from "../../src/game/rules/platforms";
 
 // One row per purchase the platform reported, so a replayed receipt is noticed.
@@ -280,12 +280,27 @@ export function zoneLook(c: Character): ZoneLook {
   return { name: c.name, costume: c.costume, playerClass: c.playerClass, level: levelOf(c.xp).level };
 }
 
-// Stores the caller's reported pose in their room, held to the zone: inside the map, and no higher
-// than what is underfoot plus a jump. Returns where it put them.
-export async function writeZonePose(zone: ZoneId, pose: Pose, now: number): Promise<{ x: number; z: number }> {
+// How far a reported pose may be from the last one: walking speed with room for lag, plus a little.
+const STEP_ALLOWANCE = 1.5;
+const STEP_SLACK = 1;
+
+// Stores the caller's reported pose in their room, held to the zone: inside the map, no farther from
+// the last pose than walking allows, and no higher than what is underfoot plus a jump. Returns where
+// it put them.
+export async function writeZonePose(
+  zone: ZoneId, pose: Pose, now: number, last: { x: number; z: number; at: number } | null,
+): Promise<{ x: number; z: number }> {
   const layout = zoneLayout(zone);
-  const x = Math.min(Math.max(pose.x, 0), layout.cols * layout.tileSize);
-  const z = Math.min(Math.max(pose.z, 0), layout.rows * layout.tileSize);
+  let x = Math.min(Math.max(pose.x, 0), layout.cols * layout.tileSize);
+  let z = Math.min(Math.max(pose.z, 0), layout.rows * layout.tileSize);
+  if (last) {
+    const most = (WALK_SPEED * STEP_ALLOWANCE * Math.max(0, now - last.at)) / 1000 + STEP_SLACK;
+    const d = Math.hypot(x - last.x, z - last.z);
+    if (d > most) {
+      x = last.x + ((x - last.x) * most) / d;
+      z = last.z + ((z - last.z) * most) / d;
+    }
+  }
   const y = Math.min(readJumpY(pose.y), maxFeetY(layout.platforms, x, z));
   await $room.updateMyState(
     { pose: { x, z, yaw: pose.yaw, y, block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill), at: now } },

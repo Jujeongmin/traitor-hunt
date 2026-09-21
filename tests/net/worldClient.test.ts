@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Server } from "../../server/src/server";
 import { portalsOf } from "../../src/game/world/zones";
 import { LocalWorld } from "../../src/net/local/localWorld";
@@ -17,7 +17,18 @@ async function clients(...accounts: string[]): Promise<{ world: LocalWorld; list
   return { world, list };
 }
 
+
+// The server holds reported poses to walking pace; a minute on, any spot is in reach.
+function aMinuteLater(): void {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.now() + 60_000);
+}
+
 describe("WorldClient", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("enters the village and sees the others who are there, with their names", async () => {
     const { world, list: [a, b] } = await clients("test-a", "test-b");
     await a.enter();
@@ -33,6 +44,7 @@ describe("WorldClient", () => {
     const { world, list: [a, b] } = await clients("test-a", "test-b");
     await a.enter();
     await b.enter();
+    aMinuteLater();
     b.reportPose({ x: 9, z: 10, yaw: 1, swing: 2 });
     await world.idle();
     expect(a.state.others[0].pose).toMatchObject({ x: 9, z: 10, yaw: 1, swing: 2 });
@@ -47,6 +59,7 @@ describe("WorldClient", () => {
     expect(a.state.others).toEqual([]);
 
     const portal = portalsOf("village")[0];
+    aMinuteLater();
     a.reportPose({ x: portal.x, z: portal.z, yaw: 0 });
     await world.idle();
     expect(await a.travel("forest1")).toBeNull();

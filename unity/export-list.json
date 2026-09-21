@@ -64,6 +64,36 @@
       "name": "pt_mushroom",
       "kind": "prefab",
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Mushrooms/PT_Caesars_Mushroom_01.prefab"
+    },
+    {
+      "name": "mon_rat",
+      "kind": "character",
+      "asset": "Assets/Resources/QuaterniusAnimals/Rat.fbx",
+      "embeddedClips": true
+    },
+    {
+      "name": "mon_frog",
+      "kind": "character",
+      "asset": "Assets/Resources/QuaterniusAnimals/Frog.fbx",
+      "embeddedClips": true
+    },
+    {
+      "name": "mon_snake",
+      "kind": "character",
+      "asset": "Assets/Resources/QuaterniusAnimals/Snake.fbx",
+      "embeddedClips": true
+    },
+    {
+      "name": "mon_spider",
+      "kind": "character",
+      "asset": "Assets/Resources/QuaterniusAnimals/Spider.fbx",
+      "embeddedClips": true
+    },
+    {
+      "name": "mon_wasp",
+      "kind": "character",
+      "asset": "Assets/Resources/QuaterniusAnimals/Wasp.fbx",
+      "embeddedClips": true
     }
   ]
 }

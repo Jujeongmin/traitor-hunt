@@ -7,5 +7,7 @@ import type { MatchTransport } from "./transport";
 // whole flow (server pick, character, world, portals) can be tried without Verse8.
 export function devLocalTransport(): MatchTransport | null {
   if (!import.meta.env.DEV || !new URLSearchParams(window.location.search).has("local")) return null;
-  return new LocalTransport(new LocalWorld(new Server()), "test-local");
+  const world = new LocalWorld(new Server());
+  world.startTicking();
+  return new LocalTransport(world, "test-local");
 }

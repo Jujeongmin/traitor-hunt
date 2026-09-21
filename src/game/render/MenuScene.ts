@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ModelLibrary } from "../assets/ModelLibrary";
 import { CLASSES, type PlayerClass } from "../combat/classes";
-import type { MonsterState } from "../world/types";
+import type { MonsterState } from "../world/monsters";
 import { zoneLayout } from "../world/zones";
 import { COSTUMES, type Costume } from "./costumes";
 import { HEROES, HERO_MODELS } from "./heroes";
@@ -68,8 +68,8 @@ export class MenuScene {
   private picked: PlayerClass | null = null;
   private slime: MonsterActor | null = null;
   private readonly slimeState: MonsterState = {
-    kind: "zombie", x: SLIME_PATH.fromX, z: SLIME_PATH.z, yaw: -Math.PI / 2, hp: 100,
-    alive: true, stunnedUntil: 0, attackReadyAt: 0,
+    type: "green_blob", x: SLIME_PATH.fromX, z: SLIME_PATH.z, yaw: -Math.PI / 2, hp: 100,
+    alive: true, stunnedUntil: 0, attackReadyAt: 0, respawnAt: 0, homeX: SLIME_PATH.fromX, homeZ: SLIME_PATH.z,
   };
   private slimeWait = 2;
   private entering: { t: number; done: () => void } | null = null;
@@ -269,7 +269,8 @@ export class MenuScene {
     const state = this.slimeState;
     if (this.slimeWait > 0) {
       this.slimeWait -= dt;
-      slime.sync(state, dt, true);
+      slime.object.visible = false;
+      slime.sync(state, dt, null);
       return;
     }
     state.x += SLIME_PATH.speed * dt;
@@ -277,7 +278,8 @@ export class MenuScene {
       state.x = SLIME_PATH.fromX;
       this.slimeWait = SLIME_PATH.restSeconds;
     }
-    slime.sync(state, dt, false);
+    slime.object.visible = true;
+    slime.sync(state, dt, null);
   }
 
   private resize(): void {

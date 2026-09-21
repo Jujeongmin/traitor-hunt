@@ -162,6 +162,33 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .hud-skill.cooling { border-color: rgba(255, 255, 255, 0.15); }
 .hud-skill.cooling b { color: var(--ink-dim); }
 
+/* Your level, health and XP, bottom left; the monster you fight, top centre. */
+.hud-vitals {
+  position: absolute; left: 16px; bottom: 22px; width: 230px; padding: 8px 12px 10px;
+  display: flex; flex-direction: column; gap: 5px;
+  background: rgba(14, 11, 9, 0.8); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px;
+  pointer-events: none;
+}
+.hud-vitals-row { display: flex; align-items: baseline; gap: 10px; font: 600 13px var(--font-head); }
+.hud-vitals-row b { font-size: 15px; color: var(--ember); }
+.hud-vitals-row span { font-variant-numeric: tabular-nums; color: var(--ink-dim); }
+.hud-gain { margin-left: auto; font-style: normal; color: #ffe08a; }
+.hud-bar { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.hud-bar i { position: absolute; left: 0; top: 0; bottom: 0; transition: width 0.15s; }
+.hud-bar.hp i { background: linear-gradient(#ff7a5c, #d8392b); }
+.hud-bar.xp { height: 4px; }
+.hud-bar.xp i { background: #ffd36a; }
+.hud-target {
+  position: absolute; left: 50%; top: 48px; transform: translateX(-50%); width: 220px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font: 600 14px var(--font-head); pointer-events: none;
+}
+.hud-target .hud-bar { width: 100%; }
+.hud-auto { position: absolute; right: 16px; bottom: 22px; }
+.hud-auto.on { color: #1a120b; background: var(--ember); }
+.pain.fallen { align-items: center; padding-top: 0; pointer-events: auto; }
+.pain.fallen .world-panel { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
 /* Development model viewer (?gallery) */
 .gallery-list { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; background: rgba(12, 10, 9, 0.85); padding: 6px; font: 12px system-ui, sans-serif; }
 .gallery-list button { font: inherit; text-align: left; padding: 2px 6px; background: transparent; color: #e8e2d6; border: 0; cursor: pointer; }

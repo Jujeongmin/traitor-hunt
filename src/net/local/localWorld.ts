@@ -97,15 +97,33 @@ export class LocalWorld {
     else this.flush();
   }
 
-  tick(roomId: string): Promise<void> {
+  // One room tick, run as the platform inside the room, deltaMs after the last.
+  tick(roomId: string, deltaMs: number): Promise<void> {
     return this.enqueue(async () => {
       const hook = (this.server as Record<string, unknown>).$roomTick;
-      if (typeof hook === "function") await this.withContext("", null, () => (hook as AnyFunction).call(this.server, 0, roomId));
+      if (typeof hook === "function") await this.withContext("$system", roomId, () => (hook as AnyFunction).call(this.server, deltaMs, roomId));
     }) as Promise<void>;
   }
 
-  async tickAll(): Promise<void> {
-    for (const [roomId, room] of this.rooms) if (room.members.length > 0) await this.tick(roomId);
+  async tickAll(deltaMs: number): Promise<void> {
+    for (const [roomId, room] of this.rooms) if (room.members.length > 0) await this.tick(roomId, deltaMs);
+  }
+
+  // Ticks every room with someone in it, as Verse8 does. Returns a stop function.
+  startTicking(everyMs = 200): () => void {
+    let last = Date.now();
+    let busy = false;
+    const timer = setInterval(() => {
+      if (busy) return;
+      busy = true;
+      const now = Date.now();
+      const delta = now - last;
+      last = now;
+      void this.tickAll(delta).finally(() => {
+        busy = false;
+      });
+    }, everyMs);
+    return () => clearInterval(timer);
   }
 
   async idle(): Promise<void> {
@@ -252,6 +270,7 @@ export class LocalWorld {
       updateUserState: async (user: string, patch: Json) => updateUser(user, patch),
       getMyState: async () => copy(here().room.users.get(account) ?? {}),
       updateMyState: async (patch: Json) => updateUser(account, patch),
+      getUserStates: async (users: string[]) => users.map((user) => ({ account: user, ...copy(here().room.users.get(user) ?? {}) })),
       getAllUserStates: async () => [...here().room.users.entries()].map(([user, state]) => ({ account: user, ...copy(state) })),
       broadcastToRoom: (type: string, message: unknown) => push(null, type, message),
       sendMessageToUser: (type: string, to: string, message: unknown) => push(to, type, message),

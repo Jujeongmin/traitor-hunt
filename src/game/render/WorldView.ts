@@ -1,15 +1,18 @@
 import * as THREE from "three";
-import type { OtherPlayer, WorldClient } from "../../net/worldClient";
+import type { HitResult, OtherPlayer, WorldClient } from "../../net/worldClient";
+import { levelOf } from "../account/level";
 import { ModelLibrary } from "../assets/ModelLibrary";
 import { WEAPONS, type PlayerClass } from "../combat/classes";
-import { SKILLS } from "../combat/skills";
+import { facing, inStrikeReach } from "../combat/melee";
+import { SKILLS, skillTargets } from "../combat/skills";
 import { PLAYER_BODY, crowdBlocks, type Body } from "../rules/crowd";
 import { solidWith, type LevelLayout } from "../rules/levelLayout";
 import {
-  GROUNDED, PLAYER_RADIUS, WALK_SPEED, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
+  GROUNDED, PLAYER_RADIUS, WALK_SPEED, applyLook, stepAround, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
 import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
+import { MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
 import type { Pose } from "../world/types";
 import { PORTAL_RADIUS, ZONES, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
 import { playShot, playSkill, playSwing } from "../audio/sfx";
@@ -19,6 +22,8 @@ import { FpsInput } from "./FpsInput";
 import { HEROES, HERO_MODELS } from "./heroes";
 import { createLabel, setLabel } from "./labels";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
+import { MonsterActor } from "./MonsterActor";
+import { MONSTER_SKINS } from "./monsterLooks";
 import { PlayerActor } from "./PlayerActor";
 import { settings } from "../../ui/settings";
 
@@ -32,6 +37,27 @@ const GUARD_WALK = 0.55;
 const HUD_INTERVAL_MS = 100;
 // A portal only takes you once you have stepped this far clear of it (you arrive right beside one).
 const PORTAL_REARM = PORTAL_RADIUS + 0.8;
+// Auto-battle looks for monsters this close, and lets one go once it is this far.
+const AUTO_SEEK = 14;
+const AUTO_DROP = 20;
+// Auto-battle walks in until this share of your reach.
+const AUTO_CLOSE = 0.8;
+// How quickly the camera turns to follow an auto-battle.
+const AUTO_CAMERA_RATE = 2.5;
+// A heal is used on its own once health falls below this share.
+const AUTO_HEAL_BELOW = 0.75;
+// A click with no monster in your arc still turns you to one this far round from where you look.
+const AIM_ASSIST = Math.PI * 0.6;
+// How long a "+XP" note stays up.
+const GAIN_MS = 1500;
+
+// The monster models a zone needs.
+function zoneMonsterModels(zone: ZoneId): string[] {
+  const types: MonsterType[] = [...ZONE_MONSTERS[zone]];
+  const boss = ZONE_BOSS[zone];
+  if (boss) types.push(boss);
+  return [...new Set(types.map((t) => MONSTER_SKINS[t].model))];
+}
 
 export interface WorldHud {
   zone: string;
@@ -41,6 +67,17 @@ export interface WorldHud {
   portal: { to: string; locked: boolean } | null;
   skill: { name: string; readyInMs: number; cooldownMs: number };
   blocking: boolean;
+  hp: number;
+  maxHp: number;
+  dead: boolean;
+  level: number;
+  xpInto: number;
+  xpNeed: number;
+  // XP just earned, shown for a moment.
+  gain: number | null;
+  auto: boolean;
+  // The monster you are fighting.
+  target: { name: string; hp: number; maxHp: number } | null;
 }
 
 export interface WorldViewOptions {
@@ -56,8 +93,9 @@ export interface WorldViewOptions {
 }
 
 // One zone of the open world on screen: the forest and its portals, you (over the shoulder) and the
-// others in your channel. Moving, jumping, guarding, attacking and your skill are drawn here and sent
-// through the WorldClient; what an attack hits comes with the monsters (phase 2).
+// others and the monsters in your channel. Moving, jumping, guarding, attacking and your skill are
+// drawn here and sent through the WorldClient; the server decides what they hit. Auto-battle (F)
+// walks you to the nearest monster, fights it and uses your skill when it helps.
 export class WorldView {
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly scene = new THREE.Scene();
@@ -66,6 +104,7 @@ export class WorldView {
   private readonly input: FpsInput;
   private readonly effects = new Effects(this.scene);
   private readonly others = new Map<string, { actor: PlayerActor; key: string }>();
+  private readonly monsters = new Map<string, MonsterActor>();
   private readonly hudListeners = new Set<(hud: WorldHud) => void>();
   private readonly layout: LevelLayout;
   private readonly portals: Portal[];
@@ -87,6 +126,9 @@ export class WorldView {
   private portalArmed = false;
   private travelling = false;
   private lastHudAt = Number.NEGATIVE_INFINITY;
+  private auto = false;
+  private target: string | null = null;
+  private gain: { xp: number; at: number } | null = null;
   private frame = 0;
   private disposed = false;
 
@@ -117,7 +159,7 @@ export class WorldView {
 
   async start(): Promise<void> {
     const library = await ModelLibrary.load();
-    await library.preload(WORLD_MODELS, this.options.onProgress);
+    await library.preload([...WORLD_MODELS, ...zoneMonsterModels(this.options.entry.zone)], this.options.onProgress);
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
@@ -138,6 +180,12 @@ export class WorldView {
         if (p.yaw !== undefined) this.yaw = p.yaw;
       },
     };
+  }
+
+  // Auto-battle on or off (the HUD button; F does the same).
+  toggleAuto(): void {
+    this.auto = !this.auto;
+    if (!this.auto) this.target = null;
   }
 
   onHud(cb: (hud: WorldHud) => void): () => void {
@@ -170,21 +218,44 @@ export class WorldView {
     this.yaw = view.yaw;
     this.pitch = view.pitch;
 
-    const here = state.phase === "in" && !this.travelling;
+    const dead = state.me?.dead === true;
+    const here = state.phase === "in" && !this.travelling && !dead;
+    if (this.input.consumePress("KeyF")) this.toggleAuto();
+    let facingYaw = this.yaw;
     if (here) {
       this.bodies = state.others.map((o) => ({ x: o.pose.x, z: o.pose.z, r: PLAYER_BODY * 2 }));
+      for (const m of Object.values(state.monsters)) {
+        if (m.alive) this.bodies.push({ x: m.x, z: m.z, r: PLAYER_BODY + MONSTERS[m.type].body });
+      }
       const speed = WALK_SPEED * (this.input.blocking ? GUARD_WALK : 1);
-      this.pose = stepPlayer({ ...this.pose, yaw: this.yaw }, this.input.moveInput(), dt, this.isSolid, speed);
+      const move = this.input.moveInput();
+      const chase = this.auto && move.forward === 0 && move.strafe === 0 ? this.autoChase(state.monsters) : null;
+      if (chase) {
+        facingYaw = chase.yaw;
+        // The camera swings round behind you to the fight, unless you are looking about yourself.
+        if (look.dx === 0) {
+          let turn = (chase.yaw - this.yaw) % (2 * Math.PI);
+          if (turn > Math.PI) turn -= 2 * Math.PI;
+          if (turn < -Math.PI) turn += 2 * Math.PI;
+          this.yaw += turn * (1 - Math.exp(-dt * AUTO_CAMERA_RATE));
+        }
+        if (chase.walk) this.pose = stepAround({ ...this.pose, yaw: chase.yaw }, chase.yaw, dt, this.isSolid, speed);
+      } else {
+        this.pose = stepPlayer({ ...this.pose, yaw: this.yaw }, move, dt, this.isSolid, speed);
+      }
     }
     const jump = this.input.consumePress("Space");
     const ground = groundAt(this.layout.platforms, this.pose.x, this.pose.z, PLAYER_RADIUS);
     this.air = here ? stepJump(this.air, jump, dt, ground) : GROUNDED;
-    this.handleActions(here);
-    this.pose = { ...this.pose, y: this.air.y, block: here && this.input.blocking, swing: this.swings, skill: this.skills };
+    facingYaw = this.handleActions(here, state.monsters, facingYaw);
+    this.pose = {
+      ...this.pose, yaw: facingYaw, y: this.air.y, block: here && this.input.blocking, swing: this.swings, skill: this.skills,
+    };
     if (here) this.client.reportPose(this.pose);
     this.checkPortals(here);
 
-    this.syncActors(state.others, dt);
+    this.syncActors(state.others, dt, dead);
+    this.syncMonsters(state.monsters, dt);
     this.effects.update(dt);
     const cam = chaseCamera(this.pose, this.yaw, this.pitch, this.walls, SKY_CEILING);
     this.camera.position.set(cam.x, cam.y, cam.z);
@@ -193,25 +264,99 @@ export class WorldView {
     this.renderer.render(this.scene, this.camera);
   };
 
-  // A click attacks (a bow or a staff shoots), key 1 uses the class's skill. Both only play for now:
-  // there is nothing in the world to hit until the monsters come (phase 2).
-  private handleActions(here: boolean): void {
+  // Where auto-battle goes: toward the monster it is fighting (or the nearest one it can find), and
+  // whether it still has to walk to reach it. Null when there is nothing to fight nearby.
+  private autoChase(monsters: Record<string, MonsterState>): { yaw: number; walk: boolean } | null {
+    const current = this.target ? monsters[this.target] : undefined;
+    if (!current?.alive || this.distanceTo(current) > AUTO_DROP) {
+      this.target = null;
+      let best = AUTO_SEEK;
+      for (const [id, m] of Object.entries(monsters)) {
+        const d = this.distanceTo(m);
+        if (m.alive && d < best) {
+          best = d;
+          this.target = id;
+        }
+      }
+    }
+    const m = this.target ? monsters[this.target] : undefined;
+    if (!m) return null;
+    const reach = WEAPONS[this.options.playerClass].reach;
+    return { yaw: this.yawTo(m), walk: this.distanceTo(m) > reach * AUTO_CLOSE };
+  }
+
+  private distanceTo(p: { x: number; z: number }): number {
+    return Math.hypot(p.x - this.pose.x, p.z - this.pose.z);
+  }
+
+  // yaw 0 faces -z.
+  private yawTo(p: { x: number; z: number }): number {
+    return Math.atan2(-(p.x - this.pose.x), -(p.z - this.pose.z));
+  }
+
+  // The monster a blow from here lands on: the nearest one in your arc; failing that, the nearest in
+  // reach not far round from where you look (you turn to it).
+  private aim(monsters: Record<string, MonsterState>, yaw: number): string | null {
+    const weapon = WEAPONS[this.options.playerClass];
+    let best: { id: string; score: number } | null = null;
+    for (const [id, m] of Object.entries(monsters)) {
+      if (!m.alive) continue;
+      const d = this.distanceTo(m);
+      if (d > weapon.reach || !facing({ ...this.pose, yaw }, m, AIM_ASSIST)) continue;
+      const score = inStrikeReach({ ...this.pose, yaw }, m, weapon) ? d : d + 100;
+      if (!best || score < best.score) best = { id, score };
+    }
+    return best?.id ?? null;
+  }
+
+  // A click attacks (a bow or a staff shoots), key 1 uses the class's skill; in auto-battle both go
+  // by themselves. Returns where you face (toward what you hit).
+  private handleActions(here: boolean, monsters: Record<string, MonsterState>, yaw: number): number {
     const pressSkill = this.input.consumePress("Digit1");
-    if (!here || this.input.blocking) return;
+    if (!here || this.input.blocking) return yaw;
     const now = performance.now();
     const c = this.options.playerClass;
-    if (this.input.firing && now - this.lastAttackAt >= WEAPONS[c].intervalMs) {
+    const weapon = WEAPONS[c];
+    const chasing = this.auto && this.target && monsters[this.target]?.alive ? this.target : null;
+    const inReach = chasing && this.distanceTo(monsters[chasing]) <= weapon.reach ? chasing : null;
+    if ((this.input.firing || inReach) && now - this.lastAttackAt >= weapon.intervalMs) {
+      const target = inReach ?? this.aim(monsters, yaw);
+      if (target) yaw = this.yawTo(monsters[target]);
       this.lastAttackAt = now;
       this.swings += 1;
       const shot = HEROES[c].shot;
       if (shot) playShot(shot);
       else playSwing();
+      if (target) void this.client.strike(target, yaw).then((r) => this.gained(r));
     }
-    if (pressSkill && now - this.lastSkillAt >= SKILLS[c].cooldownMs) {
+    const skill = SKILLS[c];
+    if (now - this.lastSkillAt >= skill.cooldownMs && (pressSkill || (this.auto && this.skillHelps(monsters, yaw)))) {
+      const target = this.aim(monsters, yaw);
+      if (target && skill.heal === 0) yaw = this.yawTo(monsters[target]);
       this.lastSkillAt = now;
       this.skills += 1;
       playSkill();
+      if (skill.arc >= Math.PI * 2 || skill.heal > 0) {
+        this.effects.ring(new THREE.Vector3(this.pose.x, 0, this.pose.z), skill.reach, skill.heal > 0 ? 0x9dffb0 : 0xffc870);
+      }
+      void this.client.useSkill(yaw).then((r) => this.gained(r));
     }
+    return yaw;
+  }
+
+  // Whether auto-battle should use the skill now: a heal when hurt, anything else when it would hit.
+  private skillHelps(monsters: Record<string, MonsterState>, yaw: number): boolean {
+    const skill = SKILLS[this.options.playerClass];
+    const me = this.client.state.me;
+    if (skill.heal > 0) return !!me && me.hp < me.maxHp * AUTO_HEAL_BELOW;
+    return skillTargets({ ...this.pose, yaw }, monsters, skill).length > 0;
+  }
+
+  private gained(result: HitResult | null): void {
+    if (!result || result.xp <= 0) return;
+    const now = performance.now();
+    const recent = this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : 0;
+    this.gain = { xp: recent + result.xp, at: now };
   }
 
   private checkPortals(here: boolean): void {
@@ -247,10 +392,10 @@ export class WorldView {
     return actor;
   }
 
-  private syncActors(others: OtherPlayer[], dt: number): void {
+  private syncActors(others: OtherPlayer[], dt: number, dead: boolean): void {
     if (!this.library) return;
     // The camera sits behind you, so your own body is drawn from your local pose.
-    this.me?.sync(this.pose, "active", dt);
+    this.me?.sync(this.pose, dead ? "dead" : "active", dt);
     const seen = new Set<string>();
     for (const other of others) {
       seen.add(other.account);
@@ -273,6 +418,26 @@ export class WorldView {
       if (seen.has(account)) continue;
       this.scene.remove(entry.actor.object);
       this.others.delete(account);
+    }
+  }
+
+  private syncMonsters(monsters: Record<string, MonsterState>, dt: number): void {
+    const library = this.library;
+    if (!library) return;
+    for (const [id, state] of Object.entries(monsters)) {
+      let actor = this.monsters.get(id);
+      if (!actor) {
+        const skin = MONSTER_SKINS[state.type];
+        actor = new MonsterActor(id, library.instance(skin.model), library.get(skin.model).animations, skin.look, MONSTERS[state.type].hp);
+        this.monsters.set(id, actor);
+        this.scene.add(actor.object);
+      }
+      actor.sync(state, dt, this.camera);
+    }
+    for (const [id, actor] of this.monsters) {
+      if (monsters[id]) continue;
+      this.scene.remove(actor.object);
+      this.monsters.delete(id);
     }
   }
 
@@ -305,6 +470,9 @@ export class WorldView {
     const entry = this.client.state.entry ?? this.options.entry;
     const near = this.nearestPortal();
     const skill = SKILLS[this.options.playerClass];
+    const me = this.client.state.me;
+    const level = levelOf(me?.xp ?? 0);
+    const fighting = this.target ? this.client.state.monsters[this.target] : undefined;
     const hud: WorldHud = {
       zone: ZONES[entry.zone].name,
       channel: entry.channel,
@@ -314,6 +482,15 @@ export class WorldView {
         : null,
       skill: { name: skill.name, cooldownMs: skill.cooldownMs, readyInMs: Math.max(0, this.lastSkillAt + skill.cooldownMs - now) },
       blocking: !!this.pose.block,
+      hp: me?.hp ?? 0,
+      maxHp: me?.maxHp ?? 1,
+      dead: me?.dead === true,
+      level: level.level,
+      xpInto: level.into,
+      xpNeed: level.need,
+      gain: this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : null,
+      auto: this.auto,
+      target: fighting?.alive ? { name: MONSTERS[fighting.type].name, hp: fighting.hp, maxHp: MONSTERS[fighting.type].hp } : null,
     };
     for (const listener of this.hudListeners) listener(hud);
   }

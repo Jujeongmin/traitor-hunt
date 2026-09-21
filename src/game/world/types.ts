@@ -17,20 +17,6 @@ export function isPose(value: unknown): value is Pose {
   return [p.x, p.z, p.yaw].every((n) => typeof n === "number" && Number.isFinite(n));
 }
 
-export type MonsterKind = "zombie" | "boss";
-
-export interface MonsterState {
-  kind: MonsterKind;
-  x: number;
-  z: number;
-  yaw: number;
-  hp: number;
-  alive: boolean;
-  stunnedUntil: number;
-  attackReadyAt: number;
-}
-
-export const PLAYER_HP = 100;
 // Positions arrive throttled from clients, so range checks allow for lag.
 export const RANGE_SLACK = 1.5;
 
@@ -54,4 +40,4 @@ export class RuleViolation extends Error {
 }
 
 // Bumped whenever client and server stop understanding each other.
-export const PROTOCOL_VERSION = 9;
+export const PROTOCOL_VERSION = 10;

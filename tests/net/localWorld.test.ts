@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Server } from "../../server/src/server";
 import { LocalWorld, type WorldEvent } from "../../src/net/local/localWorld";
 
@@ -29,7 +29,18 @@ async function codeOf(promise: Promise<unknown>): Promise<string> {
   }
 }
 
+
+// The server holds reported poses to walking pace; a minute on, any spot is in reach.
+function aMinuteLater(): void {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.now() + 60_000);
+}
+
 describe("LocalWorld", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("runs the real server: everyone lands in the same village channel", async () => {
     const world = new LocalWorld(new Server());
     const roomId = await enterAll(world);
@@ -42,6 +53,7 @@ describe("LocalWorld", () => {
     const roomId = await enterAll(world);
     const events: WorldEvent[] = [];
     world.subscribe((e) => events.push(e));
+    aMinuteLater();
     await world.call(PLAYERS[2], roomId, "reportPose", [{ x: 5, z: 6, yaw: 3 }]);
     const users = events.find((e) => e.kind === "roomUsers") as Extract<WorldEvent, { kind: "roomUsers" }>;
     const mine = users.users.find((u) => u.account === PLAYERS[2])!;

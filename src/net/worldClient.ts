@@ -1,5 +1,6 @@
 import { readJumpY } from "../game/rules/movement";
 import { PROTOCOL_VERSION, isPose, readSwing, type Pose } from "../game/world/types";
+import { readMonsterType, type MonsterState } from "../game/world/monsters";
 import type { ZoneEntry, ZoneId, ZoneLook } from "../game/world/zones";
 import { errorCode } from "./errors";
 import type { MatchTransport } from "./transport";
@@ -13,12 +14,26 @@ export interface OtherPlayer {
   look: ZoneLook;
 }
 
+// You in a fight, as the server keeps it.
+export interface Vitals {
+  hp: number;
+  maxHp: number;
+  dead: boolean;
+  xp: number;
+}
+
 export interface WorldState {
   phase: WorldPhase;
   entry: ZoneEntry | null;
   others: OtherPlayer[];
+  // The monsters of your channel, by id.
+  monsters: Record<string, MonsterState>;
+  me: Vitals | null;
   error: string | null;
 }
+
+// What an attack or skill did, as the server answers it.
+export interface HitResult { hit: string[]; killed: string[]; xp: number }
 
 // Moving, your pose goes out this often; standing still, this often, so the others keep hearing you.
 export const POSE_THROTTLE_MS = 100;
@@ -35,10 +50,33 @@ function readLook(raw: unknown): ZoneLook | null {
   return { name: l.name, costume: l.costume, playerClass: l.playerClass, level: typeof l.level === "number" ? l.level : 1 };
 }
 
+const num = (v: unknown, fallback = 0) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+
+function readMonsters(raw: unknown): Record<string, MonsterState> {
+  const out: Record<string, MonsterState> = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    const m = value as Record<string, unknown> | null;
+    const type = readMonsterType(m?.type);
+    if (!m || !type) continue;
+    out[id] = {
+      type, x: num(m.x), z: num(m.z), yaw: num(m.yaw), hp: num(m.hp), alive: m.alive === true,
+      stunnedUntil: num(m.stunnedUntil), attackReadyAt: num(m.attackReadyAt), respawnAt: num(m.respawnAt),
+      homeX: num(m.homeX), homeZ: num(m.homeZ),
+    };
+  }
+  return out;
+}
+
+function readVitals(user: Record<string, unknown>): Vitals | null {
+  if (typeof user.hp !== "number" || typeof user.maxHp !== "number") return null;
+  return { hp: user.hp, maxHp: user.maxHp, dead: user.dead === true, xp: num(user.xp) };
+}
+
 // Your place in the open world: which zone and channel you are in, who else is there and where,
 // and your own pose going out to them.
 export class WorldClient {
-  private current: WorldState = { phase: "idle", entry: null, others: [], error: null };
+  private current: WorldState = { phase: "idle", entry: null, others: [], monsters: {}, me: null, error: null };
   private readonly listeners = new Set<(s: WorldState) => void>();
   private unsubscribers: (() => void)[] = [];
   private members: string[] = [];
@@ -94,7 +132,7 @@ export class WorldClient {
 
   async leave(): Promise<void> {
     this.unlisten();
-    this.set({ phase: "idle", entry: null, others: [] });
+    this.set({ phase: "idle", entry: null, others: [], monsters: {}, me: null });
     // Keeps your spot from inside the room, then leaves it.
     await this.transport.call("leaveWorld").catch(() => undefined);
     this.transport.leaveRoom();
@@ -119,6 +157,30 @@ export class WorldClient {
     void this.transport.call("reportPose", [sent], { needResponse: false });
   }
 
+  // An attack on one monster; the server says whether it landed. Null when refused or not in the world.
+  // Facing yaw: turning is instant, so it goes with the attack rather than waiting for the next pose.
+  async strike(monsterId: string, yaw: number): Promise<HitResult | null> {
+    if (this.current.phase !== "in") return null;
+    return this.transport.call<HitResult>("strike", [monsterId, yaw]).catch(() => null);
+  }
+
+  async useSkill(yaw: number): Promise<HitResult | null> {
+    if (this.current.phase !== "in") return null;
+    return this.transport.call<HitResult>("useSkill", [yaw]).catch(() => null);
+  }
+
+  // Fallen: back to the village.
+  async respawn(): Promise<void> {
+    if (this.current.phase !== "in" || !this.current.me?.dead) return;
+    this.set({ phase: "travelling" });
+    try {
+      await this.moveTo(await this.transport.call<ZoneEntry>("respawn"));
+    } catch (error) {
+      this.set({ phase: "in" });
+      this.set({ error: errorCode(error) });
+    }
+  }
+
   dispose(): void {
     this.unlisten();
     this.listeners.clear();
@@ -136,11 +198,13 @@ export class WorldClient {
     this.members = [];
     this.users = [];
     this.lastPose = null;
-    this.set({ phase: "in", entry, others: [], error: null });
+    this.set({ phase: "in", entry, others: [], monsters: {}, me: null, error: null });
     this.unsubscribers = [
       this.transport.subscribeRoomState(entry.roomId, (state) => {
         const users = (state as { $users?: unknown }).$users;
         this.members = Array.isArray(users) ? users.filter((u): u is string => typeof u === "string") : [];
+        const monsters = (state as { monsters?: unknown }).monsters;
+        if (monsters !== undefined) this.set({ monsters: readMonsters(monsters) });
         this.refreshOthers();
       }),
       this.transport.subscribeRoomUsers(entry.roomId, (users) => {
@@ -153,8 +217,10 @@ export class WorldClient {
   // The others: whoever the room lists as present, with a pose and a look.
   private refreshOthers(): void {
     const others: OtherPlayer[] = [];
+    let me: Vitals | null = this.current.me;
     for (const user of this.users) {
       const account = user.account;
+      if (account === this.account) me = readVitals(user) ?? me;
       if (typeof account !== "string" || account === this.account || !this.members.includes(account)) continue;
       const look = readLook(user.look);
       if (!look || !isPose(user.pose)) continue;
@@ -164,7 +230,7 @@ export class WorldClient {
         pose: { x: p.x, z: p.z, yaw: p.yaw, y: readJumpY(p.y), block: p.block === true, swing: readSwing(p.swing), skill: readSwing(p.skill) },
       });
     }
-    this.set({ others });
+    this.set({ others, me });
   }
 
   private unlisten(): void {

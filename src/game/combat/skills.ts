@@ -1,6 +1,9 @@
 import type { PlayerClass } from "./classes";
 import { inStrikeReach } from "./melee";
-import type { MonsterState, Pose, Vec2 } from "../world/types";
+import type { Pose, Vec2 } from "../world/types";
+
+// What a skill needs to know of a monster.
+interface Target extends Vec2 { alive: boolean }
 
 // Each class has one skill on a cooldown, on key 1: what makes the six play differently.
 export interface Skill {
@@ -52,7 +55,7 @@ export const SKILLS: Record<PlayerClass, Skill> = {
 
 // The living monsters a skill used from pose lands on, nearest first. The server passes slack for lag.
 export function skillTargets(
-  pose: Pose, monsters: Record<string, MonsterState>, skill: Skill, slack = false,
+  pose: Pose, monsters: Record<string, Target>, skill: Skill, slack = false,
 ): string[] {
   if (skill.damage <= 0 && skill.stunMs <= 0) return [];
   const reachOf = {

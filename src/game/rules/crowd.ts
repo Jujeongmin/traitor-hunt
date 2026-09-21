@@ -1,13 +1,10 @@
-import type { MonsterKind } from "../world/types";
-
 // Bodies do not walk through each other: a step that would end inside another body is refused,
 // unless it moves away from that body (so two that already overlap can always part).
 
 export interface Body { x: number; z: number; r: number }
 
-// Footprint radii in metres.
+// A player's footprint radius in metres (monsters have theirs in world/monsters.ts).
 export const PLAYER_BODY = 0.35;
-export const MONSTER_BODY: Record<MonsterKind, number> = { zombie: 0.4, boss: 0.9 };
 
 // Whether stepping from `from` to (x, z) would push into one of the bodies. Each body's r is the
 // distance the two centres must keep (both radii added).

@@ -19,9 +19,10 @@ import {
 import {
   claimName, findNickname, friendEntry, grantPurchase, markSeen, ownsFullGame, partyMember, pickChannel,
   readAccountWorld, readFriendSide, readNickname, readPartyInvites, readPartyOf, readProfile, readRanking,
-  returnSpot, saveProfile, saveSpot, token, withFriendsLock, withNicknameLock, withPartyLock, withProfileLock, writeFriendSide,
-  writeParty, writePartyInvites, writeZonePose, zoneLook,
+  returnSpot, saveProfile, saveSpot, token, updateActive, withFriendsLock, withNicknameLock, withPartyLock, withProfileLock,
+  writeFriendSide, writeParty, writePartyInvites, writeRanking, writeZonePose, zoneLook,
 } from "./store";
+import { fightStats, hasMonsters, strike, tickRoom, useSkill, withRoomLock, type HitResult } from "./hunt";
 
 // How often a walking character's spot is saved to the account (the room keeps the live pose).
 const SAVE_SPOT_MS = 5_000;
@@ -79,6 +80,21 @@ async function enter(account: string, character: Character, zone: ZoneId, x: num
   return { roomId, zone, channel, x, z };
 }
 
+// Pays a hunter the XP of what they felled. A new level heals them to their new, larger health.
+async function reward(account: string, roomId: string, result: HitResult): Promise<void> {
+  if (result.xp <= 0) return;
+  const next = await updateActive(account, (c) => ({ ...c, xp: c.xp + result.xp }));
+  await writeRanking(account, next);
+  const levelled = levelOf(next.xp).level > levelOf(next.xp - result.xp).level;
+  await withRoomLock(roomId, async () => {
+    const stats = fightStats(next.xp);
+    await $room.updateMyState(
+      { look: zoneLook(next), xp: next.xp, ...(levelled ? { maxHp: stats.maxHp, hp: stats.maxHp } : {}) },
+      { returnState: false },
+    );
+  });
+}
+
 // The caller's channel room, from inside it.
 function currentChannel(): { roomId: string; zone: ZoneId } {
   const roomId = $sender.roomId;
@@ -88,6 +104,9 @@ function currentChannel(): { roomId: string; zone: ZoneId } {
 }
 
 export class Server {
+  // An empty-looking room (nobody calling in) still ticks once a second, so monsters keep moving.
+  static $roomTickIdleMs = 1_000;
+
   async getServerVersion(): Promise<{ protocol: number }> {
     return { protocol: PROTOCOL_VERSION };
   }
@@ -223,7 +242,9 @@ export class Server {
     if (!target || !here) throw new RuleViolation("no_zone");
     const portal = portalsOf(here.zone).find((p) => p.to === target);
     if (!portal) throw new RuleViolation("no_zone");
-    const pose = (await $room.getMyState()).pose;
+    const mine = await $room.getMyState();
+    if (mine.dead === true) throw new RuleViolation("unavailable");
+    const pose = mine.pose;
     if (!isPose(pose) || Math.hypot(pose.x - portal.x, pose.z - portal.z) > zoneLayout(here.zone).tileSize) {
       throw new RuleViolation("not_near");
     }
@@ -240,10 +261,13 @@ export class Server {
     // The spot enter kept; a room of another zone (a stale join) starts at that zone's spawn.
     const spot = character.spot?.zone === zone ? character.spot : { zone, ...zoneLayout(zone).playerSpawn };
     const now = Date.now();
+    // Every arrival is whole: full health, nothing on cooldown.
+    const { maxHp } = fightStats(character.xp);
     await $room.updateMyState({
       pose: { x: spot.x, z: spot.z, yaw: 0, y: 0, block: false, swing: 0, skill: 0, at: now },
       look: zoneLook(character),
       savedAt: now,
+      xp: character.xp, hp: maxHp, maxHp, dead: false, hitAt: 0, strikeReadyAt: 0, skillReadyAt: 0,
     });
     return { x: spot.x, z: spot.z };
   }
@@ -265,12 +289,48 @@ export class Server {
     if (!isPose(raw)) throw new RuleViolation("unavailable");
     const { zone } = currentChannel();
     const now = Date.now();
-    const saved = await writeZonePose(zone, raw, now);
-    const savedAt = (await $room.getMyState()).savedAt;
+    const mine = await $room.getMyState();
+    // The fallen stay where they fell.
+    if (mine.dead === true) return;
+    const at: unknown = mine.pose?.at;
+    const last = isPose(mine.pose) && typeof at === "number" ? { x: mine.pose.x, z: mine.pose.z, at } : null;
+    const saved = await writeZonePose(zone, raw, now, last);
+    const savedAt = mine.savedAt;
     if (now - (typeof savedAt === "number" ? savedAt : 0) >= SAVE_SPOT_MS) {
       await saveSpot($sender.account, { zone, x: saved.x, z: saved.z });
       await $room.updateMyState({ savedAt: now }, { returnState: false });
     }
+  }
+
+  // Your attack on a monster, facing yaw; the server checks reach, facing and your weapon's pace.
+  async strike(monsterId: unknown, yaw?: unknown): Promise<HitResult> {
+    const { roomId, zone } = currentChannel();
+    const result = await withRoomLock(roomId, () => strike(zone, monsterId, yaw, Date.now()));
+    await reward($sender.account, roomId, result);
+    return result;
+  }
+
+  // Your class's skill, no sooner than its cooldown allows.
+  async useSkill(yaw?: unknown): Promise<HitResult> {
+    const { roomId, zone } = currentChannel();
+    const result = await withRoomLock(roomId, () => useSkill(zone, yaw, Date.now()));
+    await reward($sender.account, roomId, result);
+    return result;
+  }
+
+  // Fallen: back to the village, whole again (arrive heals).
+  async respawn(): Promise<ZoneEntry> {
+    const account = $sender.account;
+    if ((await $room.getMyState()).dead !== true) throw new RuleViolation("unavailable");
+    const home = zoneLayout(START_ZONE).playerSpawn;
+    return enter(account, await playing(account), START_ZONE, home.x, home.z);
+  }
+
+  // Every room tick (Verse8 runs it about every 200 ms): the monsters of a hunting zone move and fight.
+  async $roomTick(delta: number, roomId: string): Promise<void> {
+    const here = readChannelRoom(roomId);
+    if (!here || !hasMonsters(here.zone)) return;
+    await withRoomLock(roomId, () => tickRoom(here.zone, delta, Date.now()));
   }
 
   // Verse8 calls this when someone leaves a room for good (after the reconnect grace period):

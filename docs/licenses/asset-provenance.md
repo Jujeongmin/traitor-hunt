@@ -131,5 +131,8 @@ digital media"에 넣는 것을 허락하고 Unity 엔진을 조건으로 두지
 |---|---|---|---|---|
 | rpg-characters | RPG Character Pack (2020-11) — https://quaternius.com/packs/rpgcharacters.html | Quaternius | CC0 1.0 | 직업 6개의 영웅(hero_warrior·ranger·wizard·cleric·rogue·monk) |
 | ultimate-monsters | Ultimate Monsters — https://quaternius.com/packs/ultimatemonsters.html | Quaternius | CC0 1.0 | 일반 몬스터(mon_green_blob·mushnub·goleling·bat), 보스(mon_mushroom_king) |
+| ultimate-monsters (FBX-20260921T060420Z zip) | Quaternius 애니메이션 동물 FBX(Rat·Frog·Snake·Spider·Wasp) | Quaternius | CC0 1.0 (같이 받은 License 파일 4개 모두 CC0 1.0) | 숲 몬스터(mon_rat·frog·snake·spider·wasp) |
 
 변환: `npm run import-gltf`(scripts/gltf-list.json의 glTF → art-src/_glb) 다음 `npm run models`.
+동물 5종은 FBX라 Unity(`unity/ExportGlb.cs`, `embeddedClips`)로 GLB를 뽑았다. 같은 때 받은 Bestiary - Dungeon Monsters Kit는
+애니메이션이 없고 QAL 라이선스라 쓰지 않았다.

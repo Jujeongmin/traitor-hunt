@@ -1,5 +1,5 @@
 import { CHANNEL_CAPACITY, arrivalFrom, portalsOf, zoneLayout } from "../../src/game/world/zones";
-import { enterAs, errorOf, join, makeCharacter } from "./helpers";
+import { enterAs, errorOf, join, makeCharacter, walkTo } from "./helpers";
 
 // A real wallet account: it does not play for free like the test- accounts.
 const BUYER = "0x1111111111111111111111111111111111111111";
@@ -7,7 +7,7 @@ const BUYER = "0x1111111111111111111111111111111111111111";
 // Stands at the portal to `to` and goes through, as the client does.
 async function through(server: any, account: string, entry: any, to: string): Promise<any> {
   const portal = portalsOf(entry.zone).find((p) => p.to === to)!;
-  await server.reportPose({ x: portal.x, z: portal.z, yaw: 0 });
+  await walkTo(server, portal.x, portal.z);
   const next = await server.travel(to);
   return join(server, account, next, entry.roomId);
 }
@@ -51,7 +51,7 @@ describe("entering the world", () => {
   test("comes back where it left, by leaving or by just going away", async (server) => {
     await makeCharacter(server, "test-a", "에이");
     await enterAs(server, "test-a");
-    await server.reportPose({ x: 10, z: 13, yaw: 1 });
+    await walkTo(server, 10, 13, 1);
     await server.leaveWorld();
     server.connect({ account: "test-a" });
     const back = await server.enterWorld();
@@ -59,7 +59,7 @@ describe("entering the world", () => {
 
     // A closed tab: no leaveWorld, only the platform's leave hook.
     await join(server, "test-a", back);
-    await server.reportPose({ x: 14, z: 13, yaw: 1 });
+    await walkTo(server, 14, 13, 1);
     await server.simulateLeave(back.roomId, "test-a");
     server.connect({ account: "test-a" });
     expect(await server.enterWorld()).toMatchObject({ zone: "village", x: 14, z: 13 });

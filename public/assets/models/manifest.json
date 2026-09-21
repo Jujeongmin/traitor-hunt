@@ -127,6 +127,16 @@
         "HitRecieve"
       ]
     },
+    "mon_frog": {
+      "url": "assets/models/mon_frog.glb",
+      "bytes": 201796,
+      "animations": [
+        "Attack",
+        "Death",
+        "Idle",
+        "Jump"
+      ]
+    },
     "mon_goleling": {
       "url": "assets/models/mon_goleling.glb",
       "bytes": 108616,
@@ -189,6 +199,48 @@
         "Wave",
         "Weapon",
         "Yes"
+      ]
+    },
+    "mon_rat": {
+      "url": "assets/models/mon_rat.glb",
+      "bytes": 262856,
+      "animations": [
+        "Attack",
+        "Death",
+        "Idle",
+        "Jump",
+        "Run",
+        "Walk"
+      ]
+    },
+    "mon_snake": {
+      "url": "assets/models/mon_snake.glb",
+      "bytes": 100624,
+      "animations": [
+        "Attack",
+        "Idle",
+        "Jump",
+        "Walk"
+      ]
+    },
+    "mon_spider": {
+      "url": "assets/models/mon_spider.glb",
+      "bytes": 225440,
+      "animations": [
+        "Attack",
+        "Death",
+        "Idle",
+        "Jump",
+        "Walk"
+      ]
+    },
+    "mon_wasp": {
+      "url": "assets/models/mon_wasp.glb",
+      "bytes": 161296,
+      "animations": [
+        "Attack",
+        "Death",
+        "Flying"
       ]
     },
     "pt_apple_tree": {

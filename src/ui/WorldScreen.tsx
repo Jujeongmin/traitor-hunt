@@ -156,6 +156,28 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           )}
           {showProblem && <div className="hud-error band">{problem.text}</div>}
           {hud.blocking && <div className="hud-shield band">막는 중</div>}
+          <div className="hud-vitals">
+            <div className="hud-vitals-row">
+              <b>Lv {hud.level}</b>
+              <span>{Math.ceil(hud.hp)} / {hud.maxHp}</span>
+              {hud.gain !== null && <em className="hud-gain">+{hud.gain} XP</em>}
+            </div>
+            <div className="hud-bar hp"><i style={{ width: `${Math.round((hud.hp / hud.maxHp) * 100)}%` }} /></div>
+            <div className="hud-bar xp"><i style={{ width: `${Math.round((hud.xpInto / hud.xpNeed) * 100)}%` }} /></div>
+          </div>
+          {hud.target && (
+            <div className="hud-target band">
+              <b>{hud.target.name}</b>
+              <div className="hud-bar hp"><i style={{ width: `${Math.round((hud.target.hp / hud.target.maxHp) * 100)}%` }} /></div>
+            </div>
+          )}
+          <button
+            type="button"
+            className={`brush-button small hud-auto${hud.auto ? " on" : ""}`}
+            onClick={() => view.current?.toggleAuto()}
+          >
+            {hud.auto ? "자동 전투 중" : "자동 전투"} (F)
+          </button>
           <div className={`hud-skill${hud.skill.readyInMs > 0 ? " cooling" : ""}`}>
             <span className="hud-skill-key">1</span>
             <b>{hud.skill.name}</b>
@@ -163,13 +185,23 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
             <i style={{ width: `${Math.round((1 - hud.skill.readyInMs / hud.skill.cooldownMs) * 100)}%` }} />
           </div>
           <div className="crosshair" />
+          {hud.dead && (
+            <div className="pain fallen">
+              <div className="solid-panel world-panel">
+                <p className="band">쓰러졌어요</p>
+                <button type="button" className="brush-button" disabled={travelling} onClick={() => void client.respawn()}>
+                  마을에서 다시 시작
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
       {menu && (
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1 스킬</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1 스킬 · F 자동 전투</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>

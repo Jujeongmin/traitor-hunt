@@ -10,7 +10,8 @@ using UnityGLTF;
 
 public static class ExportGlb
 {
-    [Serializable] class Item { public string name; public string kind; public string asset; public string material; public string[] clips; public bool showAll; }
+    // embeddedClips: take every animation stored in the model file itself (one FBX, many takes).
+    [Serializable] class Item { public string name; public string kind; public string asset; public string material; public string[] clips; public bool showAll; public bool embeddedClips; }
     [Serializable] class ExportList { public string outDir; public Item[] items; }
 
     const string TempDir = "Assets/__export_tmp";
@@ -47,7 +48,7 @@ public static class ExportGlb
             if (item.showAll) foreach (var t in instance.GetComponentsInChildren<Transform>(true)) t.gameObject.SetActive(true);
             if (!string.IsNullOrEmpty(item.material)) ApplyMaterial(instance, item.material);
             StandardizeMaterials(instance);
-            if (item.kind == "character") AttachClips(instance, item.clips);
+            if (item.kind == "character") AttachClips(instance, item.embeddedClips ? EmbeddedClips(item.asset) : LoadClips(item.clips));
             // UnityGLTF's humanoid sampler ends with Undo.PerformUndo(), which would
             // otherwise undo our AddState calls and destroy the controller's states.
             Undo.ClearAll();
@@ -142,19 +143,46 @@ public static class ExportGlb
             r.sharedMaterials = Enumerable.Repeat(mat, r.sharedMaterials.Length).ToArray();
     }
 
-    static void AttachClips(GameObject instance, string[] clipPaths)
+    // One clip per file, renamed after the file (FBX takes are often all named "Take 001").
+    static List<AnimationClip> LoadClips(string[] clipPaths)
+    {
+        var clips = new List<AnimationClip>();
+        foreach (var path in clipPaths)
+        {
+            var clip = UnityEngine.Object.Instantiate(LoadClip(path));
+            clip.name = Path.GetFileNameWithoutExtension(path);
+            clips.Add(clip);
+        }
+        return clips;
+    }
+
+    // Every take inside the model file, under its own name.
+    static List<AnimationClip> EmbeddedClips(string assetPath)
+    {
+        var clips = new List<AnimationClip>();
+        foreach (var clip in AssetDatabase.LoadAllAssetsAtPath(assetPath).OfType<AnimationClip>())
+        {
+            if (clip.name.StartsWith("__preview__")) continue;
+            var copy = UnityEngine.Object.Instantiate(clip);
+            // "RatArmature|Rat_Attack" -> "Attack": the take after the rig, without the model's name.
+            var take = clip.name.Substring(clip.name.LastIndexOf('|') + 1);
+            var underscore = take.IndexOf('_');
+            copy.name = underscore > 0 ? take.Substring(underscore + 1) : take;
+            clips.Add(copy);
+        }
+        if (clips.Count == 0) throw new FileNotFoundException("no AnimationClip in " + assetPath);
+        return clips;
+    }
+
+    static void AttachClips(GameObject instance, List<AnimationClip> clips)
     {
         AssetDatabase.CreateFolder("Assets", "__export_tmp");
         // Clips are all written before the controller exists: creating assets mid-way
         // reimports the folder and leaves earlier AnimatorState handles destroyed.
         var clipAssets = new List<string>();
-        foreach (var path in clipPaths)
+        foreach (var copy in clips)
         {
-            // FBX takes are often all named "Take 001"; a renamed copy keeps glTF animation names unique.
-            var name = Path.GetFileNameWithoutExtension(path);
-            var copy = UnityEngine.Object.Instantiate(LoadClip(path));
-            copy.name = name;
-            var copyPath = TempDir + "/" + name + ".anim";
+            var copyPath = TempDir + "/" + copy.name + ".anim";
             AssetDatabase.CreateAsset(copy, copyPath);
             clipAssets.Add(copyPath);
         }

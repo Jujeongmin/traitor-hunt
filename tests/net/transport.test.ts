@@ -1,11 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Server } from "../../server/src/server";
 import { LocalWorld } from "../../src/net/local/localWorld";
 import { LocalTransport } from "../../src/net/localTransport";
 import { CallThrottle } from "../../src/net/throttle";
 import { Verse8Transport, type Verse8Server } from "../../src/net/verse8Transport";
 
+
+// The server holds reported poses to walking pace; a minute on, any spot is in reach.
+function aMinuteLater(): void {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.now() + 60_000);
+}
+
 describe("CallThrottle", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("lets one call through per window, per key", () => {
     const t = new CallThrottle();
     expect(t.allow("a", 100, 0)).toBe(true);
@@ -78,6 +89,7 @@ describe("LocalTransport", () => {
     await a.call("enterWorld");
     await a.joinRoom(roomId);
     await a.call("arrive");
+    aMinuteLater();
     await a.call("reportPose", [{ x: 1, z: 2, yaw: 0 }]);
     expect(users.at(-1)).toMatchObject([{ account: "test-a", pose: { x: 1, z: 2, yaw: 0 } }]);
     expect(states.at(-1)).toMatchObject({ roomId, $users: ["test-a"] });

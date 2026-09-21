@@ -39,3 +39,11 @@ export async function enterAs(server: any, account: string): Promise<any> {
   server.connect({ account });
   return join(server, account, await server.enterWorld());
 }
+
+// Moves the caller straight to (x, z), as a long walk would: the last pose is made old enough that
+// the server's walking-pace check lets the report through.
+export async function walkTo(server: any, x: number, z: number, yaw = 0): Promise<void> {
+  const mine = await $room.getMyState();
+  await $room.updateMyState({ pose: { ...mine.pose, at: 0 } });
+  await server.reportPose({ x, z, yaw });
+}
