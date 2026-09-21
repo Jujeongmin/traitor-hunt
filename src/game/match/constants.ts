@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
 export const MATCH_PLAYERS = 4;
 // How long an online lobby waits for people before bots take the empty seats.
 export const LOBBY_FILL_MS = 15_000;

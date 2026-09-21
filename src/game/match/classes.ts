@@ -1,22 +1,26 @@
-// What a player fights with. The mage's wand fires often and lightly; the archer's bow fires slowly
-// and hits hard. Both reach about the same distance, so neither is stuck at the back.
-export type PlayerClass = "mage" | "archer";
+// What a player fights with: a sword and a shield, in two builds. The striker hits harder; the
+// guardian's shield soaks up more of a monster's blow.
+export type PlayerClass = "striker" | "guardian";
 
-export const CLASSES: readonly PlayerClass[] = ["mage", "archer"];
+export const CLASSES: readonly PlayerClass[] = ["striker", "guardian"];
 
 export interface Weapon {
   name: string;
   damage: number;
   intervalMs: number;
-  range: number;
+  // How far in front a swing lands, and how wide its arc is (radians, total).
+  reach: number;
+  arc: number;
+  // The share of a monster's blow the shield stops while you block, facing it.
+  block: number;
 }
 
 export const WEAPONS: Record<PlayerClass, Weapon> = {
-  mage: { name: "마법 지팡이", damage: 25, intervalMs: 200, range: 50 },
-  archer: { name: "활", damage: 55, intervalMs: 600, range: 60 },
+  striker: { name: "장검", damage: 40, intervalMs: 550, reach: 2.6, arc: (100 * Math.PI) / 180, block: 0.5 },
+  guardian: { name: "검과 큰 방패", damage: 28, intervalMs: 650, reach: 2.4, arc: (120 * Math.PI) / 180, block: 0.85 },
 };
 
-export const CLASS_LABEL: Record<PlayerClass, string> = { mage: "마법사", archer: "궁수" };
+export const CLASS_LABEL: Record<PlayerClass, string> = { striker: "검사", guardian: "방패병" };
 
 export function readClass(value: unknown): PlayerClass | null {
   return CLASSES.find((c) => c === value) ?? null;

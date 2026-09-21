@@ -11,7 +11,9 @@ import { solidWith, spawnPoint, type LevelLayout } from "../rules/levelLayout";
 import { EYE_HEIGHT, WALK_SPEED, stepPlayer, type SolidTest } from "../rules/movement";
 import { findPath } from "../rules/pathfinding";
 
-const SHOOT_RANGE = 14;
+// Bots go after monsters this close; a swing lands when one of them is in reach.
+const ENGAGE_RANGE = 10;
+const SWING_HIT_CHANCE = 0.85;
 const REPATH_MS = 1000;
 const WAYPOINT_REACHED = 0.3;
 const TURN_RATE = 5;
@@ -146,10 +148,11 @@ export class BotBrain {
     this.walkTo(goal.at, dt, now);
   }
 
-  // Stops to turn toward a visible monster and shoots after a human reaction time, missing now and then.
+  // Closes in on a visible monster, turns to it and swings after a human reaction time, missing now
+  // and then.
   private fight(match: PublicMatch, dt: number, now: number): boolean {
     const pose = this.pose!;
-    const seen = this.nearestMonster(match, pose, SHOOT_RANGE, true, () => true);
+    const seen = this.nearestMonster(match, pose, ENGAGE_RANGE, true, () => true);
     if (!seen) {
       this.target = null;
       return false;
@@ -157,14 +160,18 @@ export class BotBrain {
     if (!this.target || this.target.id !== seen.id) {
       this.target = { id: seen.id, readyAt: now + this.between(HUMAN.reactMs) };
     }
+    const weapon = weaponOf(match, this.client.account);
+    if (seen.distance > weapon.reach * 0.8) {
+      this.walkTo(seen.monster, dt, now);
+      return true;
+    }
     const aim = yawTo(pose, seen.monster);
     this.turnToward(aim, dt);
     if (now < this.target.readyAt || now < this.nextShotAt) return true;
     if (Math.abs(angleBetween(this.pose!.yaw, aim)) > AIM_TOLERANCE) return true;
-    // Never faster than the weapon allows, or the server turns the shot away.
-    this.nextShotAt = now + Math.max(this.between(HUMAN.fireMs), weaponOf(match, this.client.account).intervalMs);
-    const hitChance = Math.min(0.85, Math.max(0.35, 0.9 - seen.distance * 0.04));
-    if (this.rng() < hitChance) this.run(() => this.client.fireAtMonster(seen.id));
+    // Never faster than the weapon allows, or the server turns the swing away.
+    this.nextShotAt = now + Math.max(this.between(HUMAN.fireMs), weapon.intervalMs);
+    if (this.rng() < SWING_HIT_CHANCE) this.run(() => this.client.strikeMonster(seen.id));
     return true;
   }
 

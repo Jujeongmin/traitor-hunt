@@ -96,7 +96,7 @@ export function isPose(value: unknown): value is Pose {
 
 export async function readPose(roomId: string, account: string): Promise<Pose | null> {
   const pose: unknown = (await $global.getRoomUserState(roomId, account)).pose;
-  return isPose(pose) ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y) } : null;
+  return isPose(pose) ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true } : null;
 }
 
 export async function readPoses(roomId: string, accounts: string[]): Promise<Poses> {
@@ -108,7 +108,8 @@ export async function readPoses(roomId: string, accounts: string[]): Promise<Pos
 export async function writePose(roomId: string, account: string, pose: Pose, at: number): Promise<void> {
   // Trust the height only as far as the map allows: what is under them plus a jump.
   const y = Math.min(readJumpY(pose.y), maxFeetY(LEVEL.platforms, pose.x, pose.z));
-  await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, at } });
+  const block = pose.block === true;
+  await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, block, at } });
 }
 
 // Writes this account's line on the board. Called whenever its XP or its name changes; a fresh

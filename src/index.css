@@ -182,6 +182,9 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .pain .band { color: #ff5a45; font: 700 18px var(--font-head); }
 .crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; background: var(--ink); border-radius: 50%; box-shadow: 0 0 2px #000; pointer-events: none; }
+/* Shown while the shield is up, just below the crosshair. */
+.hud-shield { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font: 700 13px var(--font-head); color: var(--frost); }
+
 /* Practice guide: the step to take now, just under the middle of the screen. */
 .hud-guide {
   position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%);

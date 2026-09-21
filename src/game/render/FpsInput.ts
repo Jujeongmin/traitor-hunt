@@ -1,7 +1,9 @@
 import type { MoveInput } from "../rules/movement";
 
 export class FpsInput {
+  // Left button held: swing. Right button held: raise the shield.
   firing = false;
+  blocking = false;
   private readonly keys = new Set<string>();
   private readonly pressed = new Set<string>();
   private lookX = 0;
@@ -10,6 +12,7 @@ export class FpsInput {
   constructor(private readonly element: HTMLElement) {
     element.addEventListener("click", this.onClick);
     element.addEventListener("mousedown", this.onMouseDown);
+    element.addEventListener("contextmenu", this.onContextMenu);
     window.addEventListener("mouseup", this.onMouseUp);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
@@ -42,6 +45,7 @@ export class FpsInput {
   dispose(): void {
     this.element.removeEventListener("click", this.onClick);
     this.element.removeEventListener("mousedown", this.onMouseDown);
+    this.element.removeEventListener("contextmenu", this.onContextMenu);
     window.removeEventListener("mouseup", this.onMouseUp);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
@@ -56,9 +60,15 @@ export class FpsInput {
   };
   private onMouseDown = (e: MouseEvent) => {
     if (e.button === 0 && this.locked) this.firing = true;
+    if (e.button === 2 && this.locked) this.blocking = true;
   };
   private onMouseUp = (e: MouseEvent) => {
     if (e.button === 0) this.firing = false;
+    if (e.button === 2) this.blocking = false;
+  };
+  // The right button raises the shield, so it must not open the browser's menu.
+  private onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
   };
   private onKeyDown = (e: KeyboardEvent) => {
     this.keys.add(e.code);
@@ -71,6 +81,7 @@ export class FpsInput {
     this.keys.clear();
     this.pressed.clear();
     this.firing = false;
+    this.blocking = false;
   };
   private onMouseMove = (e: MouseEvent) => {
     if (!this.locked) return;

@@ -4,7 +4,7 @@ const HOURS = 3 * 3600_000;
 
 describe("matchmaking", () => {
   test("reports the protocol version", async (server) => {
-    expect(await server.getServerVersion()).toEqual({ protocol: 7 });
+    expect(await server.getServerVersion()).toEqual({ protocol: 8 });
   });
 
   test("fills one room with four players and starts with exactly one hidden traitor", async (server) => {

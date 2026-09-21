@@ -4,8 +4,8 @@ import { COSTUMES, type Costume } from "../game/render/costumes";
 import { myClass, onMyClass, setMyClass } from "./profile";
 
 const CLASS_BLURB: Record<PlayerClass, string> = {
-  mage: "마법 지팡이. 빠르게 여러 발, 한 발은 가볍게.",
-  archer: "활. 느리지만 한 발 한 발이 묵직하게.",
+  striker: "장검. 한 번 휘두를 때 묵직하게.",
+  guardian: "검과 큰 방패. 우클릭으로 막으면 몬스터 공격을 거의 다 받아낸다.",
 };
 
 interface CostumePanelProps {
@@ -39,7 +39,7 @@ export function CostumePanel({ current, onPick, onClose, online }: CostumePanelP
                 onClick={() => setMyClass(c)}
               >
                 <b>{CLASS_LABEL[c]}</b>
-                <span>{CLASS_BLURB[c]} (피해 {WEAPONS[c].damage} · {(1000 / WEAPONS[c].intervalMs).toFixed(1)}발/초)</span>
+                <span>{CLASS_BLURB[c]} (공격 {WEAPONS[c].damage} · 막기 {Math.round(WEAPONS[c].block * 100)}%)</span>
                 {c === picked && <span className="costume-worn">선택됨</span>}
               </button>
             </li>

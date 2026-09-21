@@ -87,12 +87,12 @@ describe("MatchClient", () => {
     shooter.onPain((e) => pains.push(e));
     shooter.onPossession((e) => possessions.push(e));
     traitor.reportPose({ x: 30, z: 14, yaw: 0 });
-    shooter.reportPose({ x: 34, z: 20, yaw: 0 });
+    shooter.reportPose({ x: 34, z: 15.5, yaw: 0 });
     await settle(world);
     expect(await traitor.advanceClock(60_000)).toBeNull();
     expect(await traitor.possess("zombie-0")).toBeNull();
     expect(traitor.state.you.possession?.monsterId).toBe("zombie-0");
-    expect(await shooter.fireAtMonster("zombie-0")).toBeNull();
+    expect(await shooter.strikeMonster("zombie-0")).toBeNull();
     await settle(world);
     expect(pains).toEqual([{ x: 30, z: 14 }]);
     expect(possessions).toHaveLength(1);

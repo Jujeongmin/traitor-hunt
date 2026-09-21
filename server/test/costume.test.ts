@@ -15,18 +15,18 @@ describe("names in a match", () => {
 describe("classes in a match", () => {
   test("the lobby carries the class each player picked; the rest take their seat class", async (server) => {
     server.connect({ account: PLAYERS[0] });
-    await server.setClass("archer");
+    await server.setClass("guardian");
     const roomId = await fillRoom(server);
     const match = await roomMatch(roomId);
-    expect(match.classes[PLAYERS[0]]).toBe("archer");
+    expect(match.classes[PLAYERS[0]]).toBe("guardian");
     expect(match.classes[PLAYERS[1]] ?? null).toBeNull();
   });
 
   test("takes only classes it knows, and the account remembers it", async (server) => {
     server.connect({ account: PLAYERS[0] });
-    expect(await errorOf(server.setClass("gunner"))).toContain("unavailable");
-    await server.setClass("mage");
-    expect((await $global.getUserState(PLAYERS[0])).playerClass).toBe("mage");
+    expect(await errorOf(server.setClass("archer"))).toContain("unavailable");
+    await server.setClass("striker");
+    expect((await $global.getUserState(PLAYERS[0])).playerClass).toBe("striker");
   });
 });
 

@@ -33,9 +33,9 @@ describe("practice session", () => {
   });
 
   it("seats you with the class you picked", async () => {
-    const session = new PracticeSession(layout, { playerClass: "archer" });
+    const session = new PracticeSession(layout, { playerClass: "guardian" });
     await session.start();
-    expect(session.human.state.match!.classes["test-you"]).toBe("archer");
+    expect(session.human.state.match!.classes["test-you"]).toBe("guardian");
     session.dispose();
   });
 

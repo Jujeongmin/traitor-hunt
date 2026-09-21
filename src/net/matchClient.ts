@@ -152,12 +152,14 @@ export class MatchClient {
   // Every POSE_THROTTLE_MS while moving, every IDLE_POSE_MS while standing still.
   reportPose(pose: Pose): void {
     if (this.current.phase !== "playing" && this.current.phase !== "lobby") return;
-    const sent = { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y) };
+    const sent = { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true };
     const now = this.now();
     const last = this.lastPose;
     const moved = !last || Math.abs(sent.x - last.x) > POSE_EPSILON || Math.abs(sent.z - last.z) > POSE_EPSILON
       || Math.abs(sent.yaw - last.yaw) > POSE_EPSILON || Math.abs(sent.y - (last.y ?? 0)) > POSE_EPSILON;
-    if (last && now - last.at < (moved ? POSE_THROTTLE_MS : IDLE_POSE_MS)) return;
+    // Raising or lowering the shield goes out at once: a late block is no block.
+    const shieldChanged = !!last && sent.block !== (last.block === true);
+    if (last && !shieldChanged && now - last.at < (moved ? POSE_THROTTLE_MS : IDLE_POSE_MS)) return;
     this.lastPose = { ...sent, at: now };
     void this.transport.call("reportPose", [sent], { needResponse: false });
   }
@@ -185,8 +187,8 @@ export class MatchClient {
     return this.actWithView("release", []);
   }
 
-  fireAtMonster(monsterId: string): Promise<string | null> {
-    return this.act("fireAtMonster", [monsterId]);
+  strikeMonster(monsterId: string): Promise<string | null> {
+    return this.act("strikeMonster", [monsterId]);
   }
 
   attackWithMonster(monsterId: string, target: string): Promise<string | null> {

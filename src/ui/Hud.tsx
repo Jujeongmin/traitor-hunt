@@ -24,6 +24,7 @@ const ERROR_LABEL: Record<string, string> = {
   exit_locked: "아직 출구가 봉인돼 있어요",
   sealed: "정체가 드러나 빙의가 봉인됐어요",
   bound: "묶여 있어서 할 수 없어요",
+  blocking: "방패를 내려야 공격할 수 있어요",
 };
 
 const PAIN_SHOW_MS = 1500;
@@ -189,6 +190,7 @@ export function Hud({ hud, now }: { hud: HudState; now: number }) {
       {pain && <div className="pain"><span className="band">가까이서 비명이 들렸다!</span></div>}
       {error && <div className="hud-error band">{error}</div>}
       {inside && !hud.possession && <div className="crosshair" />}
+      {hud.blocking && <div className="hud-shield band">방패 막는 중</div>}
       {hud.guide && <GuidePanel guide={hud.guide} />}
     </>
   );

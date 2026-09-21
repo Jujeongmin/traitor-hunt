@@ -5,7 +5,8 @@ export type EndReason = "escaped" | "wiped" | "humans_out";
 
 export interface Vec2 { x: number; z: number }
 // y: how high the player has jumped. Only drawn, never used by a rule; missing means standing.
-export interface Pose extends Vec2 { yaw: number; y?: number }
+// y: feet height (jumps and platforms). block: the shield is raised.
+export interface Pose extends Vec2 { yaw: number; y?: number; block?: boolean }
 export type Poses = Record<string, Pose | null>;
 
 export type MonsterKind = "zombie" | "boss";
@@ -134,7 +135,7 @@ export type MatchEvent =
 
 export const RULE_ERRORS = [
   "not_playing", "not_traitor", "not_ready", "already_possessing", "not_possessing",
-  "unavailable", "no_monster", "monster_dead", "out_of_range", "out_of_reach", "too_fast",
+  "unavailable", "no_monster", "monster_dead", "out_of_range", "out_of_reach", "blocking", "too_fast",
   "not_authority", "stunned", "no_target", "not_at_exit", "match_full",
   "nothing_here", "need_shards", "exit_locked", "sealed", "bound",
   "nickname_invalid", "nickname_taken",

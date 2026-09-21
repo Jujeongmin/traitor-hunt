@@ -12,7 +12,7 @@ import {
 import { COSTUMES } from "../../src/game/render/costumes";
 import { MATCH_PLAYERS, PROTOCOL_VERSION } from "../../src/game/match/constants";
 import {
-  applyMonsterPoses, monsterAttack, reachExit, shootMonster, type MonsterPoseUpdate,
+  applyMonsterPoses, monsterAttack, reachExit, strikeMonster, type MonsterPoseUpdate,
 } from "../../src/game/match/damage";
 import {
   createLobby, fillWithBots, isBot, joinLobby, leaveLobby, matchHost, monsterSpawnsFor, startMatch,
@@ -158,12 +158,12 @@ const seatActions = {
     await writePose(roomId, account, pose, Date.now());
   },
 
-  async fireAtMonster(account: string, monsterId: unknown): Promise<void> {
+  async strikeMonster(account: string, monsterId: unknown): Promise<void> {
     const id = requireText(monsterId);
     await inRoom(async (ctx) => {
       const secret = requireLive(ctx);
       const poses = await readPoses(ctx.roomId, ctx.match.players);
-      ctx.events.push(...shootMonster(ctx.match, secret, ctx.account, id, poses[ctx.account] ?? null, poses, ctx.now));
+      ctx.events.push(...strikeMonster(ctx.match, secret, ctx.account, id, poses[ctx.account] ?? null, poses, ctx.now));
     }, account);
   },
 
@@ -511,8 +511,8 @@ export class Server {
     });
   }
 
-  async fireAtMonster(monsterId: unknown): Promise<void> {
-    await seatActions.fireAtMonster($sender.account, monsterId);
+  async strikeMonster(monsterId: unknown): Promise<void> {
+    await seatActions.strikeMonster($sender.account, monsterId);
   }
 
   async attackWithMonster(monsterId: unknown, target: unknown): Promise<void> {

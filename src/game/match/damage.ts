@@ -8,6 +8,7 @@ import { endPossession, expirePossession } from "./possession";
 import {
   RuleViolation, type MatchEvent, type Pose, type Poses, type PublicMatch, type SecretMatch, type Vec2,
 } from "./types";
+import { BLOCK_ARC, facing, inStrikeReach } from "./melee";
 import { distance, nearbyAccounts, reaches } from "./view";
 
 export interface MonsterPoseUpdate { id: string; x: number; z: number; yaw: number }
@@ -34,17 +35,18 @@ export function applyMonsterPoses(
   return events;
 }
 
-export function shootMonster(
+// A sword swing at a monster: it must stand close, in front of the swing.
+export function strikeMonster(
   match: PublicMatch, secret: SecretMatch, shooter: string, monsterId: string,
   shooterPose: Pose | null, poses: Poses, now: number,
 ): MatchEvent[] {
   const events = expirePossession(match, secret, now);
-  const from = beginShot(match, secret, shooter, shooterPose, now);
+  const from = beginStrike(match, secret, shooter, shooterPose, now);
   const monster = match.monsters[monsterId];
   if (!monster) throw new RuleViolation("no_monster");
   if (!monster.alive) throw new RuleViolation("monster_dead");
   const weapon = weaponOf(match, shooter);
-  if (distance(from, monster) > weapon.range + RANGE_SLACK) throw new RuleViolation("out_of_range");
+  if (!inStrikeReach(from, monster, weapon, true)) throw new RuleViolation("out_of_range");
 
   secret.lastShotAt[shooter] = now;
   const dealt = Math.min(weapon.damage, monster.hp);
@@ -92,10 +94,13 @@ export function monsterAttack(
   if (!reaches(monster.kind, targetPose.y)) throw new RuleViolation("out_of_reach");
 
   monster.attackReadyAt = now + stats.intervalMs;
+  // A raised shield, facing the monster, stops part of the blow.
+  const shielded = !!targetPose.block && facing(targetPose, monster, BLOCK_ARC);
+  const dealt = shielded ? Math.round(stats.damage * (1 - weaponOf(match, target).block)) : stats.damage;
   if (monster.possessed) {
-    secret.stats[secret.traitor].possessedDamage += Math.min(stats.damage, secret.hp[target] ?? 0);
+    secret.stats[secret.traitor].possessedDamage += Math.min(dealt, secret.hp[target] ?? 0);
   }
-  events.push(...damageBody(match, secret, target, stats.damage, now));
+  events.push(...damageBody(match, secret, target, dealt, now));
   return events;
 }
 
@@ -118,15 +123,17 @@ export function weaponOf(match: PublicMatch, account: string): Weapon {
   return WEAPONS[classFor(match.classes, account, match.players.indexOf(account))];
 }
 
-function beginShot(match: PublicMatch, secret: SecretMatch, shooter: string, shooterPose: Pose | null, now: number): Pose {
+function beginStrike(match: PublicMatch, secret: SecretMatch, shooter: string, shooterPose: Pose | null, now: number): Pose {
   if (match.phase !== "playing") throw new RuleViolation("not_playing");
   if (!isActive(match, shooter)) throw new RuleViolation("unavailable");
   if (isBound(match, shooter, now)) throw new RuleViolation("bound");
-  // A possessing traitor's body stands frozen; it cannot shoot.
+  // A possessing traitor's body stands frozen; it cannot swing.
   if (secret.possession && secret.traitor === shooter) throw new RuleViolation("unavailable");
   const last = secret.lastShotAt[shooter];
   if (last !== undefined && now - last < weaponOf(match, shooter).intervalMs) throw new RuleViolation("too_fast");
   if (!shooterPose) throw new RuleViolation("out_of_range");
+  // The shield arm is up; lower it to swing.
+  if (shooterPose.block) throw new RuleViolation("blocking");
   return shooterPose;
 }
 

@@ -7,16 +7,16 @@ import {
 } from "../match/constants";
 import { botFillInMs, isActive, isBound } from "../match/lifecycle";
 import { weaponOf } from "../match/damage";
+import { inStrikeReach } from "../match/melee";
 import { bearingTo, guideFor } from "../match/guide";
 import { BOSS_ID, interactableNear, type Interactable } from "../match/objectives";
-import type { MatchResult, MonsterKind, PlayerResult, Pose, Possession, PublicMatch, Stage } from "../match/types";
+import type { MatchResult, PlayerResult, Pose, Possession, PublicMatch, Stage } from "../match/types";
 import { distance } from "../match/view";
 import { tallyPlates, votesNeeded } from "../match/vote";
-import { ZOMBIE_HEIGHT, ZOMBIE_RADIUS, resolveShot, type HitTarget, type Ray3 } from "../rules/combat";
 import { RUINS, TILE_SIZE, parseLevel, solidWith, spawnPoint, type LevelLayout } from "../rules/levelLayout";
 import { groundAt, platformBlocks } from "../rules/platforms";
 import {
-  GROUNDED, PLAYER_RADIUS, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
+  GROUNDED, PLAYER_RADIUS, WALK_SPEED, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
 import { FpsInput } from "./FpsInput";
 import { LightPool } from "./lightPool";
@@ -35,6 +35,8 @@ export const LOOK_SENSITIVITY = 0.0022;
 export const MATCH_MODELS = [...new Set([...LEVEL_MODELS, ...OBJECTIVE_MODELS, "wpn_akm", "zombie1", "explorer"])];
 
 const MONSTER_EYE = 1.5;
+// Share of walking speed kept while the shield is up.
+const BLOCK_WALK = 0.55;
 const POSSESSED_SPEED_FACTOR = 1.3;
 const HUD_INTERVAL_MS = 100;
 const SHAKE_MS = 350;
@@ -43,10 +45,6 @@ export const LIGHT_SLOTS = 6;
 const SHAKE_SIZE = 0.06;
 // The boss is the zombie model, grown and reddened, until it gets its own model.
 const BOSS_LOOK: MonsterLook = { height: 3, tint: 0xd07a7a };
-const HIT_SHAPE: Record<MonsterKind, { radius: number; height: number }> = {
-  zombie: { radius: ZOMBIE_RADIUS, height: ZOMBIE_HEIGHT },
-  boss: { radius: 0.8, height: 3 },
-};
 const INTERACT_LABEL: Record<Interactable["kind"], string> = {
   shard: "E: 열쇠 줍기",
   gate: "E: 열쇠로 철문 열기",
@@ -107,6 +105,8 @@ export interface HudState {
   sealed: boolean;
   // Practice only: the step to take now, where it is and how far.
   guide: GuideHud | null;
+  // The shield is up.
+  blocking: boolean;
 }
 
 export interface GuideHud {
@@ -153,7 +153,6 @@ export class MatchView {
   private readonly monsters = new Map<string, MonsterActor>();
   private readonly players = new Map<string, RemotePlayerActor>();
   private readonly hudListeners = new Set<(hud: HudState) => void>();
-  private readonly aim = new THREE.Vector3();
   // Walls and closed gates only: shots fly over the crates.
   private solid: SolidTest = solidWith(this.layout, [], Infinity);
   private gatesKey = "";
@@ -165,8 +164,6 @@ export class MatchView {
     this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, 0);
   private library: ModelLibrary | null = null;
   private props: ObjectiveProps | null = null;
-  // How far behind the player the camera sits this frame (walls pull it in).
-  private cameraDistance = CHASE.distance;
   private pose: Pose;
   private air: Airborne = GROUNDED;
   private yaw = 0;
@@ -251,7 +248,7 @@ export class MatchView {
         const match = this.client.state.match;
         if (!match) return Promise.resolve("not_playing");
         this.placeCamera(match, this.client.state.you.possession);
-        return this.shoot(match);
+        return this.strike(match);
       },
       possessNearest: () => {
         const match = this.client.state.match;
@@ -306,7 +303,9 @@ export class MatchView {
     if (active && possession && match) {
       this.driveMonster(match, possession.monsterId, move, dt);
     } else if (active && !bound) {
-      this.pose = stepPlayer({ ...this.pose, yaw: this.yaw }, move, dt, this.isSolid);
+      // Walking behind a raised shield is slower.
+      const speed = WALK_SPEED * (this.input.blocking ? BLOCK_WALK : 1);
+      this.pose = stepPlayer({ ...this.pose, yaw: this.yaw }, move, dt, this.isSolid, speed);
     } else if (active) {
       this.pose = { ...this.pose, yaw: this.yaw };
     }
@@ -314,7 +313,7 @@ export class MatchView {
     const jump = this.input.consumePress("Space");
     const ground = groundAt(this.layout.platforms, this.pose.x, this.pose.z, PLAYER_RADIUS);
     this.air = active && !possession && !bound ? stepJump(this.air, jump, dt, ground) : GROUNDED;
-    this.pose = { ...this.pose, y: this.air.y };
+    this.pose = { ...this.pose, y: this.air.y, block: active && !possession && !bound && this.input.blocking };
     if (match) this.handleActions(match, state, possession, active, bound);
     if (active && !possession) this.client.reportPose(this.pose);
     this.options.onFrame?.(dt, active ? this.pose : null);
@@ -373,33 +372,27 @@ export class MatchView {
     }
     if (!this.pendingAction && pressInteract) this.perform(() => this.client.interact());
     if (!this.pendingAction && pressEscape) this.perform(() => this.client.escape());
-    if (this.input.firing && this.client.serverNow() - this.lastShotAt >= weaponOf(match, this.client.account).intervalMs) {
-      void this.shoot(match);
+    // Holding the shield up keeps the sword down.
+    const weapon = weaponOf(match, this.client.account);
+    if (this.input.firing && !this.input.blocking && this.client.serverNow() - this.lastShotAt >= weapon.intervalMs) {
+      void this.strike(match);
     }
   }
 
-  private shoot(match: PublicMatch): Promise<string | null> {
+  // Swings at the nearest monster in front of you, within the sword's reach. Swords only hurt
+  // monsters: nobody can hit another player, the traitor included.
+  private strike(match: PublicMatch): Promise<string | null> {
     this.lastShotAt = this.client.serverNow();
-    this.camera.updateMatrixWorld();
-    this.camera.getWorldDirection(this.aim);
-    // Aim through the crosshair, but start level with the player so nothing between the camera and
-    // your back can be hit.
-    const d = this.cameraDistance;
-    const ray: Ray3 = {
-      ox: this.camera.position.x + this.aim.x * d,
-      oy: this.camera.position.y + this.aim.y * d,
-      oz: this.camera.position.z + this.aim.z * d,
-      dx: this.aim.x, dy: this.aim.y, dz: this.aim.z,
-    };
-    const targets: HitTarget[] = [];
+    const weapon = weaponOf(match, this.client.account);
+    const me = { ...this.pose, yaw: this.yaw };
+    let best: { id: string; d: number } | null = null;
     for (const [id, m] of Object.entries(match.monsters)) {
-      if (m.alive) targets.push({ id, x: m.x, z: m.z, ...HIT_SHAPE[m.kind], alive: true });
+      if (!m.alive || !inStrikeReach(me, m, weapon)) continue;
+      const d = distance(me, m);
+      if (!best || d < best.d) best = { id, d };
     }
-    // Shots fly over the crates: only walls and closed gates stop them.
-    const hit = resolveShot(ray, targets, this.solid, weaponOf(match, this.client.account).range, TILE_SIZE);
-    if (!hit) return Promise.resolve("miss");
-    // Guns only hurt monsters: nobody can shoot another player, the traitor included.
-    return this.client.fireAtMonster(hit.id).then((code) => {
+    if (!best) return Promise.resolve("miss");
+    return this.client.strikeMonster(best.id).then((code) => {
       if (code) this.fail(code);
       return code;
     });
@@ -497,7 +490,6 @@ export class MatchView {
     const monster = possession ? match.monsters[possession.monsterId] : undefined;
     const body = monster ? { x: monster.x, z: monster.z, y: MONSTER_EYE - CHASE.height } : this.pose;
     const cam = chaseCamera(body, this.yaw, this.pitch, this.solid, TILE_SIZE);
-    this.cameraDistance = cam.distance;
     this.camera.position.set(cam.x, cam.y, cam.z);
     const shake = this.shakeUntil - performance.now();
     if (shake > 0) {
@@ -552,6 +544,7 @@ export class MatchView {
       revealed: match?.revealed ? displayName(match.revealed, me) : null,
       sealed: !!match && match.revealed === me,
       guide: this.options.tutorial && match && active && !possession ? this.guideHud(match) : null,
+      blocking: !!this.pose.block,
     };
     this.lastHud = hud;
     for (const listener of this.hudListeners) listener(hud);

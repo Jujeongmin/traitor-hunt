@@ -22,7 +22,7 @@ describe("rule errors", () => {
     const adventurer = PLAYERS.filter((p) => p !== traitor)[0];
     actAs(server, adventurer, roomId);
     expect(await errorOf(server.possess("zombie-0"))).toContain("not_traitor");
-    expect(await errorOf(server.fireAtMonster(""))).toContain("unavailable");
+    expect(await errorOf(server.strikeMonster(""))).toContain("unavailable");
     actAs(server, traitor, roomId);
     expect(await errorOf(server.possess("zombie-0"))).toContain("not_ready");
   });
@@ -31,7 +31,7 @@ describe("rule errors", () => {
     server.connect({ account: "test-a" });
     const roomId = (await server.findMatch()).roomId;
     actAs(server, "test-a", roomId);
-    expect(await errorOf(server.fireAtMonster("zombie-0"))).toContain("not_playing");
+    expect(await errorOf(server.strikeMonster("zombie-0"))).toContain("not_playing");
     expect(await errorOf(server.escape())).toContain("not_playing");
   });
 });
@@ -84,7 +84,7 @@ describe("possession", () => {
     const [shooter, near, far] = PLAYERS.filter((p) => p !== traitor);
     await placeAll(server, roomId, {
       [traitor]: { x: 30, z: 14 },
-      [shooter]: { x: 34, z: 20 },
+      [shooter]: { x: 34, z: 15.5 },
       [near]: { x: 28, z: 16 },
       [far]: { x: 6, z: 6 },
     });
@@ -96,7 +96,7 @@ describe("possession", () => {
       const view = await server.possess("zombie-0");
       expect(view.possession.monsterId).toBe("zombie-0");
       actAs(server, shooter, roomId);
-      await server.fireAtMonster("zombie-0");
+      await server.strikeMonster("zombie-0");
     } finally {
       messages.restore();
     }
@@ -159,16 +159,16 @@ describe("monsters", () => {
     const roomId = await fillRoom(server);
     const traitor = await findTraitor(server, roomId);
     const shooter = PLAYERS.filter((p) => p !== traitor)[0];
-    await placeAll(server, roomId, { [shooter]: { x: 34, z: 20 } });
+    await placeAll(server, roomId, { [shooter]: { x: 34, z: 15.5 } });
     actAs(server, shooter, roomId);
     const weapon = await weaponAt(roomId, shooter);
     for (let i = 0; i < Math.ceil(100 / weapon.damage); i++) {
-      await server.fireAtMonster("zombie-0");
+      await server.strikeMonster("zombie-0");
       await server.devAdvanceClock(weapon.intervalMs);
     }
     const zombie = (await roomMatch(roomId)).monsters["zombie-0"];
     expect(zombie.alive).toBe(false);
-    expect(await errorOf(server.fireAtMonster("zombie-0"))).toContain("monster_dead");
+    expect(await errorOf(server.strikeMonster("zombie-0"))).toContain("monster_dead");
   });
 });
 
