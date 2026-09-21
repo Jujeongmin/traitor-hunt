@@ -28,15 +28,15 @@ async function partyOf(server: any, account: string): Promise<any> {
 describe("party invites", () => {
   test("an accepted invite puts both in a party led by the inviter", async (server) => {
     await setup(server);
-    await as(server, "test-b").setCostume("raider");
+    await as(server, "test-b").setCostume("heroine");
     await as(server, "test-a").inviteToParty("test-b");
     expect((await as(server, "test-b").syncParty()).invites).toEqual([{ account: "test-a", nickname: "Hunter" }]);
     await server.acceptPartyInvite("test-a");
     const party = await partyOf(server, "test-a");
     expect(party.leader).toBe("test-a");
     expect(party.members).toEqual([
-      { account: "test-a", nickname: "Hunter", costume: "explorer", online: true, activity: "menu" },
-      { account: "test-b", nickname: "Seeker", costume: "raider", online: true, activity: "menu" },
+      { account: "test-a", nickname: "Hunter", costume: "hero", online: true, activity: "menu" },
+      { account: "test-b", nickname: "Seeker", costume: "heroine", online: true, activity: "menu" },
     ]);
     expect((await as(server, "test-b").syncParty()).invites).toEqual([]);
   });
@@ -119,8 +119,8 @@ describe("leaving a party", () => {
 describe("setCostume", () => {
   test("accepts only known costumes", async (server) => {
     as(server, "test-a");
-    await server.setCostume("scout");
-    expect((await $global.getUserState("test-a")).costume).toBe("scout");
+    await server.setCostume("heroine");
+    expect((await $global.getUserState("test-a")).costume).toBe("heroine");
     expect(await errorOf(server.setCostume("pirate"))).toContain("unavailable");
   });
 });

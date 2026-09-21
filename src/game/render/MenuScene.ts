@@ -2,15 +2,16 @@ import * as THREE from "three";
 import { ModelLibrary } from "../assets/ModelLibrary";
 import type { MonsterState } from "../match/types";
 import { RUINS, TILE_SIZE, parseLevel } from "../rules/levelLayout";
-import type { Costume } from "./costumes";
+import { COSTUME_MODELS, type Costume } from "./costumes";
 import { createLabel, setLabel } from "./labels";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
 import { LightPool } from "./lightPool";
 import { MonsterActor } from "./MonsterActor";
-import { RemotePlayerActor } from "./RemotePlayerActor";
+import { PlayerActor } from "./PlayerActor";
+import { GRUNT, MONSTER_MODELS } from "./monsterLooks";
 import { settings } from "../../ui/settings";
 
-const MENU_MODELS = [...new Set([...LEVEL_MODELS, "wpn_akm", "zombie1", "explorer"])];
+const MENU_MODELS = [...new Set([...LEVEL_MODELS, ...COSTUME_MODELS, ...MONSTER_MODELS])];
 const LIGHT_SLOTS = 6;
 
 // Party slots in the start room, facing the camera (yaw π faces +z). Slot 0 is you, in front.
@@ -42,7 +43,7 @@ export class MenuScene {
   private resizeFrame = 0;
   private library: ModelLibrary | null = null;
   // One actor per slot, rebuilt when the member in that slot changes.
-  private readonly slots: ({ key: string; actor: RemotePlayerActor; label: THREE.Sprite } | null)[] = SLOTS.map(() => null);
+  private readonly slots: ({ key: string; actor: PlayerActor; label: THREE.Sprite } | null)[] = SLOTS.map(() => null);
   private party: PartyMember[] = [];
   private zombie: MonsterActor | null = null;
   private readonly zombieState: MonsterState = {
@@ -84,7 +85,7 @@ export class MenuScene {
     });
     this.library = library;
     this.placeParty();
-    this.zombie = new MonsterActor("menu-zombie", library.instance("zombie1"), library.get("zombie1").animations);
+    this.zombie = new MonsterActor("menu-zombie", library.instance(GRUNT.model), library.get(GRUNT.model).animations, GRUNT.look);
     this.scene.add(this.zombie.object);
     this.clock.start();
     this.frame = requestAnimationFrame(this.tick);
@@ -109,12 +110,8 @@ export class MenuScene {
         this.slots[i] = null;
       }
       if (!member) return;
-      const actor = new RemotePlayerActor(`menu-${i}`, {
-        object: library.instance("explorer"),
-        clips: library.get("explorer").animations,
-        costume: member.costume,
-        weapon: library.instance("wpn_akm"),
-      });
+      const model = member.costume.model;
+      const actor = new PlayerActor(`menu-${i}`, { object: library.instance(model), clips: library.get(model).animations });
       const label = createLabel(0.9);
       label.position.set(spot.x, LABEL_HEIGHT, spot.z);
       setLabel(label, member.name, member.isYou ? "#ffd9a0" : "#f2e8d5");

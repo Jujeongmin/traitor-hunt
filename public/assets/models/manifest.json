@@ -130,6 +130,212 @@
         "HumanM@Death01"
       ]
     },
+    "footman": {
+      "url": "assets/models/footman.glb",
+      "bytes": 247044,
+      "animations": [
+        "Footman_Idle",
+        "Footman_Walk",
+        "Footman_Run",
+        "Footman_Attack01",
+        "Footman_Attack02",
+        "Footman_Defend",
+        "Footman_GetHit",
+        "Footman_Death",
+        "Footman_Victory"
+      ]
+    },
+    "golem": {
+      "url": "assets/models/golem.glb",
+      "bytes": 190936,
+      "animations": [
+        "Idle",
+        "Walk",
+        "Attack01",
+        "Attack02",
+        "GetHit",
+        "Die",
+        "Victory"
+      ]
+    },
+    "grunt": {
+      "url": "assets/models/grunt.glb",
+      "bytes": 218040,
+      "animations": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack01",
+        "Attack02",
+        "GetHit",
+        "Die",
+        "Victory"
+      ]
+    },
+    "hero_female": {
+      "url": "assets/models/hero_female.glb",
+      "bytes": 619176,
+      "animations": [
+        "Idle_Normal_SwordAndShield",
+        "Idle_Battle_SwordAndShiled",
+        "MoveFWD_Normal_InPlace_SwordAndShield",
+        "MoveFWD_Battle_InPlace_SwordAndShield",
+        "MoveBWD_Battle_InPlace_SwordAndShield",
+        "MoveLFT_Battle_InPlace_SwordAndShield",
+        "MoveRGT_Battle_InPlace_SwordAndShield",
+        "SprintFWD_Battle_InPlace_SwordAndShield",
+        "JumpFull_Normal_InPlace_SwordAndShield",
+        "Attack01_SwordAndShiled",
+        "Attack02_SwordAndShiled",
+        "Defend_SwordAndShield",
+        "DefendHit_SwordAndShield",
+        "GetHit01_SwordAndShield",
+        "Die01_SwordAndShield",
+        "Victory_Battle_SwordAndShield"
+      ]
+    },
+    "hero_male": {
+      "url": "assets/models/hero_male.glb",
+      "bytes": 618864,
+      "animations": [
+        "Idle_Normal_SwordAndShield",
+        "Idle_Battle_SwordAndShiled",
+        "MoveFWD_Normal_InPlace_SwordAndShield",
+        "MoveFWD_Battle_InPlace_SwordAndShield",
+        "MoveBWD_Battle_InPlace_SwordAndShield",
+        "MoveLFT_Battle_InPlace_SwordAndShield",
+        "MoveRGT_Battle_InPlace_SwordAndShield",
+        "SprintFWD_Battle_InPlace_SwordAndShield",
+        "JumpFull_Normal_InPlace_SwordAndShield",
+        "Attack01_SwordAndShiled",
+        "Attack02_SwordAndShiled",
+        "Defend_SwordAndShield",
+        "DefendHit_SwordAndShield",
+        "GetHit01_SwordAndShield",
+        "Die01_SwordAndShield",
+        "Victory_Battle_SwordAndShield"
+      ]
+    },
+    "pt_apple_tree": {
+      "url": "assets/models/pt_apple_tree.glb",
+      "bytes": 359112,
+      "animations": []
+    },
+    "pt_bridge": {
+      "url": "assets/models/pt_bridge.glb",
+      "bytes": 39668,
+      "animations": []
+    },
+    "pt_fence_1": {
+      "url": "assets/models/pt_fence_1.glb",
+      "bytes": 16012,
+      "animations": []
+    },
+    "pt_fence_2": {
+      "url": "assets/models/pt_fence_2.glb",
+      "bytes": 14460,
+      "animations": []
+    },
+    "pt_fence_3": {
+      "url": "assets/models/pt_fence_3.glb",
+      "bytes": 16440,
+      "animations": []
+    },
+    "pt_fruit_tree": {
+      "url": "assets/models/pt_fruit_tree.glb",
+      "bytes": 340740,
+      "animations": []
+    },
+    "pt_gate_wood": {
+      "url": "assets/models/pt_gate_wood.glb",
+      "bytes": 56220,
+      "animations": []
+    },
+    "pt_grass": {
+      "url": "assets/models/pt_grass.glb",
+      "bytes": 35928,
+      "animations": []
+    },
+    "pt_logs": {
+      "url": "assets/models/pt_logs.glb",
+      "bytes": 57180,
+      "animations": []
+    },
+    "pt_menhir": {
+      "url": "assets/models/pt_menhir.glb",
+      "bytes": 27872,
+      "animations": []
+    },
+    "pt_mushroom": {
+      "url": "assets/models/pt_mushroom.glb",
+      "bytes": 14996,
+      "animations": []
+    },
+    "pt_ore_rock": {
+      "url": "assets/models/pt_ore_rock.glb",
+      "bytes": 55768,
+      "animations": []
+    },
+    "pt_pine": {
+      "url": "assets/models/pt_pine.glb",
+      "bytes": 171208,
+      "animations": []
+    },
+    "pt_pine_dead": {
+      "url": "assets/models/pt_pine_dead.glb",
+      "bytes": 179704,
+      "animations": []
+    },
+    "pt_poppy": {
+      "url": "assets/models/pt_poppy.glb",
+      "bytes": 8164,
+      "animations": []
+    },
+    "pt_river_rocks": {
+      "url": "assets/models/pt_river_rocks.glb",
+      "bytes": 22140,
+      "animations": []
+    },
+    "pt_rock": {
+      "url": "assets/models/pt_rock.glb",
+      "bytes": 16524,
+      "animations": []
+    },
+    "pt_shrub": {
+      "url": "assets/models/pt_shrub.glb",
+      "bytes": 168648,
+      "animations": []
+    },
+    "pt_shrub_dead": {
+      "url": "assets/models/pt_shrub_dead.glb",
+      "bytes": 46368,
+      "animations": []
+    },
+    "pt_tree_stump": {
+      "url": "assets/models/pt_tree_stump.glb",
+      "bytes": 22724,
+      "animations": []
+    },
+    "th_ohs03": {
+      "url": "assets/models/th_ohs03.glb",
+      "bytes": 17856,
+      "animations": []
+    },
+    "th_ohs06": {
+      "url": "assets/models/th_ohs06.glb",
+      "bytes": 13348,
+      "animations": []
+    },
+    "th_shield05": {
+      "url": "assets/models/th_shield05.glb",
+      "bytes": 14104,
+      "animations": []
+    },
+    "th_shield08": {
+      "url": "assets/models/th_shield08.glb",
+      "bytes": 12884,
+      "animations": []
+    },
     "wpn_akm": {
       "url": "assets/models/wpn_akm.glb",
       "bytes": 619632,

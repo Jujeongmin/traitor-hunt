@@ -2,7 +2,7 @@ import { PROTOCOL_VERSION } from "../game/match/constants";
 import type { MonsterPoseUpdate } from "../game/match/damage";
 import { matchHost } from "../game/match/lifecycle";
 import { readJumpY } from "../game/rules/movement";
-import { RULE_ERRORS, type Pose, type PublicMatch, type Stage } from "../game/match/types";
+import { RULE_ERRORS, readSwing, type Pose, type PublicMatch, type Stage } from "../game/match/types";
 import type { PrivateView } from "../game/match/view";
 import type { MatchTransport, RoomUser } from "./transport";
 
@@ -152,13 +152,15 @@ export class MatchClient {
   // Every POSE_THROTTLE_MS while moving, every IDLE_POSE_MS while standing still.
   reportPose(pose: Pose): void {
     if (this.current.phase !== "playing" && this.current.phase !== "lobby") return;
-    const sent = { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true };
+    const sent = {
+      x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true, swing: readSwing(pose.swing),
+    };
     const now = this.now();
     const last = this.lastPose;
     const moved = !last || Math.abs(sent.x - last.x) > POSE_EPSILON || Math.abs(sent.z - last.z) > POSE_EPSILON
       || Math.abs(sent.yaw - last.yaw) > POSE_EPSILON || Math.abs(sent.y - (last.y ?? 0)) > POSE_EPSILON;
-    // Raising or lowering the shield goes out at once: a late block is no block.
-    const shieldChanged = !!last && sent.block !== (last.block === true);
+    // Raising or lowering the shield, or a swing, goes out at once: a late block is no block.
+    const shieldChanged = !!last && (sent.block !== (last.block === true) || sent.swing !== (last.swing ?? 0));
     if (last && !shieldChanged && now - last.at < (moved ? POSE_THROTTLE_MS : IDLE_POSE_MS)) return;
     this.lastPose = { ...sent, at: now };
     void this.transport.call("reportPose", [sent], { needResponse: false });

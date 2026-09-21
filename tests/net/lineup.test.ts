@@ -17,15 +17,15 @@ describe("partyLineup", () => {
       party: {
         leader: "a",
         members: [
-          { account: "a", nickname: "Hunter", costume: "raider", online: true, activity: "menu" },
-          { account: "me", nickname: "유적왕", costume: "explorer", online: true, activity: "menu" },
+          { account: "a", nickname: "Hunter", costume: "heroine", online: true, activity: "menu" },
+          { account: "me", nickname: "유적왕", costume: "hero", online: true, activity: "menu" },
           { account: "b", nickname: null, costume: "pirate", online: true, activity: "menu" },
         ],
       },
     };
     expect(partyLineup(me, view)).toEqual([
       { name: "유적왕", costume: COSTUMES[1], isYou: true },
-      { name: "Hunter", costume: COSTUMES[2], isYou: false },
+      { name: "Hunter", costume: COSTUMES[1], isYou: false },
       { name: "b", costume: COSTUMES[0], isYou: false },
     ]);
   });

@@ -147,6 +147,217 @@
       "name": "dd_chain_c",
       "kind": "prefab",
       "asset": "Assets/Resources/Decrepit Dungeon LITE/Prefabs/Props/Chain_C.prefab"
+    },
+    {
+      "name": "hero_male",
+      "kind": "character",
+      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/MaleCharacterPolyart.prefab",
+      "clips": [
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Normal_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Battle_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Normal_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveBWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveLFT_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveRGT_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/SprintFWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/JumpFull_Normal_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack01_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack02_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Defend_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/DefendHit_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/GetHit01_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Die01_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Victory_Battle_SwordAndShield.fbx"
+      ]
+    },
+    {
+      "name": "hero_female",
+      "kind": "character",
+      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/FemaleCharacterPolyart.prefab",
+      "clips": [
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Normal_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Idle_Battle_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Normal_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveFWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveBWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveLFT_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/MoveRGT_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/SprintFWD_Battle_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/InPlace/JumpFull_Normal_InPlace_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack01_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Attack02_SwordAndShiled.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Defend_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/DefendHit_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/GetHit01_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Die01_SwordAndShield.fbx",
+        "Assets/Resources/RPG Tiny Hero Duo/Animation/SwordAndShield/Victory_Battle_SwordAndShield.fbx"
+      ]
+    },
+    {
+      "name": "th_ohs03",
+      "kind": "prefab",
+      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/OHS03Polyart.prefab"
+    },
+    {
+      "name": "th_ohs06",
+      "kind": "prefab",
+      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/OHS06Polyart.prefab"
+    },
+    {
+      "name": "th_shield05",
+      "kind": "prefab",
+      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/Shield05Polyart.prefab"
+    },
+    {
+      "name": "th_shield08",
+      "kind": "prefab",
+      "asset": "Assets/Resources/RPG Tiny Hero Duo/Prefab/Shield08Polyart.prefab"
+    },
+    {
+      "name": "grunt",
+      "kind": "character",
+      "asset": "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Prefab/GruntPolyart.prefab",
+      "clips": [
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/Idle.anim",
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/Walk.anim",
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/Run.anim",
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/Attack01.anim",
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/Attack02.anim",
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/GetHit.anim",
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/Die.anim",
+        "Assets/Resources/Mini Legion Grunt PBR HP Polyart/Animations/Victory.anim"
+      ]
+    },
+    {
+      "name": "footman",
+      "kind": "character",
+      "asset": "Assets/Resources/Mini Legion Footman PBR HP Polyart/Prefabs/FootmanPolyart.prefab",
+      "clips": [
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Idle.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Walk.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Run.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Attack01.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Attack02.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Defend.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_GetHit.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Death.fbx",
+        "Assets/Resources/Mini Legion Footman PBR HP Polyart/Animations/Footman_Victory.fbx"
+      ]
+    },
+    {
+      "name": "golem",
+      "kind": "character",
+      "asset": "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Prefabs/Polyart_Golem.prefab",
+      "clips": [
+        "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Animations/Idle.anim",
+        "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Animations/Walk.anim",
+        "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Animations/Attack01.anim",
+        "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Animations/Attack02.anim",
+        "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Animations/GetHit.anim",
+        "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Animations/Die.anim",
+        "Assets/Resources/Mini Legion Rock Golem PBR HP Polyart/Animations/Victory.anim"
+      ]
+    },
+    {
+      "name": "pt_pine",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Pine_Tree_03_green.prefab"
+    },
+    {
+      "name": "pt_pine_dead",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Pine_Tree_03_dead.prefab"
+    },
+    {
+      "name": "pt_fruit_tree",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Fruit_Tree_01_green.prefab"
+    },
+    {
+      "name": "pt_apple_tree",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Fruit_Tree_01_apples.prefab"
+    },
+    {
+      "name": "pt_tree_stump",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Pine_Tree_03_stump.prefab"
+    },
+    {
+      "name": "pt_logs",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Pine_Tree_03_logs.prefab"
+    },
+    {
+      "name": "pt_rock",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_Generic_Rock_01.prefab"
+    },
+    {
+      "name": "pt_menhir",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_Menhir_Rock_02.prefab"
+    },
+    {
+      "name": "pt_ore_rock",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_Ore_Rock_01.prefab"
+    },
+    {
+      "name": "pt_river_rocks",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_River_Rock_Pile_02.prefab"
+    },
+    {
+      "name": "pt_shrub",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Shrubs/PT_Generic_Shrub_01_green.prefab"
+    },
+    {
+      "name": "pt_shrub_dead",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Shrubs/PT_Generic_Shrub_01_dead.prefab"
+    },
+    {
+      "name": "pt_grass",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Plants/PT_Grass_02.prefab"
+    },
+    {
+      "name": "pt_poppy",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Flowers/PT_Poppy_02.prefab"
+    },
+    {
+      "name": "pt_mushroom",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Mushrooms/PT_Caesars_Mushroom_01.prefab"
+    },
+    {
+      "name": "pt_fence_1",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Fence_Wood_01.prefab"
+    },
+    {
+      "name": "pt_fence_2",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Fence_Wood_02.prefab"
+    },
+    {
+      "name": "pt_fence_3",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Fence_Wood_03.prefab"
+    },
+    {
+      "name": "pt_gate_wood",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Gate_Wood_01.prefab"
+    },
+    {
+      "name": "pt_bridge",
+      "kind": "prefab",
+      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Bridge/PT_Wooden_Bridge_02.prefab"
     }
   ]
 }

@@ -17,9 +17,8 @@ interface CostumePanelProps {
 }
 
 const BLURB: Record<string, string> = {
-  explorer: "가벼운 차림. 가방 하나 메고 유적으로.",
-  scout: "재킷에 얼굴 가리개. 먼지 많은 통로용.",
-  raider: "복면까지 쓴 차림. 누가 누군지 알아보기 어렵게.",
+  hero: "주황 머리 용사. 검과 방패를 든 기본 차림.",
+  heroine: "분홍 머리 여용사. 같은 검과 방패, 다른 얼굴.",
 };
 
 // Pick the look you wear in the menu, in your party and in the match.

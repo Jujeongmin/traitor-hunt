@@ -33,10 +33,10 @@ describe("classes in a match", () => {
 describe("costumes in a match", () => {
   test("the match carries what each player picked, so everyone sees the same look", async (server) => {
     server.connect({ account: PLAYERS[0] });
-    await server.setCostume("raider");
+    await server.setCostume("heroine");
     const roomId = await fillRoom(server);
     const match = await roomMatch(roomId);
-    expect(match.looks[PLAYERS[0]]).toBe("raider");
+    expect(match.looks[PLAYERS[0]]).toBe("heroine");
     // The others never picked one, so the match leaves them to their seat costume.
     expect(match.looks[PLAYERS[1]]).toBe(COSTUMES[0].id);
   });
@@ -44,7 +44,7 @@ describe("costumes in a match", () => {
   test("a later change does not rewrite a match already under way", async (server) => {
     const roomId = await fillRoom(server);
     actAs(server, PLAYERS[0], roomId);
-    await server.setCostume("scout");
+    await server.setCostume("heroine");
     expect((await roomMatch(roomId)).looks[PLAYERS[0]]).toBe(COSTUMES[0].id);
   });
 

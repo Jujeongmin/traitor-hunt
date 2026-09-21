@@ -3,14 +3,14 @@ import { COSTUMES, costumeForSeat, costumeById, wearing } from "../../src/game/r
 
 describe("costumeById", () => {
   it("finds a costume by its id and falls back to the first one", () => {
-    expect(costumeById("raider")?.id).toBe("raider");
+    expect(costumeById("heroine")?.id).toBe("heroine");
     expect(costumeById("nonesuch")).toBeNull();
   });
 });
 
 describe("wearing", () => {
   it("is what the player picked", () => {
-    expect(wearing({ a: "raider" }, "a", 0).id).toBe("raider");
+    expect(wearing({ a: "heroine" }, "a", 0).id).toBe("heroine");
   });
 
   it("falls back to the seat's costume for bots, unknown ids and missing lists", () => {

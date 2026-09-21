@@ -20,19 +20,20 @@ import {
 } from "../rules/movement";
 import { FpsInput } from "./FpsInput";
 import { LightPool } from "./lightPool";
-import { MonsterActor, type MonsterLook } from "./MonsterActor";
+import { MonsterActor } from "./MonsterActor";
 import { OBJECTIVE_MODELS, ObjectiveProps } from "./ObjectiveProps";
-import { RemotePlayerActor, type PlayerStatus } from "./RemotePlayerActor";
+import { PlayerActor, type PlayerStatus } from "./PlayerActor";
+import { MONSTER_MODELS, skinFor } from "./monsterLooks";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
 import { CHASE, chaseCamera } from "../rules/chaseCamera";
-import { wearing } from "./costumes";
+import { COSTUME_MODELS, wearing } from "./costumes";
 import { displayName, ownName } from "./names";
 import { playScream, playThud } from "./scream";
 import { settings } from "../../ui/settings";
 
 export const LOOK_SENSITIVITY = 0.0022;
 
-export const MATCH_MODELS = [...new Set([...LEVEL_MODELS, ...OBJECTIVE_MODELS, "wpn_akm", "zombie1", "explorer"])];
+export const MATCH_MODELS = [...new Set([...LEVEL_MODELS, ...OBJECTIVE_MODELS, ...COSTUME_MODELS, ...MONSTER_MODELS])];
 
 const MONSTER_EYE = 1.5;
 // Share of walking speed kept while the shield is up.
@@ -43,8 +44,6 @@ const SHAKE_MS = 350;
 // Real-time point lights shared by all lamps; everything farther only has baked light.
 export const LIGHT_SLOTS = 6;
 const SHAKE_SIZE = 0.06;
-// The boss is the zombie model, grown and reddened, until it gets its own model.
-const BOSS_LOOK: MonsterLook = { height: 3, tint: 0xd07a7a };
 const INTERACT_LABEL: Record<Interactable["kind"], string> = {
   shard: "E: 열쇠 줍기",
   gate: "E: 열쇠로 철문 열기",
@@ -151,7 +150,7 @@ export class MatchView {
   private resizeFrame = 0;
   private readonly lights = new LightPool(this.scene, LIGHT_SLOTS);
   private readonly monsters = new Map<string, MonsterActor>();
-  private readonly players = new Map<string, RemotePlayerActor>();
+  private readonly players = new Map<string, PlayerActor>();
   private readonly hudListeners = new Set<(hud: HudState) => void>();
   // Walls and closed gates only: shots fly over the crates.
   private solid: SolidTest = solidWith(this.layout, [], Infinity);
@@ -165,6 +164,7 @@ export class MatchView {
   private library: ModelLibrary | null = null;
   private props: ObjectiveProps | null = null;
   private pose: Pose;
+  private swings = 0;
   private air: Airborne = GROUNDED;
   private yaw = 0;
   private pitch = 0;
@@ -313,7 +313,7 @@ export class MatchView {
     const jump = this.input.consumePress("Space");
     const ground = groundAt(this.layout.platforms, this.pose.x, this.pose.z, PLAYER_RADIUS);
     this.air = active && !possession && !bound ? stepJump(this.air, jump, dt, ground) : GROUNDED;
-    this.pose = { ...this.pose, y: this.air.y, block: active && !possession && !bound && this.input.blocking };
+    this.pose = { ...this.pose, y: this.air.y, block: active && !possession && !bound && this.input.blocking, swing: this.swings };
     if (match) this.handleActions(match, state, possession, active, bound);
     if (active && !possession) this.client.reportPose(this.pose);
     this.options.onFrame?.(dt, active ? this.pose : null);
@@ -383,6 +383,8 @@ export class MatchView {
   // monsters: nobody can hit another player, the traitor included.
   private strike(match: PublicMatch): Promise<string | null> {
     this.lastShotAt = this.client.serverNow();
+    // Every swing shows, hit or miss: the count rides along with the pose.
+    this.swings += 1;
     const weapon = weaponOf(match, this.client.account);
     const me = { ...this.pose, yaw: this.yaw };
     let best: { id: string; d: number } | null = null;
@@ -456,8 +458,8 @@ export class MatchView {
     for (const [id, m] of Object.entries(match.monsters)) {
       let actor = this.monsters.get(id);
       if (!actor) {
-        const look = m.kind === "boss" ? BOSS_LOOK : undefined;
-        actor = new MonsterActor(id, library.instance("zombie1"), library.get("zombie1").animations, look);
+        const skin = skinFor(m.kind, id);
+        actor = new MonsterActor(id, library.instance(skin.model), library.get(skin.model).animations, skin.look);
         this.scene.add(actor.object);
         this.monsters.set(id, actor);
       }
@@ -468,12 +470,8 @@ export class MatchView {
     for (const account of match.players) {
       let actor = this.players.get(account);
       if (!actor) {
-        actor = new RemotePlayerActor(account, {
-          object: library.instance("explorer"),
-          clips: library.get("explorer").animations,
-          costume: wearing(match.looks, account, match.players.indexOf(account)),
-          weapon: library.instance("wpn_akm"),
-        });
+        const model = wearing(match.looks, account, match.players.indexOf(account)).model;
+        actor = new PlayerActor(account, { object: library.instance(model), clips: library.get(model).animations });
         this.scene.add(actor.object);
         this.players.set(account, actor);
       }

@@ -44,6 +44,7 @@ public static class ExportGlb
         {
             instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             if (!string.IsNullOrEmpty(item.material)) ApplyMaterial(instance, item.material);
+            StandardizeMaterials(instance);
             if (item.kind == "character") AttachClips(instance, item.clips);
             // UnityGLTF's humanoid sampler ends with Undo.PerformUndo(), which would
             // otherwise undo our AddState calls and destroy the controller's states.
@@ -59,6 +60,50 @@ public static class ExportGlb
         {
             UnityEngine.Object.DestroyImmediate(instance);
             if (AssetDatabase.IsValidFolder(TempDir)) AssetDatabase.DeleteAsset(TempDir);
+        }
+    }
+
+    // Texture slots custom shaders keep their colour in (Polytope Studio's shaders among them).
+    static readonly string[] BaseTextureSlots = { "_BaseTexture", "_BaseMap", "_MainTex", "_Exteriorwallstexture", "_Albedo" };
+    // Materials whose texture is a cut-out card (leaves, grass, flowers).
+    static readonly string[] CutoutWords = { "Leaves", "Leaf", "Foliage", "Grass", "Poppy", "Flower" };
+
+    // UnityGLTF only understands the built-in and URP lit shaders; anything else would lose its
+    // texture and come out white. Such materials are swapped for a lit one carrying the same
+    // texture, tint and name.
+    static void StandardizeMaterials(GameObject instance)
+    {
+        var lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        var made = new Dictionary<Material, Material>();
+        foreach (var r in instance.GetComponentsInChildren<Renderer>())
+        {
+            var mats = r.sharedMaterials;
+            for (var i = 0; i < mats.Length; i++)
+            {
+                var src = mats[i];
+                if (src == null || src.shader == null) continue;
+                var shader = src.shader.name;
+                if (shader == "Standard" || shader.StartsWith("Universal Render Pipeline/") || shader.StartsWith("Legacy Shaders/")) continue;
+                if (!made.TryGetValue(src, out var swap))
+                {
+                    swap = new Material(lit) { name = src.name };
+                    var tex = BaseTextureSlots.Where(src.HasProperty).Select(src.GetTexture).FirstOrDefault(t => t != null);
+                    if (tex != null) { swap.SetTexture("_BaseMap", tex); swap.SetTexture("_MainTex", tex); }
+                    var tint = src.HasProperty("_Color") ? src.GetColor("_Color") : Color.white;
+                    swap.SetColor("_BaseColor", tint);
+                    swap.SetColor("_Color", tint);
+                    if (CutoutWords.Any(w => src.name.Contains(w)))
+                    {
+                        swap.SetFloat("_AlphaClip", 1);
+                        swap.SetFloat("_Cutoff", 0.5f);
+                        swap.EnableKeyword("_ALPHATEST_ON");
+                        swap.renderQueue = 2450;
+                    }
+                    made[src] = swap;
+                }
+                mats[i] = swap;
+            }
+            r.sharedMaterials = mats;
         }
     }
 

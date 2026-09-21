@@ -5,8 +5,13 @@ import { ActionBlender, clipByName, ownMaterials, skinnedHeight } from "./skinne
 const HIT_FLASH_SECONDS = 0.08;
 const FOLLOW_RATE = 12;
 
-export interface MonsterLook { height: number; tint: number | null }
-const ZOMBIE_LOOK: MonsterLook = { height: 1.8, tint: null };
+// How a monster model is drawn: its standing height in metres, an optional colour tint, and the
+// names of its clips (they differ from pack to pack).
+export interface MonsterLook {
+  height: number;
+  tint: number | null;
+  clips: { idle: string; walk: string; attack: string; death: string };
+}
 
 export class MonsterActor {
   private readonly mixer: THREE.AnimationMixer;
@@ -24,7 +29,7 @@ export class MonsterActor {
   private dead = false;
   private placed = false;
 
-  constructor(readonly id: string, readonly object: THREE.Object3D, clips: THREE.AnimationClip[], look: MonsterLook = ZOMBIE_LOOK) {
+  constructor(readonly id: string, readonly object: THREE.Object3D, clips: THREE.AnimationClip[], look: MonsterLook) {
     object.scale.setScalar(look.height / skinnedHeight(object));
     this.materials = ownMaterials(object);
     if (look.tint !== null) {
@@ -32,12 +37,12 @@ export class MonsterActor {
       for (const m of this.materials) m.color.multiply(tint);
     }
     this.mixer = new THREE.AnimationMixer(object);
-    this.idle = this.mixer.clipAction(clipByName(clips, "Z_Idle"));
-    this.walk = this.mixer.clipAction(clipByName(clips, "Z_Walk_InPlace"));
-    this.attack = this.mixer.clipAction(clipByName(clips, "Z_Attack"));
+    this.idle = this.mixer.clipAction(clipByName(clips, look.clips.idle));
+    this.walk = this.mixer.clipAction(clipByName(clips, look.clips.walk));
+    this.attack = this.mixer.clipAction(clipByName(clips, look.clips.attack));
     this.attack.setLoop(THREE.LoopOnce, 1);
     this.attackSeconds = this.attack.getClip().duration;
-    this.death = this.mixer.clipAction(clipByName(clips, "Z_FallingBack"));
+    this.death = this.mixer.clipAction(clipByName(clips, look.clips.death));
     this.death.setLoop(THREE.LoopOnce, 1);
     this.death.clampWhenFinished = true;
     this.blender = new ActionBlender(this.idle);

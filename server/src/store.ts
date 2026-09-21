@@ -13,7 +13,7 @@ import { readJumpY } from "../../src/game/rules/movement";
 import { maxFeetY } from "../../src/game/rules/platforms";
 import { addResult, readProfile } from "../../src/game/match/profile";
 import {
-  RuleViolation, type PlayerResult, type Pose, type Poses, type PublicMatch, type SecretMatch, type SecretRef,
+  RuleViolation, readSwing, type PlayerResult, type Pose, type Poses, type PublicMatch, type SecretMatch, type SecretRef,
 } from "../../src/game/match/types";
 
 export const RESULTS_COLLECTION = "match_results";
@@ -99,7 +99,9 @@ export function isPose(value: unknown): value is Pose {
 
 export async function readPose(roomId: string, account: string): Promise<Pose | null> {
   const pose: unknown = (await $global.getRoomUserState(roomId, account)).pose;
-  return isPose(pose) ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true } : null;
+  return isPose(pose)
+    ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true, swing: readSwing(pose.swing) }
+    : null;
 }
 
 export async function readPoses(roomId: string, accounts: string[]): Promise<Poses> {
@@ -112,7 +114,8 @@ export async function writePose(roomId: string, account: string, pose: Pose, at:
   // Trust the height only as far as the map allows: what is under them plus a jump.
   const y = Math.min(readJumpY(pose.y), maxFeetY(LEVEL.platforms, pose.x, pose.z));
   const block = pose.block === true;
-  await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, block, at } });
+  const swing = readSwing(pose.swing);
+  await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, block, swing, at } });
 }
 
 // Writes this account's line on the board. Called whenever its XP or its name changes; a fresh
