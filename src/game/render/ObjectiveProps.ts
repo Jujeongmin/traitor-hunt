@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import type { ModelLibrary } from "../assets/ModelLibrary";
-import { MATCH_PLAYERS, PLATE_RADIUS, SEAL_DURATION_MS, SEAL_RADIUS } from "../match/constants";
+import { MATCH_PLAYERS, PLATE_RADIUS, SEAL_DURATION_MS } from "../match/constants";
 import { isActive } from "../match/lifecycle";
 import type { PublicMatch } from "../match/types";
 import type { LevelLayout, Point2 } from "../rules/levelLayout";
+import { altarRing } from "../rules/obstacles";
 import { createLabel, setLabel } from "./labels";
 import type { LightPool } from "./lightPool";
 import { buildStaticBatch, type StaticBatch, type StaticPiece } from "./staticBatch";
@@ -19,7 +20,6 @@ const ORE_SCALE = 1.7;
 const DEVICE_SCALE = 0.85;
 const ALTAR_SCALE = 1.25;
 const RING_SCALE = 0.45;
-const GUARD_STONES = 10;
 const RUNE_LIGHT = 0x7fd4ff;
 const ORE_LIGHT = 0xffc86a;
 const PLATE_DROP_HEIGHT = 7;
@@ -175,9 +175,9 @@ export class ObjectiveProps {
   // The altar: a tall stone ringed by small stones that mark the guarded area.
   private addAltar(at: Point2): void {
     const top = this.fixed("pt_menhir", at, 0, 0, ALTAR_SCALE);
-    for (let i = 0; i < GUARD_STONES; i++) {
-      const a = (i / GUARD_STONES) * Math.PI * 2;
-      this.fixed("pt_menhir", { x: at.x + Math.cos(a) * SEAL_RADIUS, z: at.z + Math.sin(a) * SEAL_RADIUS }, 0, a, RING_SCALE);
+    // The same stones the rules block (obstacles.ts).
+    for (const stone of altarRing(this.layout)) {
+      this.fixed("pt_menhir", stone, 0, Math.atan2(stone.x - at.x, stone.z - at.z), RING_SCALE);
     }
     this.lights.add({
       position: new THREE.Vector3(at.x, top + 0.5, at.z), color: this.rune, range: 12,

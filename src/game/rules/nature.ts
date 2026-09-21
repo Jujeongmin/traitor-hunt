@@ -16,6 +16,16 @@ const EDGE_PROPS = ["pt_rock", "pt_shrub", "pt_shrub_dead"];
 const GROUND_PLANTS = ["pt_grass", "pt_grass", "pt_grass", "pt_poppy", "pt_mushroom"];
 export const NATURE_MODELS = [...new Set([...TREES, ...EDGE_PROPS, ...GROUND_PLANTS])];
 
+// What each model takes up on the ground at scale 1, as a radius in metres: the trunk for trees (the
+// crowns hang high over the paths), the whole thing for rocks and bushes. Kept inside solid cells so
+// nothing you can see stands where you can walk.
+export const FOOTPRINT: Record<string, number> = {
+  pt_pine: 0.45, pt_pine_dead: 0.4, pt_fruit_tree: 0.4, pt_apple_tree: 0.4,
+  pt_rock: 0.13, pt_shrub: 0.93, pt_shrub_dead: 0.69,
+};
+// Space left between a prop and the path.
+const EDGE_GAP = 0.1;
+
 // How far beyond the map the forest keeps going, in cells.
 const BORDER = 3;
 // The generic rock model is a pebble; boulders are that many times larger.
@@ -60,24 +70,32 @@ export function natureLayout(layout: LevelLayout): NaturePiece[] {
         // Cells on a path's edge get a thicker wall of trees and a boulder or bush facing the path.
         const trees = open.length > 0 ? 2 : 1;
         for (let i = 0; i < trees; i++) {
+          const model = pick(TREES, cellNoise(c, r, 20 + i) ** 1.6);
+          const scale = 0.85 + cellNoise(c, r, 60 + i) * 0.4;
+          // Jittered, but the trunk stays inside the cell.
+          const room = t / 2 - FOOTPRINT[model] * scale - EDGE_GAP;
           out.push({
-            model: pick(TREES, cellNoise(c, r, 20 + i) ** 1.6),
-            x: cx + (cellNoise(c, r, 30 + i) - 0.5) * t * 0.6,
-            z: cz + (cellNoise(c, r, 40 + i) - 0.5) * t * 0.6,
+            model,
+            x: cx + (cellNoise(c, r, 30 + i) * 2 - 1) * room,
+            z: cz + (cellNoise(c, r, 40 + i) * 2 - 1) * room,
             yaw: cellNoise(c, r, 50 + i) * Math.PI * 2,
-            scale: 0.85 + cellNoise(c, r, 60 + i) * 0.4,
+            scale,
           });
         }
         if (open.length > 0) {
-          const [dc, dr] = open[0];
+          // A boulder or bush on the side that faces a path (straight sides first), its edge flush
+          // with the cell's edge so it lines the path without stepping onto it.
+          const [dc, dr] = [...open].sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - (Math.abs(b[0]) + Math.abs(b[1])))[0];
           const model = pick(EDGE_PROPS, cellNoise(c, r, 70));
+          const scale = model === "pt_rock" ? between(ROCK_SCALE, cellNoise(c, r, 72)) : 1 + cellNoise(c, r, 72) * 0.4;
+          const reach = t / 2 - FOOTPRINT[model] * scale - EDGE_GAP;
+          const len = Math.hypot(dc, dr);
           out.push({
             model,
-            // Pushed toward the path, but kept inside the solid cell.
-            x: cx + dc * t * 0.35,
-            z: cz + dr * t * 0.35,
+            x: cx + (dc / len) * reach,
+            z: cz + (dr / len) * reach,
             yaw: cellNoise(c, r, 71) * Math.PI * 2,
-            scale: model === "pt_rock" ? between(ROCK_SCALE, cellNoise(c, r, 72)) : 1 + cellNoise(c, r, 72) * 0.4,
+            scale,
           });
         }
         continue;

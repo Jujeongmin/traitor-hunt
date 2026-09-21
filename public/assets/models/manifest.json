@@ -98,7 +98,7 @@
     },
     "pt_bridge": {
       "url": "assets/models/pt_bridge.glb",
-      "bytes": 39668,
+      "bytes": 39728,
       "animations": []
     },
     "pt_fruit_tree": {
@@ -108,7 +108,7 @@
     },
     "pt_gate_wood": {
       "url": "assets/models/pt_gate_wood.glb",
-      "bytes": 56220,
+      "bytes": 56276,
       "animations": []
     },
     "pt_grass": {
@@ -148,7 +148,7 @@
     },
     "pt_poppy": {
       "url": "assets/models/pt_poppy.glb",
-      "bytes": 6204,
+      "bytes": 45876,
       "animations": []
     },
     "pt_river_rocks": {

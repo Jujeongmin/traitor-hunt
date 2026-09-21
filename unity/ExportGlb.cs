@@ -87,9 +87,13 @@ public static class ExportGlb
                 if (!made.TryGetValue(src, out var swap))
                 {
                     swap = new Material(lit) { name = src.name };
-                    var tex = BaseTextureSlots.Where(src.HasProperty).Select(src.GetTexture).FirstOrDefault(t => t != null);
+                    var tex = BaseTextureSlots.Where(src.HasProperty).Select(src.GetTexture).FirstOrDefault(t => t != null)
+                        ?? SavedTexture(src);
                     if (tex != null) { swap.SetTexture("_BaseMap", tex); swap.SetTexture("_MainTex", tex); }
                     var tint = src.HasProperty("_Color") ? src.GetColor("_Color") : Color.white;
+                    // The free Polytope pack leaves out its village textures; the wooden gate and bridge get
+                    // a plain wood colour instead of white.
+                    if (tex == null && src.name.Contains("Buildings")) tint = new Color(0.55f, 0.38f, 0.23f);
                     swap.SetColor("_BaseColor", tint);
                     swap.SetColor("_Color", tint);
                     if (CutoutWords.Any(w => src.name.Contains(w)))
@@ -105,6 +109,27 @@ public static class ExportGlb
             }
             r.sharedMaterials = mats;
         }
+    }
+
+    // Texture slots the current shader does not declare are invisible to the Material API but still
+    // saved in the .mat file; read the first one whose name says it is the base colour.
+    static Texture SavedTexture(Material src)
+    {
+        var path = AssetDatabase.GetAssetPath(src);
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+        var lines = File.ReadAllLines(path);
+        string[] wanted = { "BASE", "MAINTEX", "EXTERIOR", "ALBEDO" };
+        for (var i = 0; i + 1 < lines.Length; i++)
+        {
+            var name = lines[i].Trim().TrimStart('-').Trim().TrimEnd(':').ToUpperInvariant();
+            if (!wanted.Any(name.Contains)) continue;
+            var guidAt = lines[i + 1].IndexOf("guid: ", StringComparison.Ordinal);
+            if (guidAt < 0) continue;
+            var guid = lines[i + 1].Substring(guidAt + 6).Split(',')[0].Trim();
+            var tex = AssetDatabase.LoadAssetAtPath<Texture>(AssetDatabase.GUIDToAssetPath(guid));
+            if (tex != null) return tex;
+        }
+        return null;
     }
 
     static void ApplyMaterial(GameObject instance, string path)

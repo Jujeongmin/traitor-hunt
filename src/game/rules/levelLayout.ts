@@ -1,4 +1,5 @@
 import type { SolidTest } from "./movement";
+import { obstacleBlocks, obstaclesFor } from "./obstacles";
 import { platformBlocks, platformsFor, type Platform } from "./platforms";
 
 export interface Point2 { x: number; z: number }
@@ -115,14 +116,18 @@ export function solidAt(layout: LevelLayout, x: number, z: number): boolean {
 
 // Gate cells are floor in the layout; a closed gate blocks its whole cell like a wall. Platforms taller
 // than feetY + STEP_UP block too: monsters and bots are always on the floor (feetY 0); a player passes
-// their feet height; Infinity leaves only walls and gates (for shots, which fly over crates).
-export function solidWith(layout: LevelLayout, openGates: readonly number[], feetY = 0): SolidTest {
+// their feet height; Infinity leaves only walls and gates (for the camera and line of sight). The
+// standing stones (obstacles.ts) block bodies; a path search leaves them out, since a stone stands in
+// the middle of the cell it heads for and the last steps just slide round it.
+export function solidWith(layout: LevelLayout, openGates: readonly number[], feetY = 0, stones = true): SolidTest {
   const half = layout.tileSize / 2;
   const closed = layout.gates.filter((g) => !openGates.includes(g.n));
+  const obstacles = stones && Number.isFinite(feetY) ? obstaclesFor(layout) : [];
   return (x, z) =>
     solidAt(layout, x, z)
     || closed.some((g) => x >= g.x - half && x < g.x + half && z >= g.z - half && z < g.z + half)
-    || platformBlocks(layout.platforms, x, z, feetY);
+    || platformBlocks(layout.platforms, x, z, feetY)
+    || obstacleBlocks(obstacles, x, z);
 }
 
 const SPAWN_OFFSETS: Point2[] = [

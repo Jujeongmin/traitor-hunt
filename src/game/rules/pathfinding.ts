@@ -19,9 +19,12 @@ export function findPath(
 ): Point2[] | null {
   const start = cellOf(layout, from);
   const goal = cellOf(layout, to);
+  // A cell counts as walkable when its centre is open. The start and goal cells only need to be open
+  // floor on the grid: what you stand by or walk to (a rune stone, the altar) may be in their middle.
+  const ends = (c: Cell) => (c.col === goal.col && c.row === goal.row) || (c.col === start.col && c.row === start.row);
   const walkable = (c: Cell) => {
     const p = cellCenter(layout, c);
-    return !isSolid(p.x, p.z);
+    return !isSolid(p.x, p.z) || (ends(c) && !solidAt(layout, p.x, p.z));
   };
   if (!walkable(start) || !walkable(goal)) return null;
 

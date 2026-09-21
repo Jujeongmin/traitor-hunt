@@ -43,11 +43,17 @@ function ring(center: Vec2, count: number): Vec2[] {
   });
 }
 
+// Nothing solid anywhere on the plate or just past its rim: sampled in rings, so a small standing
+// stone cannot hide between the samples.
 function clear(point: Vec2, isSolid: SolidTest): boolean {
-  const r = PLATE_RADIUS + 0.2;
-  return !isSolid(point.x, point.z)
-    && !isSolid(point.x - r, point.z) && !isSolid(point.x + r, point.z)
-    && !isSolid(point.x, point.z - r) && !isSolid(point.x, point.z + r);
+  if (isSolid(point.x, point.z)) return false;
+  for (const r of [PLATE_RADIUS * 0.5, PLATE_RADIUS, PLATE_RADIUS + 0.2]) {
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      if (isSolid(point.x + Math.cos(a) * r, point.z + Math.sin(a) * r)) return false;
+    }
+  }
+  return true;
 }
 
 function lineClear(a: Vec2, b: Vec2, isSolid: SolidTest): boolean {
