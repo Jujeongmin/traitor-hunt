@@ -12,6 +12,8 @@ interface WardrobeProps {
   onSpin: (radians: number) => void;
   onClose: () => void;
   online: boolean;
+  // The last step of starting a game: the button reads "게임 시작" and starts instead of closing.
+  onStart?: () => void;
 }
 
 const CLASS_BLURB: Record<PlayerClass, string> = {
@@ -24,7 +26,7 @@ const SPIN_PER_PIXEL = 0.012;
 
 // The wardrobe: a screen of its own where your hero stands on the left, turning as you drag, and the
 // right side picks your class and each part of your look. Every change is kept at once.
-export function Wardrobe({ costume, onPick, onSpin, onClose, online }: WardrobeProps) {
+export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: WardrobeProps) {
   const [picked, setPicked] = useState(myClass());
   useEffect(() => onMyClass(setPicked), []);
   const drag = useRef<number | null>(null);
@@ -62,8 +64,8 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online }: WardrobeP
 
       <aside className="wardrobe-panel">
         <header className="wardrobe-head">
-          <h2>캐릭터 꾸미기</h2>
-          <button type="button" className="text-button" onClick={onClose}>완료</button>
+          <h2>{onStart ? "캐릭터 외형 정하기" : "캐릭터 꾸미기"}</h2>
+          <button type="button" className="text-button" onClick={onClose}>{onStart ? "취소" : "완료"}</button>
         </header>
 
         <section>
@@ -115,6 +117,8 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online }: WardrobeP
             })}
           </ul>
         </section>
+
+        {onStart && <button type="button" className="brush-button wardrobe-start" onClick={onStart}>게임 시작</button>}
 
         <p className="note">
           바꾸는 즉시 저장돼요. {online ? "같은 방의 다른 플레이어에게도 이 모습으로 보입니다." : "Verse8 서버에 연결되면 다른 플레이어에게도 보입니다."}

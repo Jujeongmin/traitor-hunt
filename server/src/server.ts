@@ -6,6 +6,7 @@ import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/pur
 import { readClass } from "../../src/game/match/classes";
 import { rankOf, type StatsView } from "../../src/game/account/ranking";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
+import { readWorld } from "../../src/game/account/worlds";
 import {
   addInvite, checkInvite, joinParty, kickFromParty, leaveParty, readActivity, readPartyMatch, type Party,
   type PartyView,
@@ -29,7 +30,7 @@ import { privateView, type PrivateView } from "../../src/game/match/view";
 import { stepVote } from "../../src/game/match/vote";
 import {
   LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
-  partyMember, readCostume, readPlayerClass, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
+  partyMember, readAccountWorld, readCostume, readPlayerClass, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
   readRanking, writeRanking, grantPurchase, ownsFullGame,
   readSecret, readXp, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
   writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
@@ -85,7 +86,8 @@ async function betweenFriends<T>(other: string, rule: (me: FriendSide, them: Fri
 // Your account as the menu sees it: your name and the level your finished matches add up to.
 async function accountView(account: string, nickname: string | null): Promise<AccountView> {
   const xp = await readXp(account);
-  return { account, nickname, xp, level: levelOf(xp), owned: await ownsFullGame(account) };
+  const world = readWorld((await $global.getUserState(account)).world)?.id ?? null;
+  return { account, nickname, xp, level: levelOf(xp), owned: await ownsFullGame(account), world };
 }
 
 // Who findMatch seats: you alone, or your party if you lead one and everyone is back at the menu.
@@ -290,6 +292,15 @@ export class Server {
     return { success: true, code: granted ? "granted" : "already_granted" };
   }
 
+  // The server you play on, picked each time you start.
+  async setWorld(id: unknown): Promise<AccountView> {
+    const world = readWorld(id);
+    if (!world) throw new RuleViolation("unavailable");
+    const account = $sender.account;
+    await $global.updateUserState(account, { world: world.id });
+    return accountView(account, await readNickname(account));
+  }
+
   async setClass(id: unknown): Promise<void> {
     const picked = readClass(id);
     if (!picked) throw new RuleViolation("unavailable");
@@ -398,12 +409,14 @@ export class Server {
     const seats = await partySeats(account, now);
     // Online play is the paid game. A leader who owns it brings the whole party along.
     if (!(await ownsFullGame(account))) throw new RuleViolation("not_owned");
+    // The leader's server decides where the whole party plays.
+    const world = (await readAccountWorld(account)).id;
     const roomId = await withMatchmakingLock(async () => {
-      const lobbies = await listLobbies();
+      const lobbies = await listLobbies(world);
       const missing = (players: string[]) => seats.filter((s) => !players.includes(s)).length;
       const target = lobbies.find((l) => missing(l.match.players) === 0)
         ?? lobbies.find((l) => l.match.players.length + missing(l.match.players) <= MATCH_PLAYERS);
-      const id = target?.roomId ?? newRoomId(now);
+      const id = target?.roomId ?? newRoomId(now, world);
       await $global.joinRoom(id);
       await withRoomLock(id, async () => {
         const match = (await readMatch(id)) ?? createLobby(now);

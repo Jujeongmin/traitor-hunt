@@ -16,6 +16,10 @@ export function saveNickname(transport: MatchTransport, nickname: string): Promi
   return transport.call<AccountView>("setNickname", [nickname]);
 }
 
+export function saveWorld(transport: MatchTransport, world: string): Promise<AccountView> {
+  return transport.call<AccountView>("setWorld", [world]);
+}
+
 // What to show under the nickname field when saving fails.
 export function nicknameProblem(error: unknown): string {
   return PROBLEMS[errorCode(error)] ?? "저장하지 못했어요. 잠시 뒤 다시 시도해 주세요";

@@ -10,6 +10,8 @@ import type { FriendsClient } from "../net/friends";
 import { partyLineup, partyProblem, type PartyClient } from "../net/party";
 import { FriendsPanel } from "./FriendsPanel";
 import { NicknamePanel } from "./NicknamePanel";
+import { WorldPicker } from "./WorldPicker";
+import { readWorld } from "../game/account/worlds";
 import { playMusic } from "../game/audio/music";
 import { Wardrobe } from "./Wardrobe";
 import { StatsPanel } from "./StatsPanel";
@@ -35,6 +37,9 @@ interface MainMenuProps {
   matching: ReactNode;
   // Null until the server account has loaded.
   onSaveNickname: ((nickname: string) => Promise<void>) | null;
+  // The server picked last time (see worlds.ts), and saving a new pick.
+  world: string | null;
+  onPickWorld: (world: string) => Promise<void>;
   accountFailed: boolean;
   // Null while offline.
   friends: FriendsClient | null;
@@ -50,9 +55,11 @@ interface MainMenuProps {
 }
 
 type Sheet = "none" | "settings" | "help" | "stats";
+// Starting a game walks through: server, then a nickname (only the first time), then your look.
+type StartStep = "world" | "name" | "look";
 
 export function MainMenu({
-  account, nickname, level, loadStats, owned, onBuy, purchase, price, matching, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
+  account, nickname, level, loadStats, owned, onBuy, purchase, price, matching, onSaveNickname, world, onPickWorld, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
   onPractice, onOnline, onlineAvailable,
 }: MainMenuProps) {
   const stage = useRef<HTMLDivElement>(null);
@@ -62,14 +69,14 @@ export function MainMenu({
   const [sheet, setSheet] = useState<Sheet>("none");
   // The wardrobe is a screen of its own: the menu steps aside and the camera closes in on you.
   const [wardrobe, setWardrobe] = useState(false);
+  const [step, setStep] = useState<StartStep | null>(null);
+  const dressing = wardrobe || step === "look";
   useEffect(() => {
-    scene.current?.setWardrobe(wardrobe);
-  }, [wardrobe]);
+    scene.current?.setWardrobe(dressing);
+  }, [dressing]);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  // Quick start was pressed without a nickname: start as soon as one is saved.
-  const [startAfterName, setStartAfterName] = useState(false);
   const [inviteProblem, setInviteProblem] = useState<string | null>(null);
   const name = nickname ?? ownName(account);
   const members = partyView?.party?.members ?? [];
@@ -77,6 +84,7 @@ export function MainMenu({
   const leading = partyView?.party?.leader === account;
   const partyBusy = members.some((m) => m.account !== account && (!m.online || m.activity !== "menu"));
   // A nickname is asked for when you start, not before: practice and the menu work without one.
+  // Starting needs the Verse8 server: offline there is no game to start.
   // The paid game: practice is free, online needs the game bought (a leader who owns it brings
   // their party). Party members who follow a leader never press quick start themselves.
   const mustBuy = owned === false && (!inParty || leading);
@@ -84,13 +92,13 @@ export function MainMenu({
   const requests = friendsView?.incoming.length ?? 0;
   // The first thing that stands between you and quick start, if anything does.
   const onlineNote = (() => {
-    if (!onlineAvailable) return "빠른 시작은 Verse8 서버를 연결한 뒤 열립니다.";
+    if (!onlineAvailable) return "게임 시작은 Verse8 서버에 연결되어야 할 수 있어요.";
     if (accountFailed) return "계정 정보를 불러오지 못했습니다. 새로고침해 주세요.";
     if (!onSaveNickname) return "계정 정보를 불러오는 중…";
     if (purchase === "confirming") return "결제를 확인하는 중…";
     if (purchase === "late") return "결제 확인이 늦어지고 있어요. 잠시 뒤 새로고침해 주세요.";
     if (mustBuy) return "연습은 무료입니다. 온라인 대전은 정식판을 구매하면 열립니다.";
-    if (inParty && !leading) return "파티장이 빠른 시작을 누르면 함께 들어갑니다.";
+    if (inParty && !leading) return "파티장이 게임을 시작하면 함께 들어갑니다.";
     if (inParty && partyBusy) return "파티원이 아직 게임 중이에요.";
     return null;
   })();
@@ -135,13 +143,9 @@ export function MainMenu({
   };
 
   // Matching keeps you on the menu, so there is no dive into the ruins until the match starts.
-  const quickStart = () => {
-    if (nickname !== null) {
-      onOnline();
-      return;
-    }
-    setStartAfterName(true);
-    setRenaming(true);
+  const startGame = () => {
+    setStep(null);
+    onOnline();
   };
 
   useEffect(() => {
@@ -166,6 +170,7 @@ export function MainMenu({
             </span>
           )}
         </span>
+        {readWorld(world) && <span className="menu-world">{readWorld(world)?.name}</span>}
         {onSaveNickname ? (
           <button type="button" className="menu-name name-button" title="닉네임 바꾸기" onClick={() => setRenaming(true)}>
             {name}
@@ -184,14 +189,14 @@ export function MainMenu({
       )}
       {!invite && inviteProblem && <div className="party-invite band">{inviteProblem}</div>}
 
-      <div className="menu-corner" style={wardrobe ? { display: "none" } : undefined}>
+      <div className="menu-corner" style={dressing ? { display: "none" } : undefined}>
         <button type="button" className="brush-button small" onClick={() => setFriendsOpen((v) => !v)}>
           친구{requests > 0 && <span className="badge">{requests}</span>}
         </button>
         <button type="button" className="brush-button small" onClick={() => setSheet("settings")}>설정</button>
       </div>
 
-      {!wardrobe && (
+      {!dressing && (
         <nav className="menu-left">
           <h1>TRAITOR HUNT</h1>
           {mustBuy && onBuy ? (
@@ -199,8 +204,8 @@ export function MainMenu({
               정식판 구매 ({price} VX)
             </button>
           ) : (
-            <button type="button" className="brush-button" onClick={quickStart} disabled={!onlineReady || leaving || !!matching}>
-              {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
+            <button type="button" className="brush-button" onClick={() => setStep("world")} disabled={!onlineReady || leaving || !!matching}>
+              {inParty ? `게임 시작 (파티 ${members.length}명)` : "게임 시작"}
             </button>
           )}
           <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving || !!matching}>연습 (봇 3명)</button>
@@ -225,21 +230,47 @@ export function MainMenu({
       {onSaveNickname && renaming && (
         <NicknamePanel
           current={nickname}
-          purpose={startAfterName ? "start" : nickname === null ? "first" : "rename"}
+          purpose={nickname === null ? "first" : "rename"}
+          onSave={onSaveNickname}
+          onClose={() => setRenaming(false)}
+        />
+      )}
+
+      {step === "world" && (
+        <WorldPicker
+          current={world}
+          onPick={async (id) => {
+            await onPickWorld(id);
+            setStep(nickname === null ? "name" : "look");
+          }}
+          onClose={() => setStep(null)}
+        />
+      )}
+      {step === "name" && onSaveNickname && (
+        <NicknamePanel
+          current={nickname}
+          purpose="start"
           onSave={async (next) => {
             await onSaveNickname(next);
-            if (startAfterName) onOnline();
+            setStep("look");
           }}
-          onClose={() => {
-            setRenaming(false);
-            setStartAfterName(false);
-          }}
+          onClose={() => setStep(null)}
         />
       )}
 
       {sheet === "settings" && <SettingsPanel onClose={() => setSheet("none")} />}
       {sheet === "stats" && (
         <StatsPanel account={account} load={loadStats} onClose={() => setSheet("none")} />
+      )}
+      {step === "look" && (
+        <Wardrobe
+          costume={costume}
+          online={!!onSaveNickname}
+          onPick={setMyCostume}
+          onSpin={(r) => scene.current?.spin(r)}
+          onClose={() => setStep(null)}
+          onStart={startGame}
+        />
       )}
       {wardrobe && (
         <Wardrobe

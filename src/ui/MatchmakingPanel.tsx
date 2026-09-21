@@ -20,7 +20,7 @@ function clock(ms: number): string {
 
 const JOIN_ERROR: Record<string, string> = {
   party_busy: "파티원이 아직 게임 중이에요",
-  not_leader: "파티장만 빠른 시작을 할 수 있어요",
+  not_leader: "파티장만 게임을 시작할 수 있어요",
   unavailable: "들어갈 수 있는 방이 없어요",
   not_owned: "온라인 대전은 정식판을 구매해야 할 수 있어요",
 };

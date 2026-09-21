@@ -3,6 +3,7 @@ import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
 import { levelOf, xpOf } from "../../src/game/account/level";
+import { DEFAULT_WORLD, readWorld, type World } from "../../src/game/account/worlds";
 import { playsFree, type PurchaseEvent } from "../../src/game/account/purchase";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
@@ -33,8 +34,9 @@ export function token(length: number): string {
   return out;
 }
 
-export function newRoomId(now: number): string {
-  return `de-${now.toString(36)}-${token(6)}`;
+// The world is part of the room id, so matchmaking can keep each server's lobbies apart.
+export function newRoomId(now: number, world: string): string {
+  return `de-${world}-${now.toString(36)}-${token(6)}`;
 }
 
 export function withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
@@ -58,10 +60,11 @@ export async function writeMatch(roomId: string, match: PublicMatch): Promise<vo
   await $global.updateRoomState(roomId, { match });
 }
 
-export async function listLobbies(): Promise<{ roomId: string; match: PublicMatch }[]> {
+export async function listLobbies(world: string): Promise<{ roomId: string; match: PublicMatch }[]> {
   const lobbies: { roomId: string; match: PublicMatch }[] = [];
   for (const state of await $global.getAllRoomStates()) {
-    if (typeof state.roomId === "string" && isMatch(state.match) && state.match.phase === "lobby") {
+    if (typeof state.roomId !== "string" || !state.roomId.startsWith(`de-${world}-`)) continue;
+    if (isMatch(state.match) && state.match.phase === "lobby") {
       lobbies.push({ roomId: state.roomId, match: state.match });
     }
   }
@@ -288,6 +291,11 @@ export async function writePartyInvites(account: string, invites: PartyInvite[])
 // The class an account picked in the menu, or null for anyone who never picked.
 export async function readPlayerClass(account: string): Promise<PlayerClass | null> {
   return readClass((await $global.getUserState(account)).playerClass);
+}
+
+// The server an account picked when it last started; the first one for anyone who never picked.
+export async function readAccountWorld(account: string): Promise<World> {
+  return readWorld((await $global.getUserState(account)).world) ?? DEFAULT_WORLD;
 }
 
 // The costume an account picked in the menu, or null for anyone who never picked (their seat decides).

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Server } from "../../server/src/server";
 import { FIRST_LEVEL_XP } from "../../src/game/account/level";
-import { loadAccount, loadStats, nicknameProblem, saveNickname } from "../../src/net/account";
+import { loadAccount, loadStats, nicknameProblem, saveNickname, saveWorld } from "../../src/net/account";
 import { LocalWorld } from "../../src/net/local/localWorld";
 import { LocalTransport } from "../../src/net/localTransport";
 
@@ -60,5 +60,14 @@ describe("account", () => {
     expect(nicknameProblem(await failure(saveNickname(b, "HUNTER")))).toBe("이미 쓰고 있는 닉네임이에요");
     expect(nicknameProblem(await failure(saveNickname(b, "봇 1")))).toBe("한글·영문·숫자·_ 로 2~12자까지 쓸 수 있어요");
     expect(nicknameProblem(new Error("socket closed"))).toBe("저장하지 못했어요. 잠시 뒤 다시 시도해 주세요");
+  });
+});
+
+describe("server pick", () => {
+  it("is empty until picked and then remembered", async () => {
+    const [a] = seats("test-a");
+    expect((await loadAccount(a)).world).toBeNull();
+    expect((await saveWorld(a, "w2")).world).toBe("w2");
+    expect((await loadAccount(a)).world).toBe("w2");
   });
 });

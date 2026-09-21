@@ -471,11 +471,33 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .wardrobe .note { margin: 0; font-size: 11px; color: var(--ink-dim); line-height: 1.5; }
 
 
-.nickname-panel { width: 380px; padding: 56px 90px; }
+.nickname-panel { width: 380px; }
 .nickname-panel .note { font-size: 13px; color: var(--ink-dim); line-height: 1.6; text-align: center; margin: 0; }
 .nickname-form { display: flex; gap: 6px; margin-top: 18px; }
 .nickname-problem { font-size: 13px; color: var(--ember); text-align: center; margin: 10px 0 0; }
 .nickname-panel .close { display: block; margin: 10px auto 0; }
+
+/* Server picker: the first step of starting a game. Solid like the wardrobe so it reads over the forest. */
+.solid-panel {
+  max-width: calc(100% - 32px); padding: 20px 22px;
+  background: rgba(14, 11, 9, 0.92); border: 1px solid rgba(255, 179, 90, 0.25); border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.world-panel { width: 360px; }
+.world-panel .note { font-size: 12px; color: var(--ink-dim); line-height: 1.5; text-align: center; margin: 0 0 12px; }
+.world-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.world-card {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px;
+  cursor: pointer; color: inherit; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.05);
+}
+.world-card b { font: 700 16px var(--font-head); }
+.world-card span { font-size: 12px; color: var(--ink-dim); }
+.world-card:hover:not(:disabled) { border-color: var(--ember); background: rgba(255, 179, 90, 0.1); }
+.world-card.picked { border-color: rgba(255, 179, 90, 0.5); }
+.world-panel .close { display: block; margin: 12px auto 0; }
+.menu-world { font: 700 13px var(--font-head); color: var(--ink-dim); }
+.wardrobe-start { align-self: stretch; }
 
 /* ErrorBoundary: a crash says what happened instead of leaving a blank frame. */
 .crash {

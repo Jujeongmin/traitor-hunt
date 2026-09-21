@@ -24,7 +24,8 @@ export function NicknamePanel({ current, purpose, onSave, onClose }: NicknamePan
     try {
       parseNickname(value);
       await onSave(value);
-      onClose?.();
+      // While starting, saving moves on to the next step instead of closing.
+      if (purpose !== "start") onClose?.();
     } catch (error) {
       setProblem(nicknameProblem(error));
     } finally {
@@ -34,10 +35,10 @@ export function NicknamePanel({ current, purpose, onSave, onClose }: NicknamePan
 
   return (
     <div className="menu-modal" onClick={onClose}>
-      <div className="dark-panel nickname-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="solid-panel nickname-panel" onClick={(e) => e.stopPropagation()}>
         <h2>{purpose === "rename" ? "닉네임 바꾸기" : "닉네임 정하기"}</h2>
         <p className="note">
-          {purpose === "start" ? "온라인 게임을 하려면 닉네임이 필요합니다. " : ""}
+          {purpose === "start" ? "게임에서 쓸 닉네임을 정해 주세요. " : ""}
           다른 플레이어와 친구가 이 이름으로 당신을 봅니다. 한글·영문·숫자·_ 로 2~12자.
         </p>
         <form className="nickname-form" onSubmit={submit}>
@@ -49,7 +50,7 @@ export function NicknamePanel({ current, purpose, onSave, onClose }: NicknamePan
             autoFocus
           />
           <button type="submit" className="text-button" disabled={saving || value.trim() === ""}>
-            {saving ? "저장 중…" : purpose === "start" ? "저장하고 시작" : "저장"}
+            {saving ? "저장 중…" : purpose === "start" ? "다음" : "저장"}
           </button>
         </form>
         {problem && <p className="nickname-problem">{problem}</p>}

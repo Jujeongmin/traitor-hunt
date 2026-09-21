@@ -39,7 +39,7 @@ export default function App() {
     () => (ONLINE_AVAILABLE && connected ? new Verse8Transport(server) : null),
     [connected, server],
   );
-  const { view, failed, save, refresh } = useAccount(menuTransport);
+  const { view, failed, save, pickWorld, refresh } = useAccount(menuTransport);
   const purchase = usePurchase(menuTransport, refresh);
   const friends = useFriends(menuTransport);
   const party = useParty(menuTransport, mode === "title" ? "menu" : "match");
@@ -69,6 +69,8 @@ export default function App() {
       price={purchase.price}
       loadStats={menuTransport ? () => loadStats(menuTransport) : null}
       onSaveNickname={view ? save : null}
+      world={view?.world ?? null}
+      onPickWorld={pickWorld}
       accountFailed={failed}
       friends={friends.client}
       friendsView={friends.view}

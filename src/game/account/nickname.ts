@@ -32,4 +32,6 @@ export interface AccountView {
   level: LevelView;
   // Bought the full game (online play); practice is free either way.
   owned: boolean;
+  // The server picked when you last started (see worlds.ts); null if you never picked one.
+  world: string | null;
 }
