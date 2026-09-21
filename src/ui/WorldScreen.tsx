@@ -9,6 +9,7 @@ import type { WorldClient, WorldState } from "../net/worldClient";
 import type { BagView } from "../game/account/items";
 import { START_ZONE } from "../game/world/zones";
 import { BagPanel, ShopPanel } from "./BagPanel";
+import { QuestTracker } from "./QuestTracker";
 import { SettingsPanel } from "./SettingsPanel";
 
 interface WorldScreenProps {
@@ -199,17 +200,24 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           >
             {hud.auto ? "자동 전투 중" : "자동 전투"} (F)
           </button>
-          <div className="hud-potion">
-            <span className="hud-skill-key">Q</span>
-            <b>물약</b>
-            <span>{hud.potions}개</span>
+          <div className="hud-skills">
+            <div className="hud-skill potion">
+              <span className="hud-skill-key">Q</span>
+              <b>물약</b>
+              <span>{hud.potions}개</span>
+            </div>
+            {hud.skills.map((skill, i) => (
+              <div key={i} className={`hud-skill${!skill.open || skill.readyInMs > 0 ? " cooling" : ""}`}>
+                <span className="hud-skill-key">{i + 1}</span>
+                <b>{skill.name}</b>
+                <span>
+                  {!skill.open ? `Lv${skill.level}` : skill.readyInMs > 0 ? `${Math.ceil(skill.readyInMs / 1000)}초` : "준비됨"}
+                </span>
+                {skill.open && <i style={{ width: `${Math.round((1 - skill.readyInMs / skill.cooldownMs) * 100)}%` }} />}
+              </div>
+            ))}
           </div>
-          <div className={`hud-skill${hud.skill.readyInMs > 0 ? " cooling" : ""}`}>
-            <span className="hud-skill-key">1</span>
-            <b>{hud.skill.name}</b>
-            <span>{hud.skill.readyInMs > 0 ? `${Math.ceil(hud.skill.readyInMs / 1000)}초` : "준비됨"}</span>
-            <i style={{ width: `${Math.round((1 - hud.skill.readyInMs / hud.skill.cooldownMs) * 100)}%` }} />
-          </div>
+          <QuestTracker client={client} bag={bag} />
           <div className="crosshair" />
           {hud.dead && (
             <div className="pain fallen">
@@ -227,7 +235,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1 스킬 · Q 물약 · I 가방 · F 자동 전투</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · I 가방 · F 자동 전투</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>
@@ -235,7 +243,12 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         </div>
       )}
       {settings && <SettingsPanel onClose={() => setSettings(false)} />}
-      {panel === "bag" && <BagPanel client={client} bag={bag} inVillage={inVillage} onClose={() => setPanel(null)} />}
+      {panel === "bag" && (
+        <BagPanel
+          client={client} bag={bag} inVillage={inVillage} playerClass={playerClass} level={hud?.level ?? 1}
+          onClose={() => setPanel(null)}
+        />
+      )}
       {panel === "shop" && <ShopPanel client={client} bag={bag} onClose={() => setPanel(null)} />}
       </div>
     </div>

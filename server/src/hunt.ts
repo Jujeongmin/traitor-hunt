@@ -1,8 +1,9 @@
-import { gearStats, type Gear, type GearStats } from "../../src/game/account/items";
+import { gearStats, type Gear } from "../../src/game/account/items";
+import { JOBS, type JobId } from "../../src/game/combat/jobs";
 import { levelOf } from "../../src/game/account/level";
 import { WEAPONS, readClass, type PlayerClass } from "../../src/game/combat/classes";
 import { BLOCK_ARC, facing, inStrikeReach } from "../../src/game/combat/melee";
-import { SKILLS, skillTargets } from "../../src/game/combat/skills";
+import { SKILLS, readSlot, skillTargets } from "../../src/game/combat/skills";
 import { stepMonsters, type Prey } from "../../src/game/world/monsterAi";
 import {
   MONSTERS, ZONE_BOSS, ZONE_MONSTERS, damageAt, maxHpAt, readMonsterType, spawnMonsters, type MonsterState,
@@ -40,15 +41,21 @@ interface Fighter {
   hp: number;
   maxHp: number;
   dead: boolean;
-  // What the worn gear adds.
-  gear: GearStats;
+  // What the worn gear and the advanced class add.
+  gear: FightBonus;
 }
+
+// What gear and an advanced class add to a fight: a share more damage, more health, a share of
+// every blow stopped, and a share more healing.
+export interface FightBonus { power: number; hp: number; guard: number; heal: number }
 
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
 function readFighter(state: Record<string, any>): Fighter {
   const level = typeof state.look?.level === "number" ? state.look.level : 1;
-  const gear = { power: num(state.gear?.power), hp: num(state.gear?.hp), guard: Math.min(0.8, num(state.gear?.guard)) };
+  const gear = {
+    power: num(state.gear?.power), hp: num(state.gear?.hp), guard: Math.min(0.8, num(state.gear?.guard)), heal: num(state.gear?.heal),
+  };
   const maxHp = typeof state.maxHp === "number" ? state.maxHp : maxHpAt(level) + gear.hp;
   return {
     gear,
@@ -87,11 +94,15 @@ async function writeMonsters(monsters: Record<string, MonsterState>): Promise<vo
   await $room.updateRoomState({ monsters: tidy(monsters) }, { returnState: false });
 }
 
-// The stats a character fights with at its level and in its gear, for the room user state on
-// arrival, level up or a change of gear.
-export function fightStats(xp: number, gear: Gear): { maxHp: number; gear: GearStats } {
-  const stats = gearStats(gear);
-  return { maxHp: maxHpAt(levelOf(xp).level) + stats.hp, gear: stats };
+// The stats a character fights with at its level, in its gear and advanced class, for the room user
+// state on arrival, level up, a change of gear or advancement.
+export function fightStats(c: { xp: number; gear: Gear; job: JobId | null }): { maxHp: number; gear: FightBonus } {
+  const worn = gearStats(c.gear);
+  const job = c.job ? JOBS[c.job] : null;
+  const bonus = {
+    power: worn.power + (job?.power ?? 0), hp: worn.hp + (job?.hp ?? 0), guard: worn.guard + (job?.guard ?? 0), heal: job?.heal ?? 0,
+  };
+  return { maxHp: maxHpAt(levelOf(c.xp).level) + bonus.hp, gear: bonus };
 }
 
 // One room tick: monsters move and swing, blows land on players (a raised guard facing the monster
@@ -197,13 +208,22 @@ export async function strike(zone: ZoneId, monsterId: unknown, yaw: unknown, now
   return result;
 }
 
-// Your class's skill: every monster it reaches takes its damage (and stun); the cleric's heals you
-// and everyone standing close.
-export async function useSkill(zone: ZoneId, yaw: unknown, now: number): Promise<HitResult> {
+// One of your class's skills (slot 0 to 2), once your level has opened it and its own cooldown is
+// over: every monster it reaches takes its damage (and stun); a heal also mends you and everyone
+// standing close.
+export async function useSkill(zone: ZoneId, rawSlot: unknown, yaw: unknown, now: number): Promise<HitResult> {
+  const slot = readSlot(rawSlot ?? 0);
+  if (slot === null) throw new RuleViolation("unavailable");
   const { f, state: mine } = await me(yaw);
-  if (typeof mine.skillReadyAt === "number" && now < mine.skillReadyAt) throw new RuleViolation("too_fast");
-  const skill = SKILLS[f.playerClass];
-  await $room.updateMyState({ skillReadyAt: now + skill.cooldownMs * COOLDOWN_GRACE }, { returnState: false });
+  const skill = SKILLS[f.playerClass][slot];
+  if (f.level < skill.level) throw new RuleViolation("unavailable");
+  const ready: Record<string, unknown> = mine.skillReady && typeof mine.skillReady === "object" ? mine.skillReady : {};
+  const readyAt = ready[slot];
+  if (typeof readyAt === "number" && now < readyAt) throw new RuleViolation("too_fast");
+  await $room.updateMyState(
+    { skillReady: { ...ready, [slot]: now + skill.cooldownMs * COOLDOWN_GRACE } },
+    { returnState: false },
+  );
   if (skill.heal > 0) {
     const state = await $room.getRoomState([]);
     const users: (Record<string, any> & { account: string })[] = await $room.getUserStates(
@@ -213,7 +233,8 @@ export async function useSkill(zone: ZoneId, yaw: unknown, now: number): Promise
       const other = readFighter(u);
       if (other.dead || !other.pose) continue;
       if (Math.hypot(other.pose.x - f.pose.x, other.pose.z - f.pose.z) > skill.reach + RANGE_SLACK) continue;
-      await $room.updateUserState(u.account, { hp: Math.min(other.maxHp, other.hp + skill.heal) }, { returnState: false });
+      const heal = Math.round(skill.heal * (1 + f.gear.heal));
+      await $room.updateUserState(u.account, { hp: Math.min(other.maxHp, other.hp + heal) }, { returnState: false });
     }
   }
   const monsters = await readMonsters(zone);

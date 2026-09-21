@@ -25,7 +25,7 @@ async function only(type: string, x: number, z: number, hp = MONSTERS[type as ke
 // Stands the caller at (x, z) facing -z (yaw 0), with nothing on cooldown.
 async function standAt(server: any, x: number, z: number): Promise<void> {
   await walkTo(server, x, z, 0);
-  await $room.updateMyState({ strikeReadyAt: 0, skillReadyAt: 0 });
+  await $room.updateMyState({ strikeReadyAt: 0, skillReady: {} });
 }
 
 describe("hunting", () => {
@@ -113,7 +113,7 @@ describe("hunting", () => {
     await $room.updateRoomState({ monsters: { a: at(0, -1.5), b: at(0, 1.5), c: at(9, 0) } });
     const used = await server.useSkill();
     expect([...used.hit].sort()).toEqual(["a", "b"]);
-    expect((await $room.getRoomState()).monsters.a.hp).toBe(80 - SKILLS.warrior.damage);
+    expect((await $room.getRoomState()).monsters.a.hp).toBe(80 - SKILLS.warrior[0].damage);
     expect(await errorOf(server.useSkill())).toContain("too_fast");
   });
 

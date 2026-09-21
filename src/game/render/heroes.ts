@@ -19,13 +19,12 @@ export interface HeroRig {
   // What flies out on an attack (ranged classes), and how far.
   shot: ShotKind | null;
   reach: number;
-  // The ring of light a skill leaves: its size and colour.
-  skillRing: { radius: number; color: number };
-  // A skill that fires one long shot (the ranger's) shows it this far.
-  skillShot: number | null;
+  // For each skill slot: the ring of light it leaves (size and colour), and how far the one long
+  // shot of a narrow ranged skill flies (null for the rest).
+  skillFx: readonly { ring: { radius: number; color: number }; shot: number | null }[];
 }
 
-type Clips = Omit<HeroRig, "shot" | "reach" | "skillRing" | "skillShot">;
+type Clips = Omit<HeroRig, "shot" | "reach" | "skillFx">;
 
 const SHOTS: Partial<Record<PlayerClass, ShotKind>> = { ranger: "arrow", wizard: "bolt" };
 const RING_COLOR: Record<PlayerClass, number> = {
@@ -33,14 +32,13 @@ const RING_COLOR: Record<PlayerClass, number> = {
 };
 
 function rig(c: PlayerClass, clips: Clips): HeroRig {
-  const skill = SKILLS[c];
-  // A narrow skill (a line of arrows, one stab) still shows a small ring at your feet.
-  const radius = skill.arc >= Math.PI ? skill.reach : 1.2;
   const shot = SHOTS[c] ?? null;
-  return {
-    ...clips, shot, reach: WEAPONS[c].reach, skillRing: { radius, color: RING_COLOR[c] },
-    skillShot: shot && skill.arc < Math.PI ? skill.reach : null,
-  };
+  const skillFx = SKILLS[c].map((skill) => ({
+    // A narrow skill (a line of arrows, one stab) still shows a small ring at your feet.
+    ring: { radius: skill.arc >= Math.PI ? skill.reach : 1.2, color: RING_COLOR[c] },
+    shot: shot && skill.arc < Math.PI ? skill.reach : null,
+  }));
+  return { ...clips, shot, reach: WEAPONS[c].reach, skillFx };
 }
 
 const CLIPS: Record<PlayerClass, Clips> = {

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ITEMS, ITEM_IDS, SHOP_ITEMS, sellPrice, type BagView, type ItemId, type Slot } from "../game/account/items";
+import { ADVANCE_LEVEL, JOBS, jobsOf } from "../game/combat/jobs";
+import type { PlayerClass } from "../game/combat/classes";
 import type { WorldClient } from "../net/worldClient";
 
 const PROBLEM: Record<string, string> = {
@@ -7,6 +9,7 @@ const PROBLEM: Record<string, string> = {
   not_in_village: "상점은 마을에 있어요",
   no_item: "가방에 없어요",
   unavailable: "지금은 할 수 없어요",
+  too_low: `Lv${ADVANCE_LEVEL}부터 전직할 수 있어요`,
 };
 
 const SLOT_LABEL: Record<Slot, string> = { weapon: "무기", armor: "갑옷" };
@@ -27,14 +30,38 @@ function useAction(): [string | null, (run: () => Promise<string | null>) => voi
 }
 
 // Your gold, what you wear and what you carry: wear gear, drink potions, and (in the village) sell.
-export function BagPanel({ client, bag, onClose, inVillage }: PanelProps & { inVillage: boolean }) {
+export function BagPanel({ client, bag, onClose, inVillage, playerClass, level }: PanelProps & {
+  inVillage: boolean;
+  playerClass: PlayerClass;
+  level: number;
+}) {
   const [problem, act] = useAction();
   const items = ITEM_IDS.filter((id) => (bag?.bag[id] ?? 0) > 0);
+  const job = bag?.job ?? null;
   return (
     <div className="menu-modal" onClick={onClose}>
       <div className="solid-panel bag-panel" onClick={(e) => e.stopPropagation()}>
         <h2>가방</h2>
         <p className="bag-gold">{bag ? `${bag.gold.toLocaleString()} 골드` : "불러오는 중…"}</p>
+        <div className="bag-job">
+          {job ? (
+            <span>전직 · <b>{JOBS[job].name}</b> ({JOBS[job].blurb})</span>
+          ) : level < ADVANCE_LEVEL ? (
+            <span>Lv{ADVANCE_LEVEL}이 되면 전직할 수 있어요 (지금 Lv{level})</span>
+          ) : (
+            <>
+              <span>전직할 길을 고르세요. 한 번 고르면 바꿀 수 없어요.</span>
+              <div className="bag-job-paths">
+                {jobsOf(playerClass).map((id) => (
+                  <button key={id} type="button" className="world-card" onClick={() => act(() => client.advance(id))}>
+                    <b>{JOBS[id].name}</b>
+                    <span>{JOBS[id].blurb}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <div className="bag-gear">
           {(["weapon", "armor"] as Slot[]).map((slot) => {
             const worn = bag?.gear[slot] ?? null;

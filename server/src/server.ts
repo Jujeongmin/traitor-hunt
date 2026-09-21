@@ -6,6 +6,8 @@ import {
   GOLD, ITEMS, MAX_STACK, NO_GEAR, addItem, equip, readItemId, sellPrice, unequip, type BagView, type ItemId, type Slot,
 } from "../../src/game/account/items";
 import { rollLoot } from "../../src/game/world/monsters";
+import { QUESTS, QUEST_START, countKills, questDone } from "../../src/game/account/quests";
+import { ADVANCE_LEVEL, JOBS, readJob } from "../../src/game/combat/jobs";
 import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/game/account/characters";
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
 import { readClass } from "../../src/game/combat/classes";
@@ -93,12 +95,12 @@ async function reward(account: string, roomId: string, result: HitResult): Promi
   const items = loot.flatMap((l) => l.items);
   if (gold > 0) await $asset.mint(GOLD, gold);
   const next = await updateActive(account, (c) => ({
-    ...c, xp: c.xp + result.xp, bag: items.reduce((bag, id) => addItem(bag, id, 1), c.bag),
+    ...c, xp: c.xp + result.xp, bag: items.reduce((bag, id) => addItem(bag, id, 1), c.bag), quest: countKills(c.quest, result.felled),
   }));
   await writeRanking(account, next);
   const levelled = levelOf(next.xp).level > levelOf(next.xp - result.xp).level;
   await withRoomLock(roomId, async () => {
-    const stats = fightStats(next.xp, next.gear);
+    const stats = fightStats(next);
     await $room.updateMyState(
       { look: zoneLook(next), xp: next.xp, ...(levelled ? { maxHp: stats.maxHp, hp: stats.maxHp } : {}) },
       { returnState: false },
@@ -108,18 +110,22 @@ async function reward(account: string, roomId: string, result: HitResult): Promi
 }
 
 async function bagView(character: Character): Promise<BagView> {
-  return { gold: await $asset.get(GOLD), bag: character.bag, gear: character.gear };
+  return { gold: await $asset.get(GOLD), bag: character.bag, gear: character.gear, job: character.job, quest: character.quest };
 }
 
-// After a change of gear: the room carries your new health and what your gear adds.
+// After a change of gear or class: the room carries your new health, what your gear and class add,
+// and the look others see.
 async function refreshFighter(character: Character): Promise<void> {
   const roomId = $sender.roomId;
   if (!roomId || !readChannelRoom(roomId)) return;
   await withRoomLock(roomId, async () => {
     const mine = await $room.getMyState();
-    const stats = fightStats(character.xp, character.gear);
+    const stats = fightStats(character);
     const hp = Math.min(typeof mine.hp === "number" ? mine.hp : stats.maxHp, stats.maxHp);
-    await $room.updateMyState({ maxHp: stats.maxHp, hp, gear: stats.gear }, { returnState: false });
+    await $room.updateMyState(
+      { maxHp: stats.maxHp, hp, gear: stats.gear, look: zoneLook(character), xp: character.xp },
+      { returnState: false },
+    );
   });
 }
 
@@ -182,7 +188,7 @@ export class Server {
       const character: Character = {
         id: `c-${token(10)}`, world, name, playerClass: picked, costume: look.id, xp: 0, spot: null, made: Date.now(),
         // A start: a few potions.
-        bag: { potion_small: 3 }, gear: NO_GEAR,
+        bag: { potion_small: 3 }, gear: NO_GEAR, job: null, quest: QUEST_START,
       };
       await withNicknameLock(() => claimName(account, character.id, key, name));
       await saveProfile(account, [...characters, character], character.id);
@@ -310,12 +316,12 @@ export class Server {
     const spot = character.spot?.zone === zone ? character.spot : { zone, ...zoneLayout(zone).playerSpawn };
     const now = Date.now();
     // Every arrival is whole: full health, nothing on cooldown.
-    const { maxHp, gear } = fightStats(character.xp, character.gear);
+    const { maxHp, gear } = fightStats(character);
     await $room.updateMyState({
       pose: { x: spot.x, z: spot.z, yaw: 0, y: 0, block: false, swing: 0, skill: 0, at: now },
       look: zoneLook(character),
       savedAt: now,
-      xp: character.xp, hp: maxHp, maxHp, gear, dead: false, hitAt: 0, strikeReadyAt: 0, skillReadyAt: 0,
+      xp: character.xp, hp: maxHp, maxHp, gear, dead: false, hitAt: 0, strikeReadyAt: 0, skillReady: {},
     });
     return { x: spot.x, z: spot.z };
   }
@@ -358,9 +364,9 @@ export class Server {
   }
 
   // Your class's skill, no sooner than its cooldown allows.
-  async useSkill(yaw?: unknown): Promise<HitResult> {
+  async useSkill(slot?: unknown, yaw?: unknown): Promise<HitResult> {
     const { roomId, zone } = currentChannel();
-    const result = await withRoomLock(roomId, () => useSkill(zone, yaw, Date.now()));
+    const result = await withRoomLock(roomId, () => useSkill(zone, slot, yaw, Date.now()));
     return reward($sender.account, roomId, result);
   }
 
@@ -433,6 +439,42 @@ export class Server {
     await playing(account);
     const next = await updateActive(account, (c) => ({ ...c, bag: addItem(c.bag, item, -n) }));
     await $asset.mint(GOLD, sellPrice(item) * n);
+    return bagView(next);
+  }
+
+  // Advancement (전직): from ADVANCE_LEVEL, one of the two paths of your class, for good.
+  async advance(id: unknown): Promise<BagView> {
+    const job = readJob(id);
+    const account = $sender.account;
+    await playing(account);
+    const next = await updateActive(account, (c) => {
+      if (!job || JOBS[job].playerClass !== c.playerClass || c.job) throw new RuleViolation("unavailable");
+      if (levelOf(c.xp).level < ADVANCE_LEVEL) throw new RuleViolation("too_low");
+      return { ...c, job };
+    });
+    await refreshFighter(next);
+    return bagView(next);
+  }
+
+  // Claims the finished quest's reward (XP, gold, items) and moves on to the next one.
+  async claimQuest(): Promise<BagView> {
+    const account = $sender.account;
+    await playing(account);
+    let paid = 0;
+    const next = await updateActive(account, (c) => {
+      if (!questDone(c.quest)) throw new RuleViolation("quest_unfinished");
+      const quest = QUESTS[c.quest.index];
+      paid = quest.gold;
+      return {
+        ...c,
+        xp: c.xp + quest.xp,
+        bag: quest.items.reduce((bag, item) => addItem(bag, item.id, item.n), c.bag),
+        quest: { index: c.quest.index + 1, count: 0 },
+      };
+    });
+    if (paid > 0) await $asset.mint(GOLD, paid);
+    await writeRanking(account, next);
+    await refreshFighter(next);
     return bagView(next);
   }
 

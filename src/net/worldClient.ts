@@ -1,6 +1,8 @@
+import { readSlot } from "../game/combat/skills";
 import { readJumpY } from "../game/rules/movement";
 import { PROTOCOL_VERSION, isPose, readSwing, type Pose } from "../game/world/types";
 import type { BagView, ItemId, Slot } from "../game/account/items";
+import type { JobId } from "../game/combat/jobs";
 import { readMonsterType, type MonsterState } from "../game/world/monsters";
 import type { ZoneEntry, ZoneId, ZoneLook } from "../game/world/zones";
 import { errorCode } from "./errors";
@@ -50,7 +52,10 @@ const POSE_EPSILON = 0.01;
 function readLook(raw: unknown): ZoneLook | null {
   const l = raw as Partial<ZoneLook> | undefined;
   if (!l || typeof l.name !== "string" || typeof l.costume !== "string" || typeof l.playerClass !== "string") return null;
-  return { name: l.name, costume: l.costume, playerClass: l.playerClass, level: typeof l.level === "number" ? l.level : 1 };
+  return {
+    name: l.name, costume: l.costume, playerClass: l.playerClass, level: typeof l.level === "number" ? l.level : 1,
+    job: typeof l.job === "string" ? l.job : null,
+  };
 }
 
 const num = (v: unknown, fallback = 0) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
@@ -148,7 +153,7 @@ export class WorldClient {
     if (this.lastPose && this.now() - this.lastPose.at < MIN_POSE_GAP_MS) return;
     const sent = {
       x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true,
-      swing: readSwing(pose.swing), skill: readSwing(pose.skill),
+      swing: readSwing(pose.swing), skill: readSwing(pose.skill), slot: readSlot(pose.slot) ?? 0,
     };
     const now = this.now();
     const last = this.lastPose;
@@ -167,14 +172,23 @@ export class WorldClient {
     return this.paid(await this.transport.call<HitResult>("strike", [monsterId, yaw]).catch(() => null));
   }
 
-  async useSkill(yaw: number): Promise<HitResult | null> {
+  async useSkill(slot: number, yaw: number): Promise<HitResult | null> {
     if (this.current.phase !== "in") return null;
-    return this.paid(await this.transport.call<HitResult>("useSkill", [yaw]).catch(() => null));
+    return this.paid(await this.transport.call<HitResult>("useSkill", [slot, yaw]).catch(() => null));
   }
 
-  // Gold or a drop changes the bag; asks for it again.
+  // 전직, and claiming a finished quest.
+  advance(job: JobId): Promise<string | null> {
+    return this.bagCall("advance", [job]);
+  }
+
+  claimQuest(): Promise<string | null> {
+    return this.bagCall("claimQuest", []);
+  }
+
   private paid(result: HitResult | null): HitResult | null {
-    if (result && (result.gold > 0 || result.items.length > 0)) void this.refreshBag();
+    // Gold, drops and quest kills all live with the bag.
+    if (result && result.killed.length > 0) void this.refreshBag();
     return result;
   }
 
@@ -273,7 +287,10 @@ export class WorldClient {
       const p = user.pose;
       others.push({
         account, look,
-        pose: { x: p.x, z: p.z, yaw: p.yaw, y: readJumpY(p.y), block: p.block === true, swing: readSwing(p.swing), skill: readSwing(p.skill) },
+        pose: {
+          x: p.x, z: p.z, yaw: p.yaw, y: readJumpY(p.y), block: p.block === true, swing: readSwing(p.swing), skill: readSwing(p.skill),
+          slot: readSlot(p.slot) ?? 0,
+        },
       });
     }
     this.set({ others, me });

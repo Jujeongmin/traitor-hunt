@@ -182,8 +182,9 @@ export class PlayerActor {
       this.commitLeft = Math.min(this.swingLeft, SKILL_COMMIT);
       if (a.blender.active === a.skill) a.skill.reset().play();
       else a.blender.fadeTo(a.skill, 0.05);
-      if (this.rig && this.effects) this.effects.ring(p, this.rig.skillRing.radius, this.rig.skillRing.color);
-      if (this.rig?.skillShot) this.pendingShots.push({ left: RELEASE_SECONDS, reach: this.rig.skillShot });
+      const fx = this.rig?.skillFx[pose.slot ?? 0] ?? this.rig?.skillFx[0];
+      if (fx && this.effects) this.effects.ring(p, fx.ring.radius, fx.ring.color);
+      if (fx?.shot) this.pendingShots.push({ left: RELEASE_SECONDS, reach: fx.shot });
     }
     this.lastSkill = skill;
     this.fireShots(dt, pose.yaw);

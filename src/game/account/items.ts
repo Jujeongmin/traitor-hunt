@@ -1,4 +1,6 @@
+import type { JobId } from "../combat/jobs";
 import { RuleViolation } from "../world/types";
+import type { QuestProgress } from "./quests";
 
 // Everything a character can carry, in one table: potions to drink, and a weapon and armour to wear.
 // Gear fits every class. Prices are in gold, the game's coin (a Verse8 $asset on the account).
@@ -119,8 +121,15 @@ export function gearStats(gear: Gear): GearStats {
   return out;
 }
 
-// A character's bag as the bag screen shows it, with the account's gold.
-export interface BagView { gold: number; bag: Bag; gear: Gear }
+// A character's things as the bag screen shows them, with the account's gold: its bag and gear, its
+// advanced class (전직) and where it is in the quests.
+export interface BagView {
+  gold: number;
+  bag: Bag;
+  gear: Gear;
+  job: JobId | null;
+  quest: QuestProgress;
+}
 
 export function sellPrice(id: ItemId): number {
   const price = ITEMS[id].price;

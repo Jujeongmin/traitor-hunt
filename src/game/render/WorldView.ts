@@ -5,7 +5,7 @@ import { levelOf } from "../account/level";
 import { ModelLibrary } from "../assets/ModelLibrary";
 import { WEAPONS, type PlayerClass } from "../combat/classes";
 import { facing, inStrikeReach } from "../combat/melee";
-import { SKILLS, skillTargets } from "../combat/skills";
+import { SKILLS, SKILL_KEYS, skillTargets, type Skill } from "../combat/skills";
 import { PLAYER_BODY, crowdBlocks, type Body } from "../rules/crowd";
 import { solidWith, type LevelLayout } from "../rules/levelLayout";
 import {
@@ -49,6 +49,8 @@ const AUTO_CAMERA_RATE = 2.5;
 const AUTO_HEAL_BELOW = 0.75;
 // A click with no monster in your arc still turns you to one this far round from where you look.
 const AIM_ASSIST = Math.PI * 0.6;
+// No two skills go off closer together than this.
+const SKILL_GAP_MS = 900;
 // How long a "+XP" note, and a note of gold or a drop, stays up.
 const GAIN_MS = 1500;
 const NOTE_MS = 3000;
@@ -68,7 +70,8 @@ export interface WorldHud {
   zone: string;
   channel: number;
   portal: { to: string; locked: boolean } | null;
-  skill: { name: string; readyInMs: number; cooldownMs: number };
+  // Keys 1 to 3; a skill above your level shows the level it opens at.
+  skills: { name: string; readyInMs: number; cooldownMs: number; level: number; open: boolean }[];
   blocking: boolean;
   hp: number;
   maxHp: number;
@@ -126,7 +129,9 @@ export class WorldView {
   private swings = 0;
   private skills = 0;
   private lastAttackAt = Number.NEGATIVE_INFINITY;
-  private lastSkillAt = Number.NEGATIVE_INFINITY;
+  // When each skill slot was last used, and which one went last (others see it by the slot).
+  private readonly lastSkillAt = SKILLS.warrior.map(() => Number.NEGATIVE_INFINITY);
+  private lastSlot = 0;
   private bodies: Body[] = [];
   // No portal takes you until you have walked clear of the one you came through.
   private portalArmed = false;
@@ -264,6 +269,7 @@ export class WorldView {
     facingYaw = this.handleActions(here, state.monsters, facingYaw);
     this.pose = {
       ...this.pose, yaw: facingYaw, y: this.air.y, block: here && this.input.blocking, swing: this.swings, skill: this.skills,
+      slot: this.lastSlot,
     };
     if (here) this.client.reportPose(this.pose);
     this.checkPortals(here);
@@ -323,10 +329,10 @@ export class WorldView {
     return best?.id ?? null;
   }
 
-  // A click attacks (a bow or a staff shoots), key 1 uses the class's skill; in auto-battle both go
-  // by themselves. Returns where you face (toward what you hit).
+  // A click attacks (a bow or a staff shoots), keys 1 to 3 use the class's skills; in auto-battle
+  // they all go by themselves. Returns where you face (toward what you hit).
   private handleActions(here: boolean, monsters: Record<string, MonsterState>, yaw: number): number {
-    const pressSkill = this.input.consumePress("Digit1");
+    const pressed = SKILL_KEYS.map((key) => this.input.consumePress(key));
     if (!here || this.input.blocking) return yaw;
     const now = performance.now();
     const c = this.options.playerClass;
@@ -343,24 +349,40 @@ export class WorldView {
       else playSwing();
       if (target) void this.client.strike(target, yaw).then((r) => this.gained(r));
     }
-    const skill = SKILLS[c];
-    if (now - this.lastSkillAt >= skill.cooldownMs && (pressSkill || (this.auto && this.skillHelps(monsters, yaw)))) {
-      const target = this.aim(monsters, yaw);
-      if (target && skill.heal === 0) yaw = this.yawTo(monsters[target]);
-      this.lastSkillAt = now;
-      this.skills += 1;
-      playSkill();
-      void this.client.useSkill(yaw).then((r) => this.gained(r));
+    if (now - Math.max(...this.lastSkillAt) < SKILL_GAP_MS) return yaw;
+    const ready = (slot: number) => this.skillOpen(SKILLS[c][slot]) && now - this.lastSkillAt[slot] >= SKILLS[c][slot].cooldownMs;
+    let slot = pressed.findIndex((p, i) => p && ready(i));
+    // Auto-battle reaches for the strongest skill that would help.
+    if (slot < 0 && this.auto) {
+      for (let i = SKILLS[c].length - 1; i >= 0; i--) {
+        if (ready(i) && this.skillHelps(SKILLS[c][i], monsters, yaw)) {
+          slot = i;
+          break;
+        }
+      }
     }
+    if (slot < 0) return yaw;
+    const skill = SKILLS[c][slot];
+    const target = this.aim(monsters, yaw);
+    if (target && skill.damage > 0) yaw = this.yawTo(monsters[target]);
+    this.lastSkillAt[slot] = now;
+    this.lastSlot = slot;
+    this.skills += 1;
+    playSkill();
+    void this.client.useSkill(slot, yaw).then((r) => this.gained(r));
     return yaw;
   }
 
-  // Whether auto-battle should use the skill now: a heal when hurt, anything else when it would hit.
-  private skillHelps(monsters: Record<string, MonsterState>, yaw: number): boolean {
-    const skill = SKILLS[this.options.playerClass];
+  private skillOpen(skill: Skill): boolean {
+    return levelOf(this.client.state.me?.xp ?? 0).level >= skill.level;
+  }
+
+  // Whether auto-battle should use a skill now: a heal when hurt, anything else when it would hit.
+  private skillHelps(skill: Skill, monsters: Record<string, MonsterState>, yaw: number): boolean {
     const me = this.client.state.me;
-    if (skill.heal > 0) return !!me && me.hp < me.maxHp * AUTO_HEAL_BELOW;
-    return skillTargets({ ...this.pose, yaw }, monsters, skill).length > 0;
+    const hurt = !!me && me.hp < me.maxHp * AUTO_HEAL_BELOW;
+    const hits = skill.damage > 0 && skillTargets({ ...this.pose, yaw }, monsters, skill).length > 0;
+    return skill.heal > 0 ? hurt || hits : hits;
   }
 
   private gained(result: HitResult | null): void {
@@ -441,7 +463,7 @@ export class WorldView {
         entry = { actor, key };
         this.others.set(other.account, entry);
       }
-      entry.actor.label(`Lv${other.look.level} ${other.look.name}`);
+      entry.actor.label(`Lv${other.look.level} ${other.look.job ? `${other.look.job} ` : ""}${other.look.name}`);
       entry.actor.sync(other.pose, "active", dt);
     }
     for (const [account, entry] of this.others) {
@@ -500,7 +522,6 @@ export class WorldView {
     this.notes = this.notes.filter((n) => now - n.at < NOTE_MS).slice(-4);
     const entry = this.client.state.entry ?? this.options.entry;
     const near = this.nearestPortal();
-    const skill = SKILLS[this.options.playerClass];
     const me = this.client.state.me;
     const level = levelOf(me?.xp ?? 0);
     const fighting = this.target ? this.client.state.monsters[this.target] : undefined;
@@ -510,7 +531,10 @@ export class WorldView {
       portal: near && near.d <= PORTAL_REARM + 2
         ? { to: ZONES[near.portal.to].name, locked: ZONES[near.portal.to].paid && !this.options.owned }
         : null,
-      skill: { name: skill.name, cooldownMs: skill.cooldownMs, readyInMs: Math.max(0, this.lastSkillAt + skill.cooldownMs - now) },
+      skills: SKILLS[this.options.playerClass].map((skill, i) => ({
+        name: skill.name, cooldownMs: skill.cooldownMs, level: skill.level, open: level.level >= skill.level,
+        readyInMs: Math.max(0, this.lastSkillAt[i] + skill.cooldownMs - now),
+      })),
       blocking: !!this.pose.block,
       hp: me?.hp ?? 0,
       maxHp: me?.maxHp ?? 1,

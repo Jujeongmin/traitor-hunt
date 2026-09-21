@@ -155,4 +155,6 @@ export interface ZoneLook {
   costume: string;
   playerClass: string;
   level: number;
+  // The advanced class's name (전직), shown before the name.
+  job: string | null;
 }

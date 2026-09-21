@@ -4,6 +4,8 @@ import {
 } from "../../src/game/account/party";
 import { levelOf, readXp } from "../../src/game/account/level";
 import { NO_GEAR } from "../../src/game/account/items";
+import { QUEST_START } from "../../src/game/account/quests";
+import { JOBS } from "../../src/game/combat/jobs";
 import {
   characterMap, legacyMatchXp, readCharacters, readSpot, type Character, type Spot,
 } from "../../src/game/account/characters";
@@ -12,6 +14,7 @@ import { playsFree, type PurchaseEvent } from "../../src/game/account/purchase";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
 import { readClass } from "../../src/game/combat/classes";
+import { readSlot } from "../../src/game/combat/skills";
 import { RuleViolation, readSwing, type Pose } from "../../src/game/world/types";
 import {
   CHANNEL_CAPACITY, MAX_CHANNELS, channelRoomId, zoneLayout, type ZoneId, type ZoneLook,
@@ -88,6 +91,8 @@ export async function readProfile(account: string): Promise<Profile> {
       made: 0,
       bag: {},
       gear: NO_GEAR,
+      job: null,
+      quest: QUEST_START,
     }];
   } else if (oldXp > 0) {
     // Moved over before its old XP was carried: the character named like the account's first name
@@ -280,7 +285,7 @@ export async function pickChannel(world: string, zone: ZoneId, account: string):
 
 // What the others in a zone see of a character: name, class, costume and level.
 export function zoneLook(c: Character): ZoneLook {
-  return { name: c.name, costume: c.costume, playerClass: c.playerClass, level: levelOf(c.xp).level };
+  return { name: c.name, costume: c.costume, playerClass: c.playerClass, level: levelOf(c.xp).level, job: c.job ? JOBS[c.job].name : null };
 }
 
 // How far a reported pose may be from the last one: walking speed with room for lag, plus a little.
@@ -306,7 +311,12 @@ export async function writeZonePose(
   }
   const y = Math.min(readJumpY(pose.y), maxFeetY(layout.platforms, x, z));
   await $room.updateMyState(
-    { pose: { x, z, yaw: pose.yaw, y, block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill), at: now } },
+    {
+      pose: {
+        x, z, yaw: pose.yaw, y, block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill),
+        slot: readSlot(pose.slot) ?? 0, at: now,
+      },
+    },
     { returnState: false },
   );
   return { x, z };

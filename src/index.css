@@ -190,15 +190,26 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   position: absolute; right: 16px; top: 64px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
   font: 600 14px var(--font-head); color: #ffe08a; pointer-events: none;
 }
-/* The potion slot, left of the skill slot. */
-.hud-potion {
-  position: absolute; left: calc(50% - 190px); bottom: 22px;
-  display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px;
-  background: rgba(14, 11, 9, 0.8); border: 1px solid rgba(157, 255, 176, 0.4); border-radius: 8px;
-  pointer-events: none;
+/* The potion and the three skills, in a row at the bottom centre. */
+.hud-skills {
+  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+  display: flex; gap: 8px; pointer-events: none;
 }
-.hud-potion b { font: 700 14px var(--font-head); }
-.hud-potion span:last-child { font-size: 12px; color: var(--ink-dim); }
+.hud-skills .hud-skill { position: relative; left: auto; bottom: auto; transform: none; }
+.hud-skill.potion { border-color: rgba(157, 255, 176, 0.4); }
+/* The quest you are on, top left under the zone. */
+.hud-quest {
+  position: absolute; left: 16px; top: 52px; width: 240px; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 3px;
+  background: rgba(14, 11, 9, 0.7); border: 1px solid rgba(255, 211, 106, 0.3); border-radius: 8px;
+  font-size: 12px; color: var(--ink-dim);
+}
+.hud-quest b { font: 700 14px var(--font-head); color: #ffd36a; }
+.hud-quest .count { color: var(--ink); font-variant-numeric: tabular-nums; }
+.hud-quest .brush-button.small { margin-top: 4px; padding: 8px 16px; font-size: 13px; }
+.bag-job { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); font-size: 13px; }
+.bag-job-paths { display: flex; gap: 8px; }
+.bag-job-paths .world-card { flex: 1; flex-direction: column; align-items: flex-start; gap: 2px; }
 /* The bag and the shop. */
 .bag-panel { width: min(560px, 92%); max-height: 86%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .bag-gold { margin: 0; text-align: center; font: 700 18px var(--font-head); color: #ffd36a; }

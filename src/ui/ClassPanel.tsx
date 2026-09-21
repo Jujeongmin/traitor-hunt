@@ -11,7 +11,7 @@ interface ClassPanelProps {
 // Picking a class for a new character: the six heroes stand in a row behind this panel; clicking
 // one (or its name here) shows what it does.
 export function ClassPanel({ picked, onPick, onConfirm, onBack }: ClassPanelProps) {
-  const info = picked ? { weapon: WEAPONS[picked], skill: SKILLS[picked] } : null;
+  const info = picked ? { weapon: WEAPONS[picked], skills: SKILLS[picked] } : null;
   return (
     <div className="class-screen">
       <div className="class-tabs">
@@ -37,11 +37,13 @@ export function ClassPanel({ picked, onPick, onConfirm, onBack }: ClassPanelProp
               <div><dt>사거리</dt><dd>{info.weapon.reach} m</dd></div>
               <div><dt>막기</dt><dd>{Math.round(info.weapon.block * 100)}%</dd></div>
             </dl>
-            <p className="class-skill">
-              <b>스킬 · {info.skill.name}</b> (1번 키, 재사용 {info.skill.cooldownMs / 1000}초)
-              <br />
-              {info.skill.blurb}
-            </p>
+            {info.skills.map((skill, i) => (
+              <p key={skill.name} className="class-skill">
+                <b>스킬 {i + 1} · {skill.name}</b> ({skill.level > 1 ? `Lv${skill.level}부터, ` : ""}재사용 {skill.cooldownMs / 1000}초)
+                <br />
+                {skill.blurb}
+              </p>
+            ))}
             <button type="button" className="brush-button wardrobe-start" onClick={() => onConfirm(picked)}>이 직업으로 정하기</button>
             <p className="note">직업은 캐릭터를 만들 때 한 번 정해요.</p>
           </>
