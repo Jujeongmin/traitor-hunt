@@ -31,25 +31,25 @@ export function guideFor(layout: LevelLayout, match: PublicMatch, from: Vec2): G
     case "shards": {
       const left = layout.shards.filter((_, i) => !o.shards[i]);
       if (left.length > 0) {
-        return { text: `빛나는 열쇠를 찾아 E로 줍기 (${layout.shards.length - left.length}/${layout.shards.length})`, at: nearest(from, left) };
+        return { text: `빛나는 광석을 찾아 E로 캐기 (${layout.shards.length - left.length}/${layout.shards.length})`, at: nearest(from, left) };
       }
       const gate = layout.gates.find((g) => g.n === 1) ?? null;
-      return { text: "철문 앞에서 E로 열기", at: gate };
+      return { text: "나무 문 앞에서 E로 열기", at: gate };
     }
     case "devices":
-      return { text: "의식 촛대 앞에서 E — 둘을 동시에 켜야 문이 열린다", at: nearest(from, layout.devices) };
+      return { text: "룬 선돌 앞에서 E — 둘을 동시에 깨워야 문이 열린다", at: nearest(from, layout.devices) };
     case "seal":
       return {
-        text: o.seal.lastAt === null ? "제단에서 E로 봉인 해제 시작" : "제단 곁을 지키며 몬스터 막기",
+        text: o.seal.lastAt === null ? "돌 제단에서 E로 봉인 해제 시작" : "돌 제단 곁을 지키며 몬스터 막기",
         at: layout.altar,
       };
     case "boss": {
       const boss = match.monsters[BOSS_ID];
-      if (!boss?.alive) return { text: "보스를 쓰러뜨렸다 — 출구가 열린다", at: null };
+      if (!boss?.alive) return { text: "보스를 쓰러뜨렸다 — 다리가 열린다", at: null };
       return { text: "보스를 쏴서 쓰러뜨리기", at: boss };
     }
     case "exit":
-      return { text: "출구 위에 서서 F로 탈출", at: layout.exits[0] ?? null };
+      return { text: "다리 위에 서서 F로 탈출", at: layout.exits[0] ?? null };
   }
 }
 

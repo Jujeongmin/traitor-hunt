@@ -7,7 +7,7 @@ const ERROR_LABEL: Record<string, string> = {
   not_ready: "아직 빙의할 수 없어요",
   out_of_range: "너무 멀어요",
   no_monster: "가까이에 빙의할 몬스터가 없어요",
-  not_at_exit: "출구 위에 서야 해요",
+  not_at_exit: "다리 위에 서야 해요",
   too_fast: "조금 천천히",
   not_authority: "조종할 수 없는 몬스터예요",
   stunned: "몬스터가 기절했어요",
@@ -20,8 +20,8 @@ const ERROR_LABEL: Record<string, string> = {
   not_traitor: "배신자만 할 수 있어요",
   match_full: "방이 가득 찼어요",
   nothing_here: "여기엔 쓸 수 있는 게 없어요",
-  need_shards: "열쇠 2개가 모두 있어야 해요",
-  exit_locked: "아직 출구가 봉인돼 있어요",
+  need_shards: "광석 2개가 모두 있어야 해요",
+  exit_locked: "아직 다리가 봉인돼 있어요",
   sealed: "정체가 드러나 빙의가 봉인됐어요",
   bound: "묶여 있어서 할 수 없어요",
   blocking: "방패를 내려야 공격할 수 있어요",
@@ -59,16 +59,16 @@ function seconds(ms: number): number {
 function objectiveText(o: ObjectiveHud): string {
   switch (o.stage) {
     case "shards":
-      return o.shards < o.shardTotal ? `열쇠 찾기 ${o.shards}/${o.shardTotal}` : "철문으로 가서 열쇠로 열기";
+      return o.shards < o.shardTotal ? `광석 찾기 ${o.shards}/${o.shardTotal}` : "나무 문으로 가서 광석으로 열기";
     case "devices":
-      return `의식 촛대 ${o.devicesOn}/${o.deviceTotal} 켜짐 — 둘을 동시에 켜야 문이 열린다`;
+      return `룬 선돌 ${o.devicesOn}/${o.deviceTotal} 깨어남 — 둘을 동시에 깨워야 문이 열린다`;
     case "seal":
-      if (!o.sealStarted) return "제단에서 봉인 해제 시작";
-      return `봉인 해제 ${seconds(o.sealMs)}/${seconds(o.sealTotalMs)}초${o.guarded ? "" : " — 제단 곁을 지키세요!"}`;
+      if (!o.sealStarted) return "돌 제단에서 봉인 해제 시작";
+      return `봉인 해제 ${seconds(o.sealMs)}/${seconds(o.sealTotalMs)}초${o.guarded ? "" : " — 돌 제단 곁을 지키세요!"}`;
     case "boss":
       return o.bossHp === null ? "보스 처치" : `보스 처치 — 체력 ${o.bossHp}/${o.bossMaxHp}`;
     case "exit":
-      return "출구로 탈출 (F)";
+      return "다리로 탈출 (F)";
   }
 }
 

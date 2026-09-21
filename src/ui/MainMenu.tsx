@@ -148,7 +148,7 @@ export function MainMenu({
     <div className="main-menu">
       <div className="menu-stage" ref={stage} />
       <div className="ui">
-      {loading < 1 && <div className="menu-loading band">유적을 여는 중… {Math.round(loading * 100)}%</div>}
+      {loading < 1 && <div className="menu-loading band">숲을 불러오는 중… {Math.round(loading * 100)}%</div>}
 
       {matching && <div className="menu-matching">{matching}</div>}
 
@@ -246,7 +246,7 @@ export function MainMenu({
         <div className="menu-modal" onClick={() => setSheet("none")}>
           <div className="dark-panel help-panel" onClick={(e) => e.stopPropagation()}>
             <h2>게임 방법</h2>
-            <p>네 명이 봉인된 유적에 갇혔습니다. 열쇠를 모으고 장치를 작동해 문을 열고, 제단의 보스를 쓰러뜨린 뒤 탈출하세요.</p>
+            <p>네 명이 봉인된 숲에 갇혔습니다. 빛나는 광석을 캐 나무 문을 열고, 룬 선돌을 깨우고, 돌 제단의 봉인을 풀어 보스를 쓰러뜨린 뒤 다리로 탈출하세요.</p>
             <p>그중 한 명은 배신자입니다. 배신자는 검으로 동료를 벨 수 없고, 몬스터에 빙의해서만 공격합니다.</p>
             <p>문이 열릴 때마다 투표 발판이 떨어집니다. 30초 안에 의심 가는 사람의 발판에 서세요. 배신자를 맞히면 빙의가 봉인되고, 틀리면 그 사람이 20초 동안 묶입니다.</p>
             <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 방패 막기 · E 상호작용 · Q 빙의(배신자)</p>

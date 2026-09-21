@@ -47,9 +47,9 @@ const SHAKE_MS = 350;
 export const LIGHT_SLOTS = 6;
 const SHAKE_SIZE = 0.06;
 const INTERACT_LABEL: Record<Interactable["kind"], string> = {
-  shard: "E: 열쇠 줍기",
-  gate: "E: 열쇠로 철문 열기",
-  device: "E: 촛대에 불 켜기",
+  shard: "E: 광석 캐기",
+  gate: "E: 광석으로 나무 문 열기",
+  device: "E: 룬 선돌 깨우기",
   altar: "E: 봉인 해제 시작",
 };
 

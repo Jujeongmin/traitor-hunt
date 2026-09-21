@@ -22,7 +22,7 @@ describe("guideFor", () => {
     const match = playing();
     const shard = guideFor(layout, match, here);
     expect(shard?.at).toEqual(nearestTo(here, layout.shards));
-    expect(shard?.text).toContain("열쇠");
+    expect(shard?.text).toContain("광석");
     match.objectives.shards = layout.shards.map(() => true);
     const gate = guideFor(layout, match, here);
     expect(gate?.at).toEqual(layout.gates.find((g) => g.n === 1));

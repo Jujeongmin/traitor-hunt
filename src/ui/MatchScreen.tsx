@@ -79,7 +79,7 @@ export function MatchScreen({ client, onFrame, onExit, tutorial }: MatchScreenPr
       <div className="ui">
       {ready && hud && !result && <Hud hud={hud} now={now} />}
       {!ready && !loadError && (
-        <div className="overlay"><span className="band">유적으로 내려가는 중… {progress.done}/{progress.total}</span></div>
+        <div className="overlay"><span className="band">숲으로 들어가는 중… {progress.done}/{progress.total}</span></div>
       )}
       {loadError && <div className="overlay error"><span className="band">불러오기 실패: {loadError}</span></div>}
       {ready && waiting && <div className="overlay dim"><span className="band">
