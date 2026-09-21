@@ -1,5 +1,6 @@
 import type { Activity, PartyView } from "../game/account/party";
 import { COSTUMES, costumeById, type Costume } from "../game/render/costumes";
+import { classForSeat, readClass, type PlayerClass } from "../game/match/classes";
 import { errorCode } from "./matchClient";
 import type { MatchTransport } from "./transport";
 
@@ -95,15 +96,16 @@ export class PartyClient {
 
 // Who stands in the menu scene: you first (with your local look), then the rest of the party.
 export function partyLineup(
-  me: { account: string; name: string; costume: Costume },
+  me: { account: string; name: string; costume: Costume; playerClass: PlayerClass },
   view: PartyView | null,
-): { name: string; costume: Costume; isYou: boolean }[] {
+): { name: string; costume: Costume; playerClass: PlayerClass; isYou: boolean }[] {
   const others = (view?.party?.members ?? []).filter((m) => m.account !== me.account);
   return [
-    { name: me.name, costume: me.costume, isYou: true },
-    ...others.map((m) => ({
+    { name: me.name, costume: me.costume, playerClass: me.playerClass, isYou: true },
+    ...others.map((m, i) => ({
       name: m.nickname ?? m.account,
       costume: costumeById(m.costume) ?? COSTUMES[0],
+      playerClass: readClass(m.playerClass) ?? classForSeat(i + 1),
       isYou: false,
     })),
   ];

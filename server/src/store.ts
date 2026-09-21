@@ -7,7 +7,7 @@ import { DEFAULT_WORLD, readWorld, type World } from "../../src/game/account/wor
 import { playsFree, type PurchaseEvent } from "../../src/game/account/purchase";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
-import { readClass, type PlayerClass } from "../../src/game/match/classes";
+import { CLASSES, readClass, type PlayerClass } from "../../src/game/match/classes";
 import { isBot } from "../../src/game/match/lifecycle";
 import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
 import { readJumpY } from "../../src/game/rules/movement";
@@ -311,6 +311,7 @@ export async function partyMember(account: string, now: number): Promise<PartyMe
     account,
     nickname: typeof state.nickname === "string" ? state.nickname : null,
     costume: costumeById(state.costume)?.id ?? COSTUMES[0].id,
+    playerClass: readClass(state.playerClass) ?? CLASSES[0],
     online: isOnline(state.lastSeenAt, now),
     activity: readActivity(state.activity),
   };

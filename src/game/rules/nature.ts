@@ -1,4 +1,5 @@
 import type { LevelLayout } from "./levelLayout";
+import { obstaclesFor } from "./obstacles";
 
 // The outdoor dressing for a grid level: forest and rocks where the map is solid, a few plants on
 // the open ground. Polytope Studio's low-poly nature pack, in metres. Everything is decided by cell
@@ -22,7 +23,12 @@ export const NATURE_MODELS = [...new Set([...TREES, ...EDGE_PROPS, ...GROUND_PLA
 export const FOOTPRINT: Record<string, number> = {
   pt_pine: 0.45, pt_pine_dead: 0.4, pt_fruit_tree: 0.4, pt_apple_tree: 0.4,
   pt_rock: 0.13, pt_shrub: 0.93, pt_shrub_dead: 0.69,
+  pt_grass: 0.6, pt_poppy: 0.32, pt_mushroom: 0.18,
 };
+// Room kept between any two things on the ground, so no two meshes cut into each other.
+export const GROUND_GAP = 0.05;
+// How many nudged spots a piece tries before it is left out.
+const TRIES = 6;
 // Space left between a prop and the path.
 const EDGE_GAP = 0.1;
 
@@ -60,6 +66,22 @@ export function natureLayout(layout: LevelLayout): NaturePiece[] {
   ]) busy.add(key(Math.floor(p.x / t), Math.floor(p.z / t)));
 
   const out: NaturePiece[] = [];
+  // What already stands on the ground: the standing stones, the platforms, then each piece placed.
+  const taken: { x: number; z: number; r: number }[] = obstaclesFor(layout).map((o) => ({ ...o }));
+  for (const pl of layout.platforms) taken.push({ x: pl.x, z: pl.z, r: Math.hypot(pl.w, pl.d) / 2 });
+  const free = (x: number, z: number, radius: number) =>
+    taken.every((o) => Math.hypot(x - o.x, z - o.z) >= o.r + radius + GROUND_GAP);
+  // Tries the spot at(0), then nudged spots at(1), at(2)...; keeps the first that touches nothing.
+  const place = (model: string, scale: number, yaw: number, at: (attempt: number) => { x: number; z: number }) => {
+    const radius = FOOTPRINT[model] * scale;
+    for (let attempt = 0; attempt < TRIES; attempt++) {
+      const { x, z } = at(attempt);
+      if (!free(x, z, radius)) continue;
+      taken.push({ x, z, r: radius });
+      out.push({ model, x, z, yaw, scale });
+      return;
+    }
+  };
   const NEIGHBOURS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]];
   for (let r = -BORDER; r < layout.rows + BORDER; r++) {
     for (let c = -BORDER; c < layout.cols + BORDER; c++) {
@@ -74,13 +96,10 @@ export function natureLayout(layout: LevelLayout): NaturePiece[] {
           const scale = 0.85 + cellNoise(c, r, 60 + i) * 0.4;
           // Jittered, but the trunk stays inside the cell.
           const room = t / 2 - FOOTPRINT[model] * scale - EDGE_GAP;
-          out.push({
-            model,
-            x: cx + (cellNoise(c, r, 30 + i) * 2 - 1) * room,
-            z: cz + (cellNoise(c, r, 40 + i) * 2 - 1) * room,
-            yaw: cellNoise(c, r, 50 + i) * Math.PI * 2,
-            scale,
-          });
+          place(model, scale, cellNoise(c, r, 50 + i) * Math.PI * 2, (k) => ({
+            x: cx + (cellNoise(c, r, 30 + i + k * 200) * 2 - 1) * room,
+            z: cz + (cellNoise(c, r, 40 + i + k * 200) * 2 - 1) * room,
+          }));
         }
         if (open.length > 0) {
           // A boulder or bush on the side that faces a path (straight sides first), its edge flush
@@ -90,12 +109,10 @@ export function natureLayout(layout: LevelLayout): NaturePiece[] {
           const scale = model === "pt_rock" ? between(ROCK_SCALE, cellNoise(c, r, 72)) : 1 + cellNoise(c, r, 72) * 0.4;
           const reach = t / 2 - FOOTPRINT[model] * scale - EDGE_GAP;
           const len = Math.hypot(dc, dr);
-          out.push({
-            model,
-            x: cx + (dc / len) * reach,
-            z: cz + (dr / len) * reach,
-            yaw: cellNoise(c, r, 71) * Math.PI * 2,
-            scale,
+          // Slid along the cell's edge when a trunk is in the way.
+          place(model, scale, cellNoise(c, r, 71) * Math.PI * 2, (k) => {
+            const slide = k === 0 ? 0 : (cellNoise(c, r, 73 + k) * 2 - 1) * reach;
+            return { x: cx + (dc / len) * reach - (dr / len) * slide, z: cz + (dr / len) * reach + (dc / len) * slide };
           });
         }
         continue;
@@ -103,13 +120,10 @@ export function natureLayout(layout: LevelLayout): NaturePiece[] {
       if (busy.has(key(c, r))) continue;
       const plants = Math.floor(cellNoise(c, r, 80) * 3);
       for (let i = 0; i < plants; i++) {
-        out.push({
-          model: pick(GROUND_PLANTS, cellNoise(c, r, 81 + i)),
-          x: cx + (cellNoise(c, r, 90 + i) - 0.5) * t * 0.8,
-          z: cz + (cellNoise(c, r, 100 + i) - 0.5) * t * 0.8,
-          yaw: cellNoise(c, r, 110 + i) * Math.PI * 2,
-          scale: 0.8 + cellNoise(c, r, 120 + i) * 0.5,
-        });
+        place(pick(GROUND_PLANTS, cellNoise(c, r, 81 + i)), 0.8 + cellNoise(c, r, 120 + i) * 0.5, cellNoise(c, r, 110 + i) * Math.PI * 2, (k) => ({
+          x: cx + (cellNoise(c, r, 90 + i + k * 200) - 0.5) * t * 0.8,
+          z: cz + (cellNoise(c, r, 100 + i + k * 200) - 0.5) * t * 0.8,
+        }));
       }
     }
   }

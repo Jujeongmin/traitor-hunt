@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CLASSES, CLASS_LABEL, WEAPONS, type PlayerClass } from "../game/match/classes";
+import { CLASSES, CLASS_BLURB, CLASS_LABEL, WEAPONS } from "../game/match/classes";
 import {
   COSTUMES, PARTS, PART_KEYS, optionOf, randomCostume, withPart, type Costume, type PartKey,
 } from "../game/render/costumes";
@@ -17,10 +17,6 @@ interface WardrobeProps {
   onStart?: () => void;
 }
 
-const CLASS_BLURB: Record<PlayerClass, string> = {
-  striker: "장검으로 한 번에 크게 벤다",
-  guardian: "큰 방패로 몬스터의 공격을 받아낸다",
-};
 
 // Radians of turn per pixel dragged.
 const SPIN_PER_PIXEL = 0.012;
@@ -82,7 +78,7 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
               >
                 <b>{CLASS_LABEL[c]}</b>
                 <span>{CLASS_BLURB[c]}</span>
-                <small>공격 {WEAPONS[c].damage} · 막기 {Math.round(WEAPONS[c].block * 100)}%</small>
+                <small>{WEAPONS[c].name} · 공격 {WEAPONS[c].damage} · {WEAPONS[c].ranged ? "원거리" : "근접"}</small>
                 <em>스킬 {SKILLS[c].name}: {SKILLS[c].blurb} (재사용 {SKILLS[c].cooldownMs / 1000}초)</em>
               </button>
             ))}
@@ -90,7 +86,7 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
         </section>
 
         <section>
-          <h3>모양</h3>
+          <h3>모습</h3>
           <div className="wardrobe-presets">
             {COSTUMES.map((c) => (
               <button
@@ -104,12 +100,7 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
             ))}
             <button type="button" className="wardrobe-chip" onClick={() => onPick(randomCostume())}>무작위</button>
           </div>
-          <PartRows keys={SHAPE_KEYS} costume={costume} onPick={onPick} />
-        </section>
-
-        <section>
-          <h3>색</h3>
-          <PartRows keys={COLOUR_KEYS} costume={costume} onPick={onPick} />
+          <PartRows keys={PART_KEYS} costume={costume} onPick={onPick} />
         </section>
 
         {onStart && <button type="button" className="brush-button wardrobe-start" onClick={onStart}>게임 시작</button>}
@@ -122,8 +113,6 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
   );
 }
 
-const SHAPE_KEYS = PART_KEYS.filter((k) => PARTS[k].group === "shape");
-const COLOUR_KEYS = PART_KEYS.filter((k) => PARTS[k].group === "colour");
 
 // One row per part: its name, and arrows that step through its options.
 function PartRows({ keys, costume, onPick }: { keys: PartKey[]; costume: Costume; onPick: (c: Costume) => void }) {

@@ -15,7 +15,7 @@ import { readWorld } from "../game/account/worlds";
 import { playMusic } from "../game/audio/music";
 import { Wardrobe } from "./Wardrobe";
 import { StatsPanel } from "./StatsPanel";
-import { myCostume, onMyCostume, setMyCostume } from "./profile";
+import { myClass, myCostume, onMyClass, onMyCostume, setMyCostume } from "./profile";
 import { SettingsPanel } from "./SettingsPanel";
 
 interface MainMenuProps {
@@ -66,6 +66,7 @@ export function MainMenu({
   const scene = useRef<MenuScene | null>(null);
   const [loading, setLoading] = useState(0);
   const [costume, setCostume] = useState(myCostume());
+  const [playerClass, setPlayerClass] = useState(myClass());
   const [sheet, setSheet] = useState<Sheet>("none");
   // The wardrobe is a screen of its own: the menu steps aside and the camera closes in on you.
   const [wardrobe, setWardrobe] = useState(false);
@@ -104,6 +105,7 @@ export function MainMenu({
   })();
 
   useEffect(() => onMyCostume(setCostume), []);
+  useEffect(() => onMyClass(setPlayerClass), []);
   useEffect(() => playMusic("menu"), []);
 
   useEffect(() => {
@@ -119,8 +121,8 @@ export function MainMenu({
   }, []);
 
   useEffect(() => {
-    scene.current?.setParty(partyLineup({ account, name, costume }, partyView));
-  }, [account, name, costume, partyView, loading]);
+    scene.current?.setParty(partyLineup({ account, name, costume, playerClass }, partyView));
+  }, [account, name, costume, playerClass, partyView, loading]);
 
   const invite = partyView?.invites[0] ?? null;
   const answer = async (accept: boolean) => {

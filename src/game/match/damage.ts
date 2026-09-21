@@ -1,7 +1,7 @@
 import { WEAPONS, classFor, type Weapon } from "./classes";
 import { SKILLS, skillTargets, type Skill } from "./skills";
 import {
-  EXIT_RADIUS, LINK_DAMAGE_RATIO,
+  EXIT_RADIUS, LINK_DAMAGE_RATIO, PLAYER_HP,
   MONSTER_DEATH_BODY_DAMAGE, MONSTER_STATS, PAIN_RADIUS, RANGE_SLACK,
 } from "./constants";
 import { isActive, isBound, matchHost } from "./lifecycle";
@@ -70,6 +70,14 @@ export function useSkill(
     const monster = match.monsters[id];
     if (skill.stunMs > 0) monster.stunnedUntil = Math.max(monster.stunnedUntil, now + skill.stunMs);
     events.push(...hitMonster(match, secret, account, id, skill.damage, poses, now));
+  }
+  if (skill.heal > 0) {
+    for (const other of match.players) {
+      const at = other === account ? from : poses[other];
+      if (!at || !isActive(match, other) || distance(from, at) > skill.reach + RANGE_SLACK) continue;
+      secret.hp[other] = Math.min(PLAYER_HP, (secret.hp[other] ?? 0) + skill.heal);
+      events.push({ type: "private", account: other });
+    }
   }
   return events;
 }

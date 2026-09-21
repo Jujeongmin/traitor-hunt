@@ -456,7 +456,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .wardrobe-head { display: flex; align-items: center; justify-content: space-between; }
 .wardrobe-head h2 { margin: 0; font: 700 18px var(--font-head); }
 .wardrobe section h3 { margin: 0 0 6px; font: 700 13px var(--font-head); color: var(--ember); letter-spacing: 0.05em; }
-.wardrobe-classes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.wardrobe-classes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .wardrobe-card {
   display: grid; gap: 2px; text-align: left; padding: 8px 10px; cursor: pointer; color: inherit; font: inherit;
   border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 6px; background: rgba(255, 255, 255, 0.04);

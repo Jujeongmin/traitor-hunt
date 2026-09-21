@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { NATURE_MODELS, TREES, natureLayout } from "../../src/game/rules/nature";
+import { FOOTPRINT, NATURE_MODELS, TREES, natureLayout } from "../../src/game/rules/nature";
+import { obstaclesFor } from "../../src/game/rules/obstacles";
 import { RUINS, TILE_SIZE, parseLevel, solidAt } from "../../src/game/rules/levelLayout";
 
 const layout = parseLevel(RUINS, TILE_SIZE);
@@ -34,5 +35,27 @@ describe("natureLayout", () => {
 
   it("only uses models the game loads", () => {
     for (const p of pieces) expect(NATURE_MODELS).toContain(p.model);
+  });
+});
+
+describe("nothing on the ground overlaps", () => {
+  const foot = (p: { model: string; scale: number }) => FOOTPRINT[p.model] * p.scale;
+
+  it("keeps every piece clear of every other piece", () => {
+    for (let i = 0; i < pieces.length; i++) {
+      for (let j = i + 1; j < pieces.length; j++) {
+        const a = pieces[i];
+        const b = pieces[j];
+        expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThanOrEqual(foot(a) + foot(b));
+      }
+    }
+  });
+
+  it("keeps every piece clear of the standing stones and the platforms", () => {
+    const stones = obstaclesFor(layout);
+    for (const p of pieces) {
+      for (const o of stones) expect(Math.hypot(p.x - o.x, p.z - o.z)).toBeGreaterThanOrEqual(o.r + foot(p));
+      for (const pl of layout.platforms) expect(Math.hypot(p.x - pl.x, p.z - pl.z)).toBeGreaterThanOrEqual(Math.hypot(pl.w, pl.d) / 2 + foot(p));
+    }
   });
 });

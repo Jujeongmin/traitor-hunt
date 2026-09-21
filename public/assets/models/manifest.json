@@ -5,70 +5,190 @@
       "bytes": 477632,
       "animations": []
     },
-    "footman": {
-      "url": "assets/models/footman.glb",
-      "bytes": 249312,
+    "hero_cleric": {
+      "url": "assets/models/hero_cleric.glb",
+      "bytes": 385444,
       "animations": [
-        "Footman_Idle",
-        "Footman_Walk",
-        "Footman_Run",
-        "Footman_Attack01",
-        "Footman_Attack02",
-        "Footman_Defend",
-        "Footman_GetHit",
-        "Footman_Death",
-        "Footman_Victory"
-      ]
-    },
-    "golem": {
-      "url": "assets/models/golem.glb",
-      "bytes": 195808,
-      "animations": [
+        "Death",
         "Idle",
-        "Walk",
-        "Attack01",
-        "Attack02",
-        "GetHit",
-        "Die",
-        "Victory"
-      ]
-    },
-    "grunt": {
-      "url": "assets/models/grunt.glb",
-      "bytes": 221928,
-      "animations": [
-        "Idle",
-        "Walk",
+        "Idle_Weapon",
+        "PickUp",
+        "Punch",
+        "RecieveHit",
+        "RecieveHit_Attacking",
         "Run",
-        "Attack01",
-        "Attack02",
-        "GetHit",
-        "Die",
-        "Victory"
+        "Spell1",
+        "Staff_Attack",
+        "Walk"
       ]
     },
-    "hero": {
-      "url": "assets/models/hero.glb",
-      "bytes": 897208,
+    "hero_monk": {
+      "url": "assets/models/hero_monk.glb",
+      "bytes": 378912,
       "animations": [
-        "Idle_Normal_SwordAndShield",
-        "Idle_Battle_SwordAndShiled",
-        "MoveFWD_Normal_InPlace_SwordAndShield",
-        "MoveFWD_Battle_InPlace_SwordAndShield",
-        "MoveBWD_Battle_InPlace_SwordAndShield",
-        "MoveLFT_Battle_InPlace_SwordAndShield",
-        "MoveRGT_Battle_InPlace_SwordAndShield",
-        "SprintFWD_Battle_InPlace_SwordAndShield",
-        "JumpFull_Normal_InPlace_SwordAndShield",
-        "Attack01_SwordAndShiled",
-        "Attack02_SwordAndShiled",
-        "Attack03_SwordAndShiled",
-        "Attack04_Spinning_SwordAndShield",
-        "Defend_SwordAndShield",
-        "DefendHit_SwordAndShield",
-        "GetHit01_SwordAndShield",
-        "Die01_SwordAndShield",
-        "Victory_Battle_SwordAndShield"
+        "Attack",
+        "Attack2",
+        "Death",
+        "Idle",
+        "Idle_Attacking",
+        "PickUp",
+        "RecieveHit",
+        "RecieveHit_2",
+        "Roll",
+        "Run",
+        "Walk"
+      ]
+    },
+    "hero_ranger": {
+      "url": "assets/models/hero_ranger.glb",
+      "bytes": 432228,
+      "animations": [
+        "Bow_Draw",
+        "Bow_Shoot",
+        "Death",
+        "Idle",
+        "Idle_Attacking",
+        "Idle_Weapon",
+        "PickUp",
+        "Punch",
+        "RecieveHit",
+        "RecieveHit_2",
+        "Roll",
+        "Run",
+        "Run_Holding",
+        "Walk"
+      ]
+    },
+    "hero_rogue": {
+      "url": "assets/models/hero_rogue.glb",
+      "bytes": 362620,
+      "animations": [
+        "Attacking_Idle",
+        "Dagger_Attack",
+        "Dagger_Attack2",
+        "Death",
+        "Idle",
+        "PickUp",
+        "Punch",
+        "RecieveHit",
+        "RecieveHit_2",
+        "Roll",
+        "Run",
+        "Walk"
+      ]
+    },
+    "hero_warrior": {
+      "url": "assets/models/hero_warrior.glb",
+      "bytes": 408096,
+      "animations": [
+        "Death",
+        "Idle",
+        "Idle_Attacking",
+        "Idle_Weapon",
+        "PickUp",
+        "Punch",
+        "RecieveHit",
+        "Roll",
+        "Run",
+        "Run_Weapon",
+        "Sword_Attack",
+        "Sword_Attack2",
+        "Walk"
+      ]
+    },
+    "hero_wizard": {
+      "url": "assets/models/hero_wizard.glb",
+      "bytes": 472336,
+      "animations": [
+        "Death",
+        "Idle",
+        "Idle_Attacking",
+        "Idle_Weapon",
+        "PickUp",
+        "Punch",
+        "RecieveHit",
+        "RecieveHit_2",
+        "Roll",
+        "Run",
+        "Run_Weapon",
+        "Spell1",
+        "Spell2",
+        "Staff_Attack",
+        "Walk"
+      ]
+    },
+    "mon_bat": {
+      "url": "assets/models/mon_bat.glb",
+      "bytes": 71260,
+      "animations": [
+        "Bite_Front",
+        "Death",
+        "Flying",
+        "HitRecieve"
+      ]
+    },
+    "mon_goleling": {
+      "url": "assets/models/mon_goleling.glb",
+      "bytes": 108616,
+      "animations": [
+        "Death",
+        "Fast_Flying",
+        "Flying_Idle",
+        "Headbutt",
+        "HitReact",
+        "No",
+        "Punch",
+        "Yes"
+      ]
+    },
+    "mon_green_blob": {
+      "url": "assets/models/mon_green_blob.glb",
+      "bytes": 45604,
+      "animations": [
+        "Bite_Front",
+        "Dance",
+        "Death",
+        "HitRecieve",
+        "Idle",
+        "Jump",
+        "No",
+        "Walk",
+        "Yes"
+      ]
+    },
+    "mon_mushnub": {
+      "url": "assets/models/mon_mushnub.glb",
+      "bytes": 40480,
+      "animations": [
+        "Bite_Front",
+        "Dance",
+        "Death",
+        "HitRecieve",
+        "Idle",
+        "Jump",
+        "No",
+        "Walk",
+        "Yes"
+      ]
+    },
+    "mon_mushroom_king": {
+      "url": "assets/models/mon_mushroom_king.glb",
+      "bytes": 363528,
+      "animations": [
+        "Death",
+        "Duck",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "Jump_Idle",
+        "Jump_Land",
+        "No",
+        "Punch",
+        "Run",
+        "Walk",
+        "Wave",
+        "Weapon",
+        "Yes"
       ]
     },
     "pt_apple_tree": {

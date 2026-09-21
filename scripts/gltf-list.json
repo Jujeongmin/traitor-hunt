@@ -1,0 +1,48 @@
+{
+  "items": [
+    {
+      "name": "hero_warrior",
+      "src": "art-src/rpg-characters/x/glTF/Warrior.gltf"
+    },
+    {
+      "name": "hero_ranger",
+      "src": "art-src/rpg-characters/x/glTF/Ranger.gltf"
+    },
+    {
+      "name": "hero_wizard",
+      "src": "art-src/rpg-characters/x/glTF/Wizard.gltf"
+    },
+    {
+      "name": "hero_cleric",
+      "src": "art-src/rpg-characters/x/glTF/Cleric.gltf"
+    },
+    {
+      "name": "hero_rogue",
+      "src": "art-src/rpg-characters/x/glTF/Rogue.gltf"
+    },
+    {
+      "name": "hero_monk",
+      "src": "art-src/rpg-characters/x/glTF/Monk.gltf"
+    },
+    {
+      "name": "mon_green_blob",
+      "src": "art-src/ultimate-monsters/x/Blob/glTF/GreenBlob.gltf"
+    },
+    {
+      "name": "mon_mushnub",
+      "src": "art-src/ultimate-monsters/x/Blob/glTF/Mushnub.gltf"
+    },
+    {
+      "name": "mon_bat",
+      "src": "art-src/ultimate-monsters/x/glTF/Bat.gltf"
+    },
+    {
+      "name": "mon_mushroom_king",
+      "src": "art-src/ultimate-monsters/x/Big/glTF/MushroomKing.gltf"
+    },
+    {
+      "name": "mon_goleling",
+      "src": "art-src/ultimate-monsters/x/Flying/glTF/Goleling.gltf"
+    }
+  ]
+}

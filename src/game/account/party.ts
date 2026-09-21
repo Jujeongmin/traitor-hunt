@@ -75,6 +75,7 @@ export interface PartyMemberView {
   account: string;
   nickname: string | null;
   costume: string;
+  playerClass: string;
   online: boolean;
   activity: Activity;
 }

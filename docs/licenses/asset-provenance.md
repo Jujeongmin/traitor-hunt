@@ -120,3 +120,16 @@ npm 패키지(@fontsource)로 넣었고 모두 SIL Open Font License 1.1이다(�
 
 패키지 5개를 모두 풀어 readme·license 파일이 없는 것을 확인했다. 약관 원문(2.2.1)은 "electronic application or
 digital media"에 넣는 것을 허락하고 Unity 엔진을 조건으로 두지 않으며, 제품 안 수익화(유료 판매)도 허락한다.
+
+## RPG 영웅·몬스터 교체 (2026-09-21)
+
+플레이어와 몬스터를 Quaternius(CC0) 모델로 바꿨다. 위 표의 RPG Tiny Hero Duo와 Mini Legion 3종은 더 이상 게임에
+들어가지 않는다(원본은 Unity 프로젝트에 남아 있음). 두 팩 모두 받은 폴더의 License.txt에 **CC0 1.0 Universal**
+(퍼블릭 도메인)이라고 적혀 있다. 출처 표기 의무도 없다.
+
+| art-src 폴더 | 에셋 | 제작 | 라이선스 | 게임 사용처 |
+|---|---|---|---|---|
+| rpg-characters | RPG Character Pack (2020-11) — https://quaternius.com/packs/rpgcharacters.html | Quaternius | CC0 1.0 | 직업 6개의 영웅(hero_warrior·ranger·wizard·cleric·rogue·monk) |
+| ultimate-monsters | Ultimate Monsters — https://quaternius.com/packs/ultimatemonsters.html | Quaternius | CC0 1.0 | 일반 몬스터(mon_green_blob·mushnub·goleling·bat), 보스(mon_mushroom_king) |
+
+변환: `npm run import-gltf`(scripts/gltf-list.json의 glTF → art-src/_glb) 다음 `npm run models`.

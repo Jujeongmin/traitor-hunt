@@ -16,6 +16,8 @@ import { distance } from "../match/view";
 import { tallyPlates, votesNeeded } from "../match/vote";
 import { RUINS, TILE_SIZE, parseLevel, solidWith, spawnPoint, type LevelLayout } from "../rules/levelLayout";
 import { groundAt, platformBlocks } from "../rules/platforms";
+import { obstacleBlocks, obstaclesFor } from "../rules/obstacles";
+import { MONSTER_BODY, PLAYER_BODY, crowdBlocks, type Body } from "../rules/crowd";
 import {
   GROUNDED, PLAYER_RADIUS, WALK_SPEED, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
@@ -27,14 +29,16 @@ import { PlayerActor, type PlayerStatus } from "./PlayerActor";
 import { MONSTER_MODELS, skinFor } from "./monsterLooks";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
 import { CHASE, chaseCamera } from "../rules/chaseCamera";
-import { COSTUME_MODELS, wearing } from "./costumes";
+import { wearing } from "./costumes";
+import { HEROES, HERO_MODELS } from "./heroes";
+import { Effects } from "./effects";
 import { displayName, ownName } from "./names";
 import { playScream, playThud } from "./scream";
 import { settings } from "../../ui/settings";
 
 export const LOOK_SENSITIVITY = 0.0022;
 
-export const MATCH_MODELS = [...new Set([...LEVEL_MODELS, ...OBJECTIVE_MODELS, ...COSTUME_MODELS, ...MONSTER_MODELS])];
+export const MATCH_MODELS = [...new Set([...LEVEL_MODELS, ...OBJECTIVE_MODELS, ...HERO_MODELS, ...MONSTER_MODELS])];
 
 const MONSTER_EYE = 1.5;
 // Outdoors nothing roofs the camera in; this only keeps it from flying off.
@@ -155,17 +159,23 @@ export class MatchView {
   private resizeFrame = 0;
   private readonly lights = new LightPool(this.scene, LIGHT_SLOTS);
   private readonly monsters = new Map<string, MonsterActor>();
+  private readonly effects = new Effects(this.scene);
   private readonly players = new Map<string, PlayerActor>();
   private readonly hudListeners = new Set<(hud: HudState) => void>();
   // Walls and closed gates only: shots fly over the crates.
   private solid: SolidTest = solidWith(this.layout, [], Infinity);
   private gatesKey = "";
-  // What stops you: a platform too tall to be standing on at your feet height stops you too.
+  private readonly stones = obstaclesFor(this.layout);
+  // Monsters and the other players, for this frame (see crowd.ts).
+  private bodies: Body[] = [];
+  // What stops you: the standing stones, the bodies around you, and a platform too tall to be
+  // standing on at your feet height.
   private readonly isSolid = (x: number, z: number) =>
-    this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, this.air.y);
+    this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, this.air.y) || obstacleBlocks(this.stones, x, z)
+    || crowdBlocks(this.bodies, this.pose, x, z);
   // Monsters never leave the floor, so every platform is a wall to them.
   private readonly isSolidOnFloor = (x: number, z: number) =>
-    this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, 0);
+    this.solid(x, z) || platformBlocks(this.layout.platforms, x, z, 0) || obstacleBlocks(this.stones, x, z);
   private library: ModelLibrary | null = null;
   private props: ObjectiveProps | null = null;
   private pose: Pose;
@@ -269,6 +279,7 @@ export class MatchView {
   }
 
   dispose(): void {
+    this.effects.dispose();
     this.disposed = true;
     cancelAnimationFrame(this.frame);
     this.offPain?.();
@@ -310,6 +321,7 @@ export class MatchView {
     } else if (active && !bound) {
       // Walking behind a raised shield is slower.
       const speed = WALK_SPEED * (this.input.blocking ? BLOCK_WALK : 1);
+      if (match) this.bodies = this.bodiesAround(match);
       this.pose = stepPlayer({ ...this.pose, yaw: this.yaw }, move, dt, this.isSolid, speed);
     } else if (active) {
       this.pose = { ...this.pose, yaw: this.yaw };
@@ -328,6 +340,7 @@ export class MatchView {
 
     if (match) {
       this.syncActors(match, state, dt, possession, now);
+      this.effects.update(dt);
       this.props?.update(match, now, dt, match.players.map((p) => displayName(p, me)));
       this.placeCamera(match, possession);
     }
@@ -337,6 +350,20 @@ export class MatchView {
     this.emitHud(match, state, possession, active, bound);
     this.renderer.render(this.scene, this.camera);
   };
+
+  // Living monsters and the other active players, each as far as your body must keep from theirs.
+  private bodiesAround(match: PublicMatch): Body[] {
+    const out: Body[] = [];
+    for (const m of Object.values(match.monsters)) {
+      if (m.alive) out.push({ x: m.x, z: m.z, r: PLAYER_BODY + MONSTER_BODY[m.kind] });
+    }
+    for (const account of match.players) {
+      if (account === this.client.account || !isActive(match, account)) continue;
+      const pose = this.client.state.poses[account];
+      if (pose) out.push({ x: pose.x, z: pose.z, r: PLAYER_BODY * 2 });
+    }
+    return out;
+  }
 
   private refreshSolid(match: PublicMatch): void {
     const key = match.objectives.gates.join(",");
@@ -497,9 +524,10 @@ export class MatchView {
       if (!actor) {
         const seat = match.players.indexOf(account);
         const costume = wearing(match.looks, account, seat);
+        const rig = HEROES[classFor(match.classes, account, seat)];
         actor = new PlayerActor(account, {
-          object: library.instance(costume.model), clips: library.get(costume.model).animations, costume,
-          playerClass: classFor(match.classes, account, seat),
+          object: library.instance(rig.model), clips: library.get(rig.model).animations, costume, rig,
+          effects: this.effects,
         });
         this.scene.add(actor.object);
         this.players.set(account, actor);

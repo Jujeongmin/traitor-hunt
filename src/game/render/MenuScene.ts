@@ -2,16 +2,18 @@ import * as THREE from "three";
 import { ModelLibrary } from "../assets/ModelLibrary";
 import type { MonsterState } from "../match/types";
 import { RUINS, TILE_SIZE, parseLevel } from "../rules/levelLayout";
-import { COSTUME_MODELS, type Costume } from "./costumes";
+import type { Costume } from "./costumes";
+import { HEROES, HERO_MODELS } from "./heroes";
+import type { PlayerClass } from "../match/classes";
 import { createLabel, setLabel } from "./labels";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
 import { LightPool } from "./lightPool";
 import { MonsterActor } from "./MonsterActor";
 import { PlayerActor } from "./PlayerActor";
-import { GRUNT, MONSTER_MODELS } from "./monsterLooks";
+import { GREEN_BLOB, MONSTER_MODELS } from "./monsterLooks";
 import { settings } from "../../ui/settings";
 
-const MENU_MODELS = [...new Set([...LEVEL_MODELS, ...COSTUME_MODELS, ...MONSTER_MODELS])];
+const MENU_MODELS = [...new Set([...LEVEL_MODELS, ...HERO_MODELS, ...MONSTER_MODELS])];
 const LIGHT_SLOTS = 6;
 
 // Party slots in the start room, facing the camera (yaw π faces +z). Slot 0 is you, in front.
@@ -23,7 +25,7 @@ const SLOTS = [
 ];
 const LABEL_HEIGHT = 2.05;
 
-export interface PartyMember { name: string; costume: Costume; isYou: boolean }
+export interface PartyMember { name: string; costume: Costume; playerClass: PlayerClass; isYou: boolean }
 const SQUAD_LIGHT = new THREE.Vector3(29.2, 2.6, 13.8);
 // You stand right of centre, leaving the left side to the menu.
 const CAMERA_HOME = new THREE.Vector3(28.6, 1.45, 15.4);
@@ -95,7 +97,7 @@ export class MenuScene {
     });
     this.library = library;
     this.placeParty();
-    this.zombie = new MonsterActor("menu-zombie", library.instance(GRUNT.model), library.get(GRUNT.model).animations, GRUNT.look);
+    this.zombie = new MonsterActor("menu-zombie", library.instance(GREEN_BLOB.model), library.get(GREEN_BLOB.model).animations, GREEN_BLOB.look);
     this.scene.add(this.zombie.object);
     this.clock.start();
     this.frame = requestAnimationFrame(this.tick);
@@ -112,7 +114,7 @@ export class MenuScene {
     if (!library) return;
     SLOTS.forEach((spot, i) => {
       const member = this.party[i];
-      const key = member ? `${member.name}|${member.costume.id}` : "";
+      const key = member ? `${member.name}|${member.playerClass}|${member.costume.id}` : "";
       const current = this.slots[i];
       if (current?.key === key) return;
       if (current) {
@@ -121,8 +123,9 @@ export class MenuScene {
       }
       if (!member) return;
       const { costume } = member;
+      const rig = HEROES[member.playerClass];
       const actor = new PlayerActor(`menu-${i}`, {
-        object: library.instance(costume.model), clips: library.get(costume.model).animations, costume,
+        object: library.instance(rig.model), clips: library.get(rig.model).animations, costume, rig,
       });
       const label = createLabel(0.9);
       label.position.set(spot.x, LABEL_HEIGHT, spot.z);

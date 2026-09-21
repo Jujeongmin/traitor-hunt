@@ -1,3 +1,4 @@
+import { MONSTER_BODY, PLAYER_BODY, crowdBlocks, type Body } from "../rules/crowd";
 import { stepAround, type SolidTest } from "../rules/movement";
 import { MONSTER_STATS } from "./constants";
 import type { MonsterPoseUpdate } from "./damage";
@@ -33,7 +34,17 @@ export function stepMonsterAi(
 
     const yaw = Math.atan2(-(target.x - monster.x), -(target.z - monster.z));
     if (target.d > stats.range * 0.8) {
-      const moved = stepAround({ x: monster.x, z: monster.z, yaw }, yaw, dt, isSolid, stats.speed);
+      // Other monsters and the players are bodies it walks round, not through.
+      const bodies: Body[] = [];
+      for (const [otherId, other] of Object.entries(match.monsters)) {
+        if (otherId !== id && other.alive) bodies.push({ x: other.x, z: other.z, r: MONSTER_BODY[monster.kind] + MONSTER_BODY[other.kind] });
+      }
+      for (const account of match.players) {
+        const pose = poses[account];
+        if (pose && isActive(match, account)) bodies.push({ x: pose.x, z: pose.z, r: MONSTER_BODY[monster.kind] + PLAYER_BODY });
+      }
+      const crowded: SolidTest = (x, z) => isSolid(x, z) || crowdBlocks(bodies, monster, x, z);
+      const moved = stepAround({ x: monster.x, z: monster.z, yaw }, yaw, dt, crowded, stats.speed);
       updates.push({ id, x: moved.x, z: moved.z, yaw });
     } else {
       updates.push({ id, x: monster.x, z: monster.z, yaw });

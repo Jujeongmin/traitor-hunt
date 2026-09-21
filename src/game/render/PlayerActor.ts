@@ -1,32 +1,18 @@
 import * as THREE from "three";
 import type { Pose } from "../match/types";
-import { PART_MESHES, shownMeshes, type Costume } from "./costumes";
-import { applyDyes } from "./dyes";
-import type { PlayerClass } from "../match/classes";
+import type { Costume } from "./costumes";
+import { applyCostume } from "./dyes";
+import type { HeroRig } from "./heroes";
+import type { Effects } from "./effects";
 import { createLabel, setLabel } from "./labels";
 import { ActionBlender, clipByName, skinnedHeight } from "./skinned";
 
-// Chibi heroes stand a little shorter than a person; the camera and reach are set around this.
+// The heroes stand a little shorter than a person; the camera and reach are set around this.
 export const PLAYER_HEIGHT = 1.45;
 const FOLLOW_RATE = 12;
 const FALL_RATE = 6;
 // Still this far from where the pose says (metres) counts as walking.
 const MOVING = 0.03;
-
-// Clip names in the RPG Tiny Hero Duo export (the pack's own spelling, "Shiled" included).
-const CLIPS = {
-  idle: "Idle_Battle_SwordAndShiled",
-  forward: "MoveFWD_Battle_InPlace_SwordAndShield",
-  back: "MoveBWD_Battle_InPlace_SwordAndShield",
-  left: "MoveLFT_Battle_InPlace_SwordAndShield",
-  right: "MoveRGT_Battle_InPlace_SwordAndShield",
-  attacks: ["Attack01_SwordAndShiled", "Attack02_SwordAndShiled"],
-  block: "Defend_SwordAndShield",
-  jump: "JumpFull_Normal_InPlace_SwordAndShield",
-  death: "Die01_SwordAndShield",
-  // Each class's skill (see skills.ts).
-  skills: { striker: "Attack04_Spinning_SwordAndShield", guardian: "Attack03_SwordAndShiled" },
-} as const;
 
 export type PlayerStatus = "active" | "dead" | "escaped";
 
@@ -34,20 +20,24 @@ export interface PlayerModel {
   object: THREE.Object3D;
   clips: THREE.AnimationClip[];
   costume: Costume;
-  // Picks the skill clip; the striker's when left out.
-  playerClass?: PlayerClass;
+  // The class's model and which of its clips to play.
+  rig: HeroRig;
+  // Where shots and skill rings are drawn; none on the menu.
+  effects?: Effects;
 }
+
+// A bow or a staff lets go this long after the attack starts.
+const RELEASE_SECONDS = 0.25;
+// Shots leave from about chest height.
+const SHOT_HEIGHT = 0.9;
 
 interface Animated {
   mixer: THREE.AnimationMixer;
   idle: THREE.AnimationAction;
-  forward: THREE.AnimationAction;
-  back: THREE.AnimationAction;
-  left: THREE.AnimationAction;
-  right: THREE.AnimationAction;
+  walk: THREE.AnimationAction;
+  run: THREE.AnimationAction;
   attacks: THREE.AnimationAction[];
-  block: THREE.AnimationAction;
-  jump: THREE.AnimationAction;
+  guard: THREE.AnimationAction;
   death: THREE.AnimationAction;
   skill: THREE.AnimationAction;
   blender: ActionBlender;
@@ -72,7 +62,7 @@ function once(action: THREE.AnimationAction, clamp: boolean): THREE.AnimationAct
 }
 
 // A hero in the match or on the menu: follows its pose, walks in the direction it moves, swings when
-// its swing count goes up, raises its shield while blocking and falls when it goes down.
+// its swing count goes up, raises its guard while blocking and falls when it goes down.
 export class PlayerActor {
   readonly object: THREE.Object3D;
   private readonly body: THREE.Object3D;
@@ -83,10 +73,12 @@ export class PlayerActor {
   private dead = false;
   private lastSwing: number | null = null;
   private lastSkill: number | null = null;
+  private readonly rig: HeroRig | null;
+  private readonly effects: Effects | null;
+  // Shots waiting for the bow or staff to let go: seconds left, and how far each flies.
+  private pendingShots: { left: number; reach: number }[] = [];
   private swingLeft = 0;
   private nextAttack = 0;
-  private jumpLeft = 0;
-  private lastY = 0;
 
   constructor(readonly account: string, model: PlayerModel | null) {
     this.body = model?.object ?? placeholderBody();
@@ -94,6 +86,8 @@ export class PlayerActor {
     this.tag.position.y = PLAYER_HEIGHT + 0.35;
     this.object.add(this.body, this.tag);
     this.animated = model ? PlayerActor.animate(model) : null;
+    this.rig = model?.rig ?? null;
+    this.effects = model?.effects ?? null;
     this.object.traverse((o) => {
       o.frustumCulled = false;
     });
@@ -108,30 +102,22 @@ export class PlayerActor {
     setLabel(this.tag, text, revealed ? "#ff6b5a" : "#ffb35a");
   }
 
-  private static animate({ object, clips, costume, playerClass = "striker" }: PlayerModel): Animated {
-    // The modular hero carries every part; hide the ones this costume does not wear. Measured after,
-    // so a long cloak or a tall hairdo does not shrink the body.
-    const shown = shownMeshes(costume);
-    object.traverse((o) => {
-      if (PART_MESHES.has(o.name)) o.visible = shown.has(o.name);
-    });
-    applyDyes(object, costume);
+  private static animate({ object, clips, costume, rig }: PlayerModel): Animated {
+    // Dressed first, then measured, so a cloak or pauldrons do not shrink the body.
+    applyCostume(object, costume, rig);
     object.scale.setScalar(PLAYER_HEIGHT / skinnedHeight(object));
     const mixer = new THREE.AnimationMixer(object);
     const action = (name: string) => mixer.clipAction(clipByName(clips, name));
-    const idle = action(CLIPS.idle);
+    const idle = action(rig.idle);
     return {
       mixer,
       idle,
-      forward: action(CLIPS.forward),
-      back: action(CLIPS.back),
-      left: action(CLIPS.left),
-      right: action(CLIPS.right),
-      attacks: CLIPS.attacks.map((n) => once(action(n), false)),
-      block: once(action(CLIPS.block), true),
-      jump: once(action(CLIPS.jump), false),
-      death: once(action(CLIPS.death), true),
-      skill: once(action(CLIPS.skills[playerClass]), false),
+      walk: action(rig.walk),
+      run: action(rig.run),
+      attacks: rig.attacks.map((n) => once(action(n), false)),
+      guard: action(rig.guard),
+      death: once(action(rig.death), true),
+      skill: once(action(rig.skill), false),
       blender: new ActionBlender(idle),
     };
   }
@@ -176,6 +162,7 @@ export class PlayerActor {
       this.swingLeft = attack.getClip().duration;
       if (a.blender.active === attack) attack.reset().play();
       else a.blender.fadeTo(attack, 0.05);
+      if (this.rig?.shot) this.pendingShots.push({ left: RELEASE_SECONDS, reach: this.rig.reach });
     }
     this.lastSwing = swing;
     // Likewise a higher skill count plays the class's skill.
@@ -184,32 +171,38 @@ export class PlayerActor {
       this.swingLeft = a.skill.getClip().duration;
       if (a.blender.active === a.skill) a.skill.reset().play();
       else a.blender.fadeTo(a.skill, 0.05);
+      if (this.rig && this.effects) this.effects.ring(p, this.rig.skillRing.radius, this.rig.skillRing.color);
+      if (this.rig?.skillShot) this.pendingShots.push({ left: RELEASE_SECONDS, reach: this.rig.skillShot });
     }
     this.lastSkill = skill;
+    this.fireShots(dt, pose.yaw);
     this.swingLeft = Math.max(0, this.swingLeft - dt);
-
-    // Leaving the ground starts the jump clip once.
-    if (y > this.lastY + 0.05 && this.lastY < 0.05 && this.jumpLeft === 0) this.jumpLeft = a.jump.getClip().duration;
-    this.lastY = y;
-    this.jumpLeft = Math.max(0, this.jumpLeft - dt);
 
     if (this.dead) a.blender.fadeTo(a.death, 0.1);
     else if (this.swingLeft > 0) {
       // The swing plays through.
-    } else if (pose.block) a.blender.fadeTo(a.block, 0.08);
-    else if (this.jumpLeft > 0) a.blender.fadeTo(a.jump, 0.08);
+    } else if (pose.block) a.blender.fadeTo(a.guard, 0.08);
     else a.blender.fadeTo(this.moveClip(a, dx, dz, pose.yaw));
     a.mixer.update(dt);
     this.object.visible = true;
   }
 
-  // Walking clip for the direction of travel relative to where the body faces.
+  private fireShots(dt: number, yaw: number): void {
+    if (this.pendingShots.length === 0) return;
+    for (const shot of this.pendingShots) shot.left -= dt;
+    const ready = this.pendingShots.filter((s) => s.left <= 0);
+    this.pendingShots = this.pendingShots.filter((s) => s.left > 0);
+    if (!this.effects || !this.rig?.shot) return;
+    const from = this.object.position.clone();
+    from.y += SHOT_HEIGHT;
+    for (const shot of ready) this.effects.shoot(this.rig.shot, from, yaw, shot.reach);
+  }
+
+  // Running forward or sideways, walking when backing away (the pack has no strafe clips).
   private moveClip(a: Animated, dx: number, dz: number, yaw: number): THREE.AnimationAction {
     if (Math.hypot(dx, dz) < MOVING) return a.idle;
-    // Forward is (-sin yaw, -cos yaw); right is (cos yaw, -sin yaw).
+    // Forward is (-sin yaw, -cos yaw).
     const forward = dx * -Math.sin(yaw) + dz * -Math.cos(yaw);
-    const right = dx * Math.cos(yaw) + dz * -Math.sin(yaw);
-    if (Math.abs(forward) >= Math.abs(right)) return forward >= 0 ? a.forward : a.back;
-    return right >= 0 ? a.right : a.left;
+    return forward < -MOVING / 2 ? a.walk : a.run;
   }
 }

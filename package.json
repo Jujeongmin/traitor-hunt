@@ -9,6 +9,7 @@
     "typecheck": "tsc -b",
     "preview": "vite preview",
     "export-glb": "node scripts/export-glb.mjs",
+    "import-gltf": "node scripts/import-gltf.mjs",
     "models": "node scripts/optimize-models.mjs",
     "test": "vitest run",
     "server:install": "npm --prefix server install",
