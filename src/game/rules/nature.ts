@@ -1,5 +1,4 @@
 import type { LevelLayout } from "./levelLayout";
-import { obstaclesFor } from "./obstacles";
 
 // The outdoor dressing for a grid level: forest and rocks where the map is solid, a few plants on
 // the open ground. Polytope Studio's low-poly nature pack, in metres. Everything is decided by cell
@@ -61,13 +60,12 @@ export function natureLayout(layout: LevelLayout): NaturePiece[] {
   const key = (c: number, r: number) => `${c},${r}`;
   const busy = new Set<string>();
   for (const p of [
-    layout.playerSpawn, ...layout.exits, ...layout.shards, ...layout.devices, ...layout.gates, ...layout.platforms,
-    ...(layout.altar ? [layout.altar] : []), ...(layout.bossSpawn ? [layout.bossSpawn] : []),
+    layout.playerSpawn, ...layout.portals, ...layout.platforms, ...(layout.bossSpawn ? [layout.bossSpawn] : []),
   ]) busy.add(key(Math.floor(p.x / t), Math.floor(p.z / t)));
 
   const out: NaturePiece[] = [];
-  // What already stands on the ground: the standing stones, the platforms, then each piece placed.
-  const taken: { x: number; z: number; r: number }[] = obstaclesFor(layout).map((o) => ({ ...o }));
+  // What already stands on the ground: the platforms, then each piece placed.
+  const taken: { x: number; z: number; r: number }[] = [];
   for (const pl of layout.platforms) taken.push({ x: pl.x, z: pl.z, r: Math.hypot(pl.w, pl.d) / 2 });
   const free = (x: number, z: number, radius: number) =>
     taken.every((o) => Math.hypot(x - o.x, z - o.z) >= o.r + radius + GROUND_GAP);

@@ -41,21 +41,6 @@
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_Generic_Rock_01.prefab"
     },
     {
-      "name": "pt_menhir",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_Menhir_Rock_02.prefab"
-    },
-    {
-      "name": "pt_ore_rock",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_Ore_Rock_01.prefab"
-    },
-    {
-      "name": "pt_river_rocks",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_River_Rock_Pile_02.prefab"
-    },
-    {
       "name": "pt_shrub",
       "kind": "prefab",
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Shrubs/PT_Generic_Shrub_01_green.prefab"
@@ -79,16 +64,6 @@
       "name": "pt_mushroom",
       "kind": "prefab",
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Mushrooms/PT_Caesars_Mushroom_01.prefab"
-    },
-    {
-      "name": "pt_gate_wood",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Fence/PT_Modular_Gate_Wood_01.prefab"
-    },
-    {
-      "name": "pt_bridge",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Village/Prefabs/Modular/Bridge/PT_Wooden_Bridge_02.prefab"
     }
   ]
 }

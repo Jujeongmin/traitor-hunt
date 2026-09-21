@@ -4,6 +4,7 @@ import { readClass } from "./game/combat/classes";
 import { costumeById } from "./game/render/costumes";
 import { loadRanking } from "./net/account";
 import { Verse8Transport } from "./net/verse8Transport";
+import { devLocalTransport } from "./net/devLocal";
 import { WorldClient } from "./net/worldClient";
 import { Lobby } from "./ui/Lobby";
 import { ModelGallery, galleryEnabled } from "./ui/ModelGallery";
@@ -16,13 +17,15 @@ import { usePurchase } from "./ui/usePurchase";
 import { useUiScale } from "./ui/useUiScale";
 
 const ONLINE_AVAILABLE = Boolean(import.meta.env.VITE_AGENT8_VERSE);
+const DEV_LOCAL = devLocalTransport();
 
 export default function App() {
   const [inWorld, setInWorld] = useState(false);
+  const [returning, setReturning] = useState(false);
   const { server, connected } = useGameServer();
   useUiScale();
   const transport = useMemo(
-    () => (ONLINE_AVAILABLE && connected ? new Verse8Transport(server) : null),
+    () => DEV_LOCAL ?? (ONLINE_AVAILABLE && connected ? new Verse8Transport(server) : null),
     [connected, server],
   );
   const { view, failed, save, pickWorld, refresh } = useAccount(transport);
@@ -58,6 +61,7 @@ export default function App() {
           owned={view.owned}
           onExit={() => {
             setInWorld(false);
+            setReturning(true);
             void refresh();
           }}
         />
@@ -71,7 +75,7 @@ export default function App() {
         account={transport?.account ?? (connected ? server.account : "")}
         view={view}
         accountFailed={failed}
-        online={ONLINE_AVAILABLE && !!transport}
+        online={!!transport}
         onSaveNickname={view ? save : null}
         onPickWorld={pickWorld}
         loadRanking={transport ? () => loadRanking(transport) : null}
@@ -83,6 +87,7 @@ export default function App() {
         party={party.client}
         partyView={party.view}
         onStart={() => setInWorld(true)}
+        returning={returning && !!view}
       />
     </>
   );

@@ -65,8 +65,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   -webkit-mask: var(--ui-grunge-band) center / 100% 100% no-repeat;
   mask: var(--ui-grunge-band) center / 100% 100% no-repeat;
 }
-.icon { width: 30px; height: 30px; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8); flex: none; }
-.icon.small { width: 24px; height: 24px; }
 
 /* Dark brush button (Dark UI Kit): a ragged dark band behind the text. */
 .brush-button {
@@ -114,17 +112,9 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 
 .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--night); }
-.overlay.dim { background: radial-gradient(ellipse at 50% 45%, rgba(6, 5, 4, 0.55), rgba(3, 2, 2, 0.9)); flex-direction: column; gap: 14px; }
+
 .overlay.error { color: var(--blood); }
 .overlay .note { font-size: 13px; color: var(--ink-dim); }
-
-.result-panel { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; min-width: 360px; }
-.result-panel h2 { font: 800 34px var(--font-head); margin: 0 0 4px; letter-spacing: 0.06em; }
-.result-panel h2.traitor { color: var(--blood); }
-.result-panel h2.adventurers { color: var(--frost); }
-.result-panel p { margin: 0; }
-.result-panel .brush-button { margin-top: 12px; }
-.result-panel .brush-button::before { display: none; }
 
 /* HUD */
 .hud-top {
@@ -134,26 +124,9 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   pointer-events: none;
 }
 .hud-top .stat { display: flex; align-items: center; gap: 6px; }
-.role-traitor { color: var(--blood); }
-.role-adventurer { color: var(--frost); }
+
 .timer { font-variant-numeric: tabular-nums; color: var(--ink-dim); }
-.hud-objective {
-  position: absolute; left: 16px; top: 58px; max-width: 58%;
-  font: 500 14px var(--font-body); color: #f3dcae;
-  pointer-events: none;
-}
-.hud-possess {
-  position: absolute; right: 16px; top: 12px;
-  display: flex; align-items: center; gap: 8px;
-  color: var(--blood); font: 600 14px var(--font-head);
-  pointer-events: none;
-}
-.hud-revealed {
-  position: absolute; right: 16px; top: 58px;
-  display: flex; align-items: center; gap: 8px;
-  color: var(--blood); font: 700 15px var(--font-head);
-  pointer-events: none;
-}
+
 .hud-prompt {
   position: absolute; left: 50%; top: 60%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px; white-space: nowrap;
@@ -162,20 +135,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .hud-prompt.low { top: 67%; }
 .hud-error { position: absolute; left: 50%; top: 74%; transform: translateX(-50%); color: var(--ember); font: 600 14px var(--font-head); white-space: nowrap; pointer-events: none; }
-.hud-bound {
-  position: absolute; left: 50%; top: 52%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 8px;
-  color: var(--ember); font: 700 17px var(--font-head);
-  pointer-events: none;
-}
-.hud-banner {
-  position: absolute; left: 50%; top: 30%; transform: translateX(-50%);
-  font: 700 19px var(--font-head); white-space: nowrap; text-align: center;
-  pointer-events: none;
-}
-.hud-banner.guilty { color: var(--blood); }
-.hud-banner.innocent { color: var(--frost); }
-.hud-banner.passed { color: var(--ink-dim); }
+
 .pain {
   position: absolute; inset: 0;
   display: flex; align-items: flex-start; justify-content: center; padding-top: 16%;
@@ -202,66 +162,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .hud-skill.cooling { border-color: rgba(255, 255, 255, 0.15); }
 .hud-skill.cooling b { color: var(--ink-dim); }
 
-/* Practice guide: the step to take now, just under the middle of the screen. */
-.hud-guide {
-  position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 10px; max-width: min(94%, 620px);
-}
-.guide-arrow { display: inline-block; color: var(--ember); font-size: 18px; line-height: 1; }
-.guide-text { font: 700 15px var(--font-head); }
-.guide-distance { font-size: 13px; color: var(--ink-dim); }
-
-/* Vote: a brush band header and a brush chip per plate. */
-.hud-vote {
-  position: absolute; left: 50%; top: 9%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  pointer-events: none;
-}
-.hud-vote-title { font: 700 16px var(--font-head); color: var(--ember); white-space: nowrap; padding: 10px 34px; }
-.hud-vote-plates { display: flex; gap: 8px; }
-.hud-vote-plates .plate {
-  width: 96px; height: 60px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  font: 600 13px var(--font-head); color: var(--ink); text-shadow: 0 1px 2px #000;
-  position: relative; isolation: isolate;
-}
-.hud-vote-plates .plate::before {
-  content: "";
-  position: absolute; inset: 0; z-index: -1;
-  background: rgba(10, 8, 7, 0.85);
-  -webkit-mask: var(--ui-grunge-band) center / 100% 100% no-repeat;
-  mask: var(--ui-grunge-band) center / 100% 100% no-repeat;
-}
-.hud-vote-plates .plate::after {
-  content: "";
-  position: absolute; inset: 2px 4px; z-index: -1;
-  background: rgba(150, 140, 125, 0.35);
-  -webkit-mask: var(--ui-grunge-frame) center / 100% 100% no-repeat;
-  mask: var(--ui-grunge-frame) center / 100% 100% no-repeat;
-}
-.hud-vote-plates .plate b { font: 800 18px var(--font-head); }
-.hud-vote-plates .plate.skip { color: var(--ink-dim); }
-.hud-vote-plates .plate.mine::after { background: rgba(242, 232, 213, 0.9); }
-.hud-vote-plates .plate.leading { color: var(--ember); }
-.hud-vote-plates .plate.leading::after { background: rgba(255, 170, 80, 0.95); }
-.hud-vote-deciding { color: var(--ember); font: 700 14px var(--font-head); }
-
 /* Development model viewer (?gallery) */
 .gallery-list { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; background: rgba(12, 10, 9, 0.85); padding: 6px; font: 12px system-ui, sans-serif; }
 .gallery-list button { font: inherit; text-align: left; padding: 2px 6px; background: transparent; color: #e8e2d6; border: 0; cursor: pointer; }
 .gallery-list button.on { background: #4a4038; }
 .gallery-info { position: absolute; left: 190px; top: 8px; padding: 4px 8px; background: rgba(12, 10, 9, 0.85); font: 13px system-ui, sans-serif; }
 
-/* Shown to the traitor for a few seconds when the match starts. */
-.role-notice {
-  position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%);
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  text-align: center; pointer-events: none;
-  animation: role-notice 4s ease-out forwards;
-}
-.role-notice strong { font: 800 46px var(--font-head); color: #ff3b2a; letter-spacing: 0.08em; text-shadow: 0 0 18px rgba(255, 40, 20, 0.6), 0 3px 4px #000; }
-.role-notice span { font: 600 16px var(--font-head); color: #ffb0a4; text-shadow: var(--shadow); }
-.icon.big { width: 72px; height: 72px; }
 @keyframes role-notice {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); }
   10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -287,12 +193,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .ui > .menu-corner { z-index: 4; }
 .ui > .menu-modal { z-index: 5; }
 .menu-loading { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); font-size: 14px; }
-.menu-profile { position: absolute; top: 18px; left: 22px; display: flex; align-items: baseline; gap: 12px; }
-.menu-level { font: 800 16px var(--font-logo); color: var(--ember); display: flex; align-items: center; gap: 8px; }
-/* How far into the level you are, under the ember number. */
-.level-bar { width: 56px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
-.level-bar > span { display: block; height: 100%; background: var(--ember); }
-.menu-name { font: 700 18px var(--font-head); }
+
 .menu-corner { position: absolute; top: 10px; right: 14px; display: flex; gap: 4px; }
 .brush-button.small { min-width: 0; font-size: 15px; padding: 12px 26px; }
 .menu-left {
@@ -333,9 +234,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .setting-row input { accent-color: var(--ember); }
 .setting-value { text-align: right; color: var(--ink-dim); font-size: 13px; }
 .settings-actions { display: flex; justify-content: center; gap: 12px; margin-top: 12px; }
-.help-panel { max-width: 540px; padding: 64px 120px; }
-.help-panel p { font-size: 14px; line-height: 1.7; margin: 0 0 10px; }
-.help-panel .text-button { display: block; margin: 8px auto 0; }
 
 .friends-panel {
   position: absolute;
@@ -402,22 +300,11 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   box-sizing: border-box;
   text-align: center;
 }
-.name-button { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; text-shadow: inherit; }
-.name-button:hover { color: var(--ember); }
-/* While a lobby fills, the menu stays up and this panel sits in the middle. */
-.menu-matching { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; }
+
 .matchmaking { width: 320px; padding: 28px 32px; display: grid; gap: 10px; }
-.matchmaking-head { display: flex; align-items: baseline; gap: 10px; }
-.matchmaking-head b { font: 700 16px var(--font-head); }
-.matchmaking-clock { font: 800 18px var(--font-logo); color: var(--ember); margin-left: auto; }
+
 .matchmaking .note { margin: 0; font-size: 13px; color: var(--ink-dim); }
-.matchmaking-seats { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.matchmaking-seats li {
-  padding: 6px 10px; border-radius: 4px; font: 600 14px var(--font-head);
-  background: rgba(255, 255, 255, 0.05); color: var(--ink-dim);
-}
-.matchmaking-seats li.taken { color: inherit; }
-.matchmaking-seats li.me { color: inherit; background: rgba(255, 179, 90, 0.16); }
+
 .matchmaking .text-button { justify-self: center; }
 
 .stats-panel { width: 480px; max-height: 76vh; overflow-y: auto; padding: 44px 56px; }
@@ -426,10 +313,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .stats-mine { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
 .stats-mine .note { margin: 0; }
 .stats-level { font: 800 18px var(--font-logo); color: var(--ember); }
-.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin: 0; }
-.stats-grid > div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 4px; }
-.stats-grid dt { font-size: 13px; color: var(--ink-dim); }
-.stats-grid dd { margin: 0; font: 700 14px var(--font-head); }
+
 .stats-board { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
 .stats-board li { display: grid; grid-template-columns: 24px 1fr auto; align-items: baseline; gap: 10px; padding: 4px 8px; border-radius: 4px; }
 .stats-board li.me { background: rgba(255, 179, 90, 0.14); }
@@ -456,15 +340,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .wardrobe-head { display: flex; align-items: center; justify-content: space-between; }
 .wardrobe-head h2 { margin: 0; font: 700 18px var(--font-head); }
 .wardrobe section h3 { margin: 0 0 6px; font: 700 13px var(--font-head); color: var(--ember); letter-spacing: 0.05em; }
-.wardrobe-classes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-.wardrobe-card {
-  display: grid; gap: 2px; text-align: left; padding: 8px 10px; cursor: pointer; color: inherit; font: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 6px; background: rgba(255, 255, 255, 0.04);
-}
-.wardrobe-card b { font: 700 14px var(--font-head); }
-.wardrobe-card span { font-size: 11px; color: var(--ink-dim); line-height: 1.4; }
-.wardrobe-card small { font-size: 10px; color: var(--ink-dim); }
-.wardrobe-card em { font-style: normal; font-size: 11px; color: var(--ember); line-height: 1.4; }
+
 .wardrobe-card.picked, .wardrobe-chip.picked { border-color: var(--ember); background: rgba(255, 179, 90, 0.14); }
 .wardrobe-card:hover, .wardrobe-chip:hover { background: rgba(255, 255, 255, 0.09); }
 .wardrobe-presets { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
@@ -485,7 +361,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .wardrobe-arrow:hover { border-color: var(--ember); }
 .wardrobe .note { margin: 0; font-size: 11px; color: var(--ink-dim); line-height: 1.5; }
-
 
 .nickname-panel { width: 380px; }
 .nickname-panel .note { font-size: 13px; color: var(--ink-dim); line-height: 1.6; text-align: center; margin: 0; }
@@ -512,7 +387,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .world-card:hover:not(:disabled) { border-color: var(--ember); background: rgba(255, 179, 90, 0.1); }
 .world-card.picked { border-color: rgba(255, 179, 90, 0.5); }
 .world-panel .close { display: block; margin: 12px auto 0; }
-.menu-world { font: 700 13px var(--font-head); color: var(--ink-dim); }
+
 .wardrobe-start { align-self: stretch; }
 
 /* ErrorBoundary: a crash says what happened instead of leaving a blank frame. */
@@ -533,34 +408,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .crash h1 { font: 800 28px var(--font-logo); letter-spacing: 0.12em; margin: 0; }
 .crash pre { max-width: 90%; white-space: pre-wrap; font-size: 12px; color: var(--ink-dim); }
 .crash button { font: 700 15px var(--font-head); color: var(--ink); background: none; border: 1px solid var(--ink-dim); padding: 8px 18px; cursor: pointer; }
-
-/* Dev-only first-person tuning sliders (backquote key in a match). */
-.tuning-panel {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  bottom: 8px;
-  width: 300px;
-  overflow-y: auto;
-  z-index: 20;
-  padding: 10px 12px;
-  box-sizing: border-box;
-  background: rgba(8, 6, 5, 0.92);
-  border: 1px solid rgba(242, 232, 213, 0.2);
-  font: 12px var(--font-body);
-  color: var(--ink);
-  user-select: none;
-}
-.tuning-panel header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.tuning-panel h4 { margin: 10px 0 4px; font-size: 12px; color: var(--ember); }
-.tuning-panel label { display: grid; grid-template-columns: 96px 1fr 44px; align-items: center; gap: 6px; margin: 2px 0; }
-.tuning-panel label.changed span { color: var(--ember); }
-.tuning-panel input[type="range"] { width: 100%; accent-color: var(--ember); }
-.tuning-panel output { text-align: right; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
-.tuning-panel button { font: 700 12px var(--font-body); color: var(--ink); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(242, 232, 213, 0.25); padding: 4px 10px; cursor: pointer; }
-.tuning-panel footer { display: flex; gap: 6px; margin-top: 10px; }
-.tuning-panel textarea { width: 100%; height: 70px; margin-top: 8px; box-sizing: border-box; font: 11px monospace; color: var(--ink-dim); background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(242, 232, 213, 0.15); resize: none; }
-.tuning-panel p { color: var(--ink-dim); line-height: 1.5; margin: 6px 0 0; }
 
 /* Title: the logo over the village; a tap anywhere goes on. */
 .title-screen {

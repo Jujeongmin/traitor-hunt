@@ -196,19 +196,9 @@
       "bytes": 337760,
       "animations": []
     },
-    "pt_bridge": {
-      "url": "assets/models/pt_bridge.glb",
-      "bytes": 39728,
-      "animations": []
-    },
     "pt_fruit_tree": {
       "url": "assets/models/pt_fruit_tree.glb",
       "bytes": 320120,
-      "animations": []
-    },
-    "pt_gate_wood": {
-      "url": "assets/models/pt_gate_wood.glb",
-      "bytes": 56276,
       "animations": []
     },
     "pt_grass": {
@@ -221,19 +211,9 @@
       "bytes": 53504,
       "animations": []
     },
-    "pt_menhir": {
-      "url": "assets/models/pt_menhir.glb",
-      "bytes": 27872,
-      "animations": []
-    },
     "pt_mushroom": {
       "url": "assets/models/pt_mushroom.glb",
       "bytes": 14396,
-      "animations": []
-    },
-    "pt_ore_rock": {
-      "url": "assets/models/pt_ore_rock.glb",
-      "bytes": 54052,
       "animations": []
     },
     "pt_pine": {
@@ -249,11 +229,6 @@
     "pt_poppy": {
       "url": "assets/models/pt_poppy.glb",
       "bytes": 45876,
-      "animations": []
-    },
-    "pt_river_rocks": {
-      "url": "assets/models/pt_river_rocks.glb",
-      "bytes": 22140,
       "animations": []
     },
     "pt_rock": {

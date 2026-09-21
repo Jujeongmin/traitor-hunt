@@ -1,23 +1,16 @@
 import type { SolidTest } from "./movement";
-import { obstacleBlocks, obstaclesFor } from "./obstacles";
 import { platformBlocks, platformsFor, type Platform } from "./platforms";
 
 export interface Point2 { x: number; z: number }
-export interface Gate { n: number; x: number; z: number }
 export interface LevelLayout {
   tileSize: number;
   cols: number;
   rows: number;
   solid: boolean[][];
   playerSpawn: Point2;
+  // Where monsters stand (phase 2), and the boss.
   zombieSpawns: Point2[];
-  exits: Point2[];
-  shards: Point2[];
-  devices: Point2[];
-  altar: Point2 | null;
-  waveSpawns: Point2[];
   bossSpawn: Point2 | null;
-  gates: Gate[];
   // Crates and blocks to jump onto (see platforms.ts).
   platforms: Platform[];
   // O cells: the ways to other zones, in reading order (see zones.ts).
@@ -26,38 +19,9 @@ export interface LevelLayout {
 
 export const TILE_SIZE = 4;
 
-export const LEVEL_1: string[] = [
-  "###########",
-  "#P....#...#",
-  "#.B...T...#",
-  "#.....#.Z.#",
-  "##.####...#",
-  "#.....#.C.#",
-  "#..Z.....E#",
-  "###########",
-];
-
-// Plan 4 map. S rune shard, 1-3 gates, D device, A altar, W wave spawn, K boss, c low crate,
-// H low crate beside a high block.
-export const RUINS: string[] = [
-  "#########################",
-  "#P...H...S#.....H.......#",
-  "#.........T.D.........D.#",
-  "#..c....Z.#......Z..c...#",
-  "#.........1.....#########",
-  "#B........#..Z..2.......#",
-  "###.#######...c.#.W...W.#",
-  "#S..#######T###T#......c#",
-  "#...########...#T...A...#",
-  "############.K..#.......#",
-  "###########c....3.W...W.#",
-  "###########..E..#...H..C#",
-  "#########################",
-];
-
-const GATE_SYMBOLS = new Set(["1", "2", "3"]);
-const FLOOR_SYMBOLS = new Set([".", "P", "Z", "B", "C", "E", "S", "D", "A", "W", "K", "c", "H", "O", ...GATE_SYMBOLS]);
-const SOLID_SYMBOLS = new Set(["#", "T"]);
+// # forest; everything else is ground: P spawn, Z monster, K boss, O portal, c B C H platforms.
+const FLOOR_SYMBOLS = new Set([".", "P", "Z", "K", "O", "c", "B", "C", "H"]);
+const SOLID_SYMBOLS = new Set(["#"]);
 
 export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   const cols = rows[0]?.length ?? 0;
@@ -72,15 +36,9 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   const solid = rows.map((row) => [...row].map((ch) => SOLID_SYMBOLS.has(ch)));
 
   const zombieSpawns: Point2[] = [];
-  const exits: Point2[] = [];
-  const shards: Point2[] = [];
-  const devices: Point2[] = [];
-  const waveSpawns: Point2[] = [];
-  const gates: Gate[] = [];
   const platforms: Platform[] = [];
   const portals: Point2[] = [];
   // Asserted so TS keeps the wide types; they are assigned inside the callbacks below.
-  let altar = null as Point2 | null;
   let bossSpawn = null as Point2 | null;
   // Asserted so TS keeps the wide type; it is assigned inside the callbacks below.
   let playerSpawn = null as Point2 | null;
@@ -92,23 +50,13 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
       platforms.push(...platformsFor(ch, x, z));
       if (ch === "P") playerSpawn = { x, z };
       if (ch === "Z") zombieSpawns.push({ x, z });
-      if (ch === "E") exits.push({ x, z });
-      if (ch === "S") shards.push({ x, z });
-      if (ch === "D") devices.push({ x, z });
-      if (ch === "A") altar = { x, z };
-      if (ch === "W") waveSpawns.push({ x, z });
       if (ch === "K") bossSpawn = { x, z };
       if (ch === "O") portals.push({ x, z });
-      if (GATE_SYMBOLS.has(ch)) gates.push({ n: Number(ch), x, z });
     });
   });
 
   if (!playerSpawn) throw new Error("level has no player spawn (P)");
-  gates.sort((a, b) => a.n - b.n);
-  return {
-    tileSize, cols, rows: rows.length, solid, playerSpawn, zombieSpawns, exits,
-    shards, devices, altar, waveSpawns, bossSpawn, gates, platforms, portals,
-  };
+  return { tileSize, cols, rows: rows.length, solid, playerSpawn, zombieSpawns, bossSpawn, platforms, portals };
 }
 
 export function solidAt(layout: LevelLayout, x: number, z: number): boolean {
@@ -118,31 +66,9 @@ export function solidAt(layout: LevelLayout, x: number, z: number): boolean {
   return layout.solid[r][c];
 }
 
-// Gate cells are floor in the layout; a closed gate blocks its whole cell like a wall. Platforms taller
-// than feetY + STEP_UP block too: monsters and bots are always on the floor (feetY 0); a player passes
-// their feet height; Infinity leaves only walls and gates (for the camera and line of sight). The
-// standing stones (obstacles.ts) block bodies; a path search leaves them out, since a stone stands in
-// the middle of the cell it heads for and the last steps just slide round it.
-export function solidWith(layout: LevelLayout, openGates: readonly number[], feetY = 0, stones = true): SolidTest {
-  const half = layout.tileSize / 2;
-  const closed = layout.gates.filter((g) => !openGates.includes(g.n));
-  const obstacles = stones && Number.isFinite(feetY) ? obstaclesFor(layout) : [];
-  return (x, z) =>
-    solidAt(layout, x, z)
-    || closed.some((g) => x >= g.x - half && x < g.x + half && z >= g.z - half && z < g.z + half)
-    || platformBlocks(layout.platforms, x, z, feetY)
-    || obstacleBlocks(obstacles, x, z);
-}
-
-const SPAWN_OFFSETS: Point2[] = [
-  { x: -0.8, z: -0.8 },
-  { x: 0.8, z: -0.8 },
-  { x: -0.8, z: 0.8 },
-  { x: 0.8, z: 0.8 },
-];
-
-export function spawnPoint(layout: LevelLayout, index: number): Point2 {
-  const n = SPAWN_OFFSETS.length;
-  const offset = SPAWN_OFFSETS[((index % n) + n) % n];
-  return { x: layout.playerSpawn.x + offset.x, z: layout.playerSpawn.z + offset.z };
+// What stops a body with its feet at feetY: the forest, and platforms taller than feetY + STEP_UP.
+// Monsters are always on the floor (feetY 0); a player passes their feet height; Infinity leaves only
+// the forest (for the camera).
+export function solidWith(layout: LevelLayout, feetY = 0): SolidTest {
+  return (x, z) => solidAt(layout, x, z) || platformBlocks(layout.platforms, x, z, feetY);
 }

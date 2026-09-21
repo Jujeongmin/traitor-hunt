@@ -8,7 +8,6 @@ import { solidWith, type LevelLayout } from "../rules/levelLayout";
 import {
   GROUNDED, PLAYER_RADIUS, WALK_SPEED, applyLook, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
-import { obstacleBlocks, obstaclesFor, type Obstacle } from "../rules/obstacles";
 import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
 import type { Pose } from "../world/types";
@@ -20,7 +19,6 @@ import { FpsInput } from "./FpsInput";
 import { HEROES, HERO_MODELS } from "./heroes";
 import { createLabel, setLabel } from "./labels";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
-import { LightPool } from "./lightPool";
 import { PlayerActor } from "./PlayerActor";
 import { settings } from "../../ui/settings";
 
@@ -32,7 +30,6 @@ const SKY_CEILING = 30;
 // Share of walking speed kept while the guard is up.
 const GUARD_WALK = 0.55;
 const HUD_INTERVAL_MS = 100;
-const LIGHT_SLOTS = 6;
 // A portal only takes you once you have stepped this far clear of it (you arrive right beside one).
 const PORTAL_REARM = PORTAL_RADIUS + 0.8;
 
@@ -67,14 +64,12 @@ export class WorldView {
   private readonly camera = new THREE.PerspectiveCamera(70, 1, 0.05, 120);
   private readonly clock = new THREE.Clock();
   private readonly input: FpsInput;
-  private readonly lights = new LightPool(this.scene, LIGHT_SLOTS);
   private readonly effects = new Effects(this.scene);
   private readonly others = new Map<string, { actor: PlayerActor; key: string }>();
   private readonly hudListeners = new Set<(hud: WorldHud) => void>();
   private readonly layout: LevelLayout;
   private readonly portals: Portal[];
   private readonly walls: SolidTest;
-  private readonly stones: Obstacle[];
   private readonly resizeObserver: ResizeObserver;
   private resizeFrame = 0;
   private library: ModelLibrary | null = null;
@@ -96,8 +91,7 @@ export class WorldView {
   private disposed = false;
 
   private readonly isSolid = (x: number, z: number) =>
-    this.walls(x, z) || platformBlocks(this.layout.platforms, x, z, this.air.y) || obstacleBlocks(this.stones, x, z)
-    || crowdBlocks(this.bodies, this.pose, x, z);
+    this.walls(x, z) || platformBlocks(this.layout.platforms, x, z, this.air.y) || crowdBlocks(this.bodies, this.pose, x, z);
 
   constructor(
     private readonly container: HTMLElement,
@@ -106,8 +100,7 @@ export class WorldView {
   ) {
     this.layout = zoneLayout(options.entry.zone);
     this.portals = portalsOf(options.entry.zone);
-    this.walls = solidWith(this.layout, [], Infinity);
-    this.stones = obstaclesFor(this.layout);
+    this.walls = solidWith(this.layout, Infinity);
     this.pose = { x: options.entry.x, z: options.entry.z, yaw: 0 };
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -128,7 +121,7 @@ export class WorldView {
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
-    buildLevelScene(this.scene, library, this.layout, this.lights);
+    buildLevelScene(this.scene, library, this.layout);
     this.addPortals();
     this.me = this.hero(this.options.playerClass, this.options.costume);
     this.me.label(this.options.name, "#ffd9a0");
@@ -196,7 +189,6 @@ export class WorldView {
     const cam = chaseCamera(this.pose, this.yaw, this.pitch, this.walls, SKY_CEILING);
     this.camera.position.set(cam.x, cam.y, cam.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
-    this.lights.update(this.camera.position);
     this.emitHud(state.others.length + 1);
     this.renderer.render(this.scene, this.camera);
   };

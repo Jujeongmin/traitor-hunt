@@ -3,14 +3,12 @@ import type { ModelLibrary } from "../assets/ModelLibrary";
 import type { LevelLayout } from "../rules/levelLayout";
 import { NATURE_MODELS, cellNoise, natureLayout } from "../rules/nature";
 import type { Platform } from "../rules/platforms";
-import type { LightPool } from "./lightPool";
 import { buildStaticBatch, type StaticPiece } from "./staticBatch";
 
 // The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
 // same as ever; solid cells are drawn as trees and rocks instead of stone walls.
 const PLATFORM_MODELS = ["pt_logs", "pt_rock", "pt_tree_stump", "chest_closed"];
-const EXIT_MODEL = "pt_bridge";
-export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, EXIT_MODEL])];
+export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS])];
 
 export const SKY = 0xa8cde6;
 const FOG_NEAR = 28;
@@ -66,11 +64,9 @@ function buildGround(layout: LevelLayout): THREE.Mesh {
   return ground;
 }
 
-// Builds the sky, the sun, the ground, the forest, the platforms and the way out. Shared by the match
-// view and the main menu.
-export function buildLevelScene(
-  scene: THREE.Scene, library: ModelLibrary, layout: LevelLayout, lights: LightPool,
-): void {
+// Builds the sky, the sun, the ground, the forest and the platforms. Shared by the world view and
+// the menus.
+export function buildLevelScene(scene: THREE.Scene, library: ModelLibrary, layout: LevelLayout): void {
   scene.background = new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, FOG_NEAR, FOG_FAR);
   scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x5b6b34, 1.4));
@@ -103,12 +99,5 @@ export function buildLevelScene(
     pieces.push({ model: platform.model, matrix: platformMatrix(platform, boundsOf(platform.model)) });
   }
 
-  // The way out is a wooden bridge with a pale green glow.
-  for (const exit of layout.exits) {
-    const b = boundsOf(EXIT_MODEL);
-    const c = b.getCenter(new THREE.Vector3());
-    pieces.push({ model: EXIT_MODEL, matrix: new THREE.Matrix4().makeTranslation(exit.x - c.x, -b.min.y - 0.4, exit.z - c.z) });
-    lights.add({ position: new THREE.Vector3(exit.x, 1.6, exit.z), color: new THREE.Color(0x4dff9a), range: 8, intensity: () => 10 });
-  }
-  scene.add(buildStaticBatch(library, pieces).group);
+  scene.add(buildStaticBatch(library, pieces));
 }

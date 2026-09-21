@@ -7,14 +7,12 @@ import { COSTUMES, type Costume } from "./costumes";
 import { HEROES, HERO_MODELS } from "./heroes";
 import { createLabel, setLabel } from "./labels";
 import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
-import { LightPool } from "./lightPool";
 import { MonsterActor } from "./MonsterActor";
 import { PlayerActor } from "./PlayerActor";
 import { GREEN_BLOB, MONSTER_MODELS } from "./monsterLooks";
 import { settings } from "../../ui/settings";
 
 const MENU_MODELS = [...new Set([...LEVEL_MODELS, ...HERO_MODELS, ...MONSTER_MODELS])];
-const LIGHT_SLOTS = 4;
 
 // Everything stands in the village square, facing the camera (yaw π faces +z).
 const FACING = Math.PI;
@@ -27,7 +25,7 @@ const SLOTS = [
 ];
 // The six classes in a row, for picking one.
 const LINEUP_Z = 16.2;
-const LINEUP_GAP = 1.1;
+const LINEUP_GAP = 1.3;
 const LINEUP_X = 26.2;
 // The picked hero steps this far forward.
 const STEP_OUT = 0.9;
@@ -39,9 +37,9 @@ type Mode = "party" | "lineup";
 
 const CAMERA_HOME = new THREE.Vector3(26.4, 1.55, 22.6);
 const CAMERA_LOOK = new THREE.Vector3(26.2, 0.95, 16.4);
-// Picking a class: the row sits left of the screen's middle, clear of the panel on the right.
-const LINEUP_CAMERA = new THREE.Vector3(27.6, 1.45, 22.8);
-const LINEUP_LOOK = new THREE.Vector3(27.85, 0.85, 16.2);
+// Picking a class: the row stands in the middle, high enough to clear the panel along the bottom.
+const LINEUP_CAMERA = new THREE.Vector3(26.2, 1.25, 23.6);
+const LINEUP_LOOK = new THREE.Vector3(26.2, -0.35, 16.2);
 // The wardrobe: the camera closes in on you, standing left of the screen's middle so the panel on
 // the right does not cover you.
 const WARDROBE_CAMERA = new THREE.Vector3(27.2, 1.0, 20.9);
@@ -58,7 +56,6 @@ export class MenuScene {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(50, 1, 0.05, 90);
   private readonly clock = new THREE.Clock();
-  private readonly lights = new LightPool(this.scene, LIGHT_SLOTS);
   private readonly resizeObserver: ResizeObserver;
   private readonly raycaster = new THREE.Raycaster();
   private resizeFrame = 0;
@@ -107,7 +104,7 @@ export class MenuScene {
     const library = await ModelLibrary.load();
     await library.preload(MENU_MODELS, onProgress);
     if (this.disposed) return;
-    buildLevelScene(this.scene, library, zoneLayout("village"), this.lights);
+    buildLevelScene(this.scene, library, zoneLayout("village"));
     this.library = library;
     this.buildLineup();
     this.placeParty();
@@ -263,7 +260,6 @@ export class MenuScene {
     }
     this.camera.lookAt(this.look);
     this.renderer.toneMappingExposure = settings().brightness;
-    this.lights.update(this.camera.position);
     this.renderer.render(this.scene, this.camera);
   };
 

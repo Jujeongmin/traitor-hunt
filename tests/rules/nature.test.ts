@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { FOOTPRINT, NATURE_MODELS, TREES, natureLayout } from "../../src/game/rules/nature";
-import { obstaclesFor } from "../../src/game/rules/obstacles";
-import { RUINS, TILE_SIZE, parseLevel, solidAt } from "../../src/game/rules/levelLayout";
+import { TILE_SIZE, solidAt } from "../../src/game/rules/levelLayout";
+import { zoneLayout } from "../../src/game/world/zones";
 
-const layout = parseLevel(RUINS, TILE_SIZE);
+const layout = zoneLayout("forest1");
 const pieces = natureLayout(layout);
 const cellOf = (v: number) => Math.floor(v / TILE_SIZE);
 
@@ -23,10 +23,10 @@ describe("natureLayout", () => {
     expect(outside.length).toBeGreaterThan(20);
   });
 
-  it("scatters small plants on open ground but leaves the objectives clear", () => {
+  it("scatters small plants on open ground but leaves the portals clear", () => {
     const small = pieces.filter((p) => !TREES.includes(p.model) && !solidAt(layout, p.x, p.z) && p.x > 0 && p.z > 0);
     expect(small.length).toBeGreaterThan(20);
-    const busy = [...layout.shards, ...layout.devices, ...layout.exits, ...layout.gates, ...(layout.altar ? [layout.altar] : [])];
+    const busy = [layout.playerSpawn, ...layout.portals];
     for (const b of busy) {
       const near = small.filter((p) => cellOf(p.x) === cellOf(b.x) && cellOf(p.z) === cellOf(b.z));
       expect(near).toEqual([]);
@@ -51,10 +51,8 @@ describe("nothing on the ground overlaps", () => {
     }
   });
 
-  it("keeps every piece clear of the standing stones and the platforms", () => {
-    const stones = obstaclesFor(layout);
+  it("keeps every piece clear of the platforms", () => {
     for (const p of pieces) {
-      for (const o of stones) expect(Math.hypot(p.x - o.x, p.z - o.z)).toBeGreaterThanOrEqual(o.r + foot(p));
       for (const pl of layout.platforms) expect(Math.hypot(p.x - pl.x, p.z - pl.z)).toBeGreaterThanOrEqual(Math.hypot(pl.w, pl.d) / 2 + foot(p));
     }
   });

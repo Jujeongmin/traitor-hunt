@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { GROUNDED, stepJump } from "../../src/game/rules/movement";
 import { HIGH_H, LOW_H, groundAt, platformsFor, type Platform } from "../../src/game/rules/platforms";
-import { RUINS, TILE_SIZE, parseLevel, solidWith } from "../../src/game/rules/levelLayout";
+import { solidWith } from "../../src/game/rules/levelLayout";
+import { zoneLayout } from "../../src/game/world/zones";
 
 const crate: Platform = { x: 10, z: 10, w: 1.4, d: 1.4, h: LOW_H, model: "pt_logs" };
 
@@ -45,16 +46,16 @@ describe("stepJump onto platforms", () => {
 });
 
 describe("solidWith and platforms", () => {
-  const layout = parseLevel(RUINS, TILE_SIZE);
+  const layout = zoneLayout("village");
   const p = layout.platforms[0];
 
   it("blocks feet below a platform's top and lets feet on it pass", () => {
     expect(layout.platforms.length).toBeGreaterThan(0);
-    expect(solidWith(layout, [])(p.x, p.z)).toBe(true);
-    expect(solidWith(layout, [], p.h)(p.x, p.z)).toBe(false);
+    expect(solidWith(layout)(p.x, p.z)).toBe(true);
+    expect(solidWith(layout, p.h)(p.x, p.z)).toBe(false);
   });
 
   it("ignores platforms for walls-only tests", () => {
-    expect(solidWith(layout, [], Infinity)(p.x, p.z)).toBe(false);
+    expect(solidWith(layout, Infinity)(p.x, p.z)).toBe(false);
   });
 });

@@ -39,6 +39,8 @@ interface LobbyProps {
   partyView: PartyView | null;
   // Into the world.
   onStart: () => void;
+  // Back from the world: straight to your character, not the title.
+  returning: boolean;
 }
 
 // title: the logo over the village, tap to go on. world: which server. class, name, look: making a
@@ -48,12 +50,12 @@ type Sheet = "none" | "settings" | "ranking" | "wardrobe";
 
 export function Lobby({
   account, view, accountFailed, online, onSaveNickname, onPickWorld, loadRanking, onBuy, purchase, price,
-  friends, friendsView, party, partyView, onStart,
+  friends, friendsView, party, partyView, onStart, returning,
 }: LobbyProps) {
   const stage = useRef<HTMLDivElement>(null);
   const scene = useRef<MenuScene | null>(null);
   const [loading, setLoading] = useState(0);
-  const [step, setStep] = useState<Step>("title");
+  const [step, setStep] = useState<Step>(returning ? "ready" : "title");
   const [sheet, setSheet] = useState<Sheet>("none");
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
