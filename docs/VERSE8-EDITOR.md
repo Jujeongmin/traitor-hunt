@@ -68,3 +68,10 @@ git restore --staged public/assets
 `.env` 때문에 로컬 개발 서버도 Verse8 미리보기 서버에 붙는다. 서버 없이 보려면 `.env.offline.local`에
 `VITE_AGENT8_VERSE=`(빈 값)를 두고 `npm run dev -- --mode offline`으로 띄운다(`.claude/launch.json`의 `traitor-hunt-offline`).
 이 파일은 `.git/info/exclude`로 로컬에서만 무시한다.
+
+## 저장한 데이터는 모두 공개다
+
+Verse8 클라이언트 SDK의 `subscribeGlobalUserState(account)`와 `subscribeGlobalCollection(id)`는 **계정 ID나 컬렉션
+이름만 알면 누구나** 읽는다. 서버 런타임(`@agent8/gameserver-node`)에는 클라이언트가 못 읽는 저장소가 없다.
+그래서 `userState`의 친구 목록·초대·마지막 접속 시각, 매치 비밀값 컬렉션 모두 "이름을 못 맞춘다"는 수준의
+가림막만 있다. 새 기능에 개인 정보를 넣기 전에 이 점을 감안한다(2026-09-21 확인, 막지 않기로 결정).
