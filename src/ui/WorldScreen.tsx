@@ -159,7 +159,6 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           <div className="hud-top band">
             <b>{hud.zone}</b>
             <span>채널 {hud.channel}</span>
-            <span>{hud.players}명</span>
           </div>
           <div className="hud-menu-buttons">
             {inVillage && <button type="button" className="brush-button small" onClick={() => setPanel("shop")}>상점</button>}

@@ -67,8 +67,6 @@ function zoneMonsterModels(zone: ZoneId): string[] {
 export interface WorldHud {
   zone: string;
   channel: number;
-  // You and the others in this channel.
-  players: number;
   portal: { to: string; locked: boolean } | null;
   skill: { name: string; readyInMs: number; cooldownMs: number };
   blocking: boolean;
@@ -276,7 +274,7 @@ export class WorldView {
     const cam = chaseCamera(this.pose, this.yaw, this.pitch, this.walls, SKY_CEILING);
     this.camera.position.set(cam.x, cam.y, cam.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
-    this.emitHud(state.others.length + 1);
+    this.emitHud();
     this.renderer.render(this.scene, this.camera);
   };
 
@@ -495,7 +493,7 @@ export class WorldView {
     }
   }
 
-  private emitHud(players: number): void {
+  private emitHud(): void {
     const now = performance.now();
     if (now - this.lastHudAt < HUD_INTERVAL_MS) return;
     this.lastHudAt = now;
@@ -509,7 +507,6 @@ export class WorldView {
     const hud: WorldHud = {
       zone: ZONES[entry.zone].name,
       channel: entry.channel,
-      players,
       portal: near && near.d <= PORTAL_REARM + 2
         ? { to: ZONES[near.portal.to].name, locked: ZONES[near.portal.to].paid && !this.options.owned }
         : null,
