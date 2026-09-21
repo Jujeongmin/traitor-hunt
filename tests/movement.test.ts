@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PITCH_LIMIT, PLAYER_RADIUS, WALK_SPEED, applyLook, stepPlayer } from "../src/game/rules/movement";
+import { PITCH_LIMIT, PLAYER_RADIUS, WALK_SPEED, applyLook, stepPlayer, stepAround } from "../src/game/rules/movement";
 import { GROUNDED, stepJump, type Airborne } from "../src/game/rules/movement";
 
 const open = () => false;
@@ -94,5 +94,23 @@ describe("stepJump", () => {
     const up = stepJump(GROUNDED, true, 1 / 60);
     const again = stepJump(up, true, 1 / 60);
     expect(again.vy).toBeLessThan(up.vy);
+  });
+});
+
+describe("stepAround", () => {
+  // A round stone of radius 0.6 at the origin.
+  const stone = (x: number, z: number) => Math.hypot(x, z) < 0.6;
+
+  it("walks straight when nothing is in the way", () => {
+    const next = stepAround({ x: 0, z: 5, yaw: 0 }, 0, 0.1, stone, 4);
+    expect(next.z).toBeCloseTo(4.6);
+    expect(next.x).toBeCloseTo(0);
+  });
+
+  it("slides round a stone that stands dead ahead instead of pushing into it", () => {
+    // Heading -z straight at the stone, already touching it.
+    let pose = { x: 0, z: 1.05, yaw: 0 };
+    for (let i = 0; i < 40; i++) pose = stepAround(pose, 0, 0.1, stone, 4);
+    expect(pose.z).toBeLessThan(-1);
   });
 });

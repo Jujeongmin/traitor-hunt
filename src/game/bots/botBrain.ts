@@ -8,7 +8,7 @@ import { distance } from "../match/view";
 import { skipPlate, tallyPlates } from "../match/vote";
 import { wallDistance } from "../rules/combat";
 import { solidWith, spawnPoint, type LevelLayout } from "../rules/levelLayout";
-import { EYE_HEIGHT, WALK_SPEED, stepPlayer, type SolidTest } from "../rules/movement";
+import { EYE_HEIGHT, WALK_SPEED, stepAround, type SolidTest } from "../rules/movement";
 import { findPath } from "../rules/pathfinding";
 
 // Bots go after monsters this close; a swing lands when one of them is in reach.
@@ -352,7 +352,7 @@ export class BotBrain {
     if (!best) return;
     const yaw = yawTo(monster, best.pose);
     if (best.d > stats.range * 0.8) {
-      const moved = stepPlayer({ x: monster.x, z: monster.z, yaw }, { forward: 1, strafe: 0 }, dt, this.solid, stats.speed * 1.2);
+      const moved = stepAround({ x: monster.x, z: monster.z, yaw }, yaw, dt, this.solid, stats.speed * 1.2);
       this.client.reportMonsters([{ id: monsterId, x: moved.x, z: moved.z, yaw }]);
     } else if (now >= monster.attackReadyAt) {
       const victim = best.account;
@@ -393,7 +393,7 @@ export class BotBrain {
     if (!next) return;
     const heading = yawTo(pose, next);
     const speed = Math.min(this.speed, distance(pose, next) / Math.max(dt, 1e-3));
-    const moved = stepPlayer({ x: pose.x, z: pose.z, yaw: heading }, { forward: 1, strafe: 0 }, dt, this.solid, speed);
+    const moved = stepAround({ x: pose.x, z: pose.z, yaw: heading }, heading, dt, this.solid, speed);
     this.pose = { x: moved.x, z: moved.z, yaw: pose.yaw };
     this.turnToward(heading, dt);
   }

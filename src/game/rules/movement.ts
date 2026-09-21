@@ -80,3 +80,24 @@ export function stepJump(state: Airborne, jump: boolean, dt: number, ground = 0)
   const next = { y: Math.max(state.y, ground) + vy * step, vy: vy - GRAVITY * step };
   return next.y <= ground ? (ground === 0 ? GROUNDED : landed) : next;
 }
+
+// Headings tried, in turn, when the way straight ahead is blocked: a little to one side, then the
+// other, then square to it.
+const DETOURS = [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2];
+
+// Walks along a heading (camera convention) for a body that steers itself — a monster or a bot. When
+// something stands in the way (a stone, a crate) it slides round it instead of pushing into it; the
+// pose keeps its own yaw.
+export function stepAround(
+  pose: PlayerPose, heading: number, dt: number, isSolid: SolidTest, speed: number = WALK_SPEED,
+): PlayerPose {
+  const want = speed * Math.min(Math.max(dt, 0), MAX_STEP_SECONDS);
+  let best = pose;
+  for (const turn of DETOURS) {
+    const next = stepPlayer({ x: pose.x, z: pose.z, yaw: heading + turn }, { forward: 1, strafe: 0 }, dt, isSolid, speed);
+    const moved = Math.hypot(next.x - pose.x, next.z - pose.z);
+    if (moved >= want * 0.5) return { x: next.x, z: next.z, yaw: pose.yaw };
+    if (moved > Math.hypot(best.x - pose.x, best.z - pose.z)) best = { x: next.x, z: next.z, yaw: pose.yaw };
+  }
+  return best;
+}

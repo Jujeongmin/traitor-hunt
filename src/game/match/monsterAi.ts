@@ -1,4 +1,4 @@
-import { stepPlayer, type SolidTest } from "../rules/movement";
+import { stepAround, type SolidTest } from "../rules/movement";
 import { MONSTER_STATS } from "./constants";
 import type { MonsterPoseUpdate } from "./damage";
 import { isActive } from "./lifecycle";
@@ -33,7 +33,7 @@ export function stepMonsterAi(
 
     const yaw = Math.atan2(-(target.x - monster.x), -(target.z - monster.z));
     if (target.d > stats.range * 0.8) {
-      const moved = stepPlayer({ x: monster.x, z: monster.z, yaw }, { forward: 1, strafe: 0 }, dt, isSolid, stats.speed);
+      const moved = stepAround({ x: monster.x, z: monster.z, yaw }, yaw, dt, isSolid, stats.speed);
       updates.push({ id, x: moved.x, z: moved.z, yaw });
     } else {
       updates.push({ id, x: monster.x, z: monster.z, yaw });
