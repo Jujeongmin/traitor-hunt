@@ -135,7 +135,7 @@ export type MatchEvent =
 
 export const RULE_ERRORS = [
   "not_playing", "not_traitor", "not_ready", "already_possessing", "not_possessing",
-  "unavailable", "no_monster", "monster_dead", "out_of_range", "out_of_reach", "blocking", "too_fast",
+  "unavailable", "no_monster", "monster_dead", "out_of_range", "out_of_reach", "blocking", "not_owned", "too_fast",
   "not_authority", "stunned", "no_target", "not_at_exit", "match_full",
   "nothing_here", "need_shards", "exit_locked", "sealed", "bound",
   "nickname_invalid", "nickname_taken",

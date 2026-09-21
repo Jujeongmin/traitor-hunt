@@ -24,6 +24,13 @@ interface MainMenuProps {
   level: LevelView | null;
   // Reads your record and the board; null while offline.
   loadStats: (() => Promise<StatsView>) | null;
+  // Online play is the paid game. null while offline or loading.
+  owned: boolean | null;
+  // Opens Verse8's purchase dialog; null when there is no shop (offline).
+  onBuy: (() => void) | null;
+  // After the dialog: waiting for the server to unlock the game.
+  purchase: "idle" | "confirming" | "late";
+  price: number;
   // The matchmaking panel, shown over the menu while a lobby fills.
   matching: ReactNode;
   // Null until the server account has loaded.
@@ -45,7 +52,7 @@ interface MainMenuProps {
 type Sheet = "none" | "settings" | "help" | "costume" | "stats";
 
 export function MainMenu({
-  account, nickname, level, loadStats, matching, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
+  account, nickname, level, loadStats, owned, onBuy, purchase, price, matching, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
   onPractice, onOnline, onlineAvailable,
 }: MainMenuProps) {
   const stage = useRef<HTMLDivElement>(null);
@@ -65,19 +72,23 @@ export function MainMenu({
   const leading = partyView?.party?.leader === account;
   const partyBusy = members.some((m) => m.account !== account && (!m.online || m.activity !== "menu"));
   // A nickname is asked for when you start, not before: practice and the menu work without one.
-  const onlineReady = onlineAvailable && !!onSaveNickname && (!inParty || (leading && !partyBusy));
+  // The paid game: practice is free, online needs the game bought (a leader who owns it brings
+  // their party). Party members who follow a leader never press quick start themselves.
+  const mustBuy = owned === false && (!inParty || leading);
+  const onlineReady = onlineAvailable && !!onSaveNickname && !mustBuy && (!inParty || (leading && !partyBusy));
   const requests = friendsView?.incoming.length ?? 0;
-  const onlineNote = !onlineAvailable
-    ? "빠른 시작은 Verse8 서버를 연결한 뒤 열립니다."
-    : accountFailed
-      ? "계정 정보를 불러오지 못했습니다. 새로고침해 주세요."
-      : !onSaveNickname
-        ? "계정 정보를 불러오는 중…"
-        : inParty && !leading
-          ? "파티장이 빠른 시작을 누르면 함께 들어갑니다."
-          : inParty && partyBusy
-            ? "파티원이 아직 게임 중이에요."
-            : null;
+  // The first thing that stands between you and quick start, if anything does.
+  const onlineNote = (() => {
+    if (!onlineAvailable) return "빠른 시작은 Verse8 서버를 연결한 뒤 열립니다.";
+    if (accountFailed) return "계정 정보를 불러오지 못했습니다. 새로고침해 주세요.";
+    if (!onSaveNickname) return "계정 정보를 불러오는 중…";
+    if (purchase === "confirming") return "결제를 확인하는 중…";
+    if (purchase === "late") return "결제 확인이 늦어지고 있어요. 잠시 뒤 새로고침해 주세요.";
+    if (mustBuy) return "연습은 무료입니다. 온라인 대전은 정식판을 구매하면 열립니다.";
+    if (inParty && !leading) return "파티장이 빠른 시작을 누르면 함께 들어갑니다.";
+    if (inParty && partyBusy) return "파티원이 아직 게임 중이에요.";
+    return null;
+  })();
 
   useEffect(() => onMyCostume(setCostume), []);
   useEffect(() => playMusic("menu"), []);
@@ -177,9 +188,15 @@ export function MainMenu({
 
       <nav className="menu-left">
         <h1>TRAITOR HUNT</h1>
-        <button type="button" className="brush-button" onClick={quickStart} disabled={!onlineReady || leaving || !!matching}>
-          {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
-        </button>
+        {mustBuy && onBuy ? (
+          <button type="button" className="brush-button buy-button" onClick={onBuy} disabled={purchase === "confirming"}>
+            정식판 구매 ({price} VX)
+          </button>
+        ) : (
+          <button type="button" className="brush-button" onClick={quickStart} disabled={!onlineReady || leaving || !!matching}>
+            {inParty ? `빠른 시작 (파티 ${members.length}명)` : "빠른 시작"}
+          </button>
+        )}
         <button type="button" className="brush-button" onClick={() => go(onPractice)} disabled={leaving || !!matching}>연습 (봇 3명)</button>
         <button type="button" className="brush-button" onClick={() => setSheet("costume")}>직업 · 코스튬</button>
         <button type="button" className="brush-button" onClick={() => setSheet("stats")}>전적 · 랭킹</button>

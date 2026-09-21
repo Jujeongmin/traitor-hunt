@@ -30,4 +30,6 @@ export interface AccountView {
   // Earned in matches (see level.ts), so the menu can show how far along you are.
   xp: number;
   level: LevelView;
+  // Bought the full game (online play); practice is free either way.
+  owned: boolean;
 }

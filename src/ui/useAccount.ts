@@ -27,5 +27,13 @@ export function useAccount(transport: MatchTransport | null) {
     setView(await saveNickname(transport, nickname));
   }, [transport]);
 
-  return { view, failed, save };
+  // Reads the account again (after a purchase the server unlocks it a moment later).
+  const refresh = useCallback(async () => {
+    if (!transport) return null;
+    const next = await loadAccount(transport);
+    setView(next);
+    return next;
+  }, [transport]);
+
+  return { view, failed, save, refresh };
 }

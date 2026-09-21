@@ -15,6 +15,7 @@ import type { ClientState } from "./net/matchClient";
 import { loadStats } from "./net/account";
 import { useAccount } from "./ui/useAccount";
 import { useUiScale } from "./ui/useUiScale";
+import { usePurchase } from "./ui/usePurchase";
 import { myClass } from "./ui/profile";
 import { useFriends } from "./ui/useFriends";
 import { useParty } from "./ui/useParty";
@@ -38,7 +39,8 @@ export default function App() {
     () => (ONLINE_AVAILABLE && connected ? new Verse8Transport(server) : null),
     [connected, server],
   );
-  const { view, failed, save } = useAccount(menuTransport);
+  const { view, failed, save, refresh } = useAccount(menuTransport);
+  const purchase = usePurchase(menuTransport, refresh);
   const friends = useFriends(menuTransport);
   const party = useParty(menuTransport, mode === "title" ? "menu" : "match");
   const partyCall = party.view?.match && party.view.match.roomId !== followed ? party.view.match : null;
@@ -61,6 +63,10 @@ export default function App() {
       account={menuTransport?.account ?? (connected ? server.account : PRACTICE_ACCOUNT)}
       nickname={view?.nickname ?? null}
       level={view?.level ?? null}
+      owned={view?.owned ?? null}
+      onBuy={purchase.buy}
+      purchase={purchase.state}
+      price={purchase.price}
       loadStats={menuTransport ? () => loadStats(menuTransport) : null}
       onSaveNickname={view ? save : null}
       accountFailed={failed}

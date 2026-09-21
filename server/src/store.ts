@@ -3,6 +3,7 @@ import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
 import { levelOf, xpOf } from "../../src/game/account/level";
+import { playsFree, type PurchaseEvent } from "../../src/game/account/purchase";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
 import { readClass, type PlayerClass } from "../../src/game/match/classes";
@@ -16,6 +17,8 @@ import {
 } from "../../src/game/match/types";
 
 export const RESULTS_COLLECTION = "match_results";
+// One row per purchase the platform reported, so a replayed receipt is noticed.
+const PURCHASES_COLLECTION = "purchases";
 // One row per account, so the board is a short read instead of a scan over every account.
 const RANKING_COLLECTION = "ranking";
 // Read a few more rows than the board shows, so a row that has slipped down still lands in order.
@@ -140,6 +143,22 @@ export async function writeRanking(account: string): Promise<void> {
 export async function readRanking(): Promise<RankRow[]> {
   const items = await $global.getCollectionItems(RANKING_COLLECTION, { limit: RANKING_READ });
   return rankRows(items as unknown as RankRow[]);
+}
+
+export async function ownsFullGame(account: string): Promise<boolean> {
+  return playsFree(account) || (await $global.getUserState(account)).ownsFullGame === true;
+}
+
+// Records a purchase once per receipt and unlocks the game. False when the receipt was seen before.
+export async function grantPurchase(event: PurchaseEvent): Promise<boolean> {
+  const seen = await $global.getCollectionItems(PURCHASES_COLLECTION, {
+    filters: [{ field: "purchaseId", operator: "==", value: event.purchaseId }],
+    limit: 1,
+  });
+  if (seen.length > 0) return false;
+  await $global.addCollectionItem(PURCHASES_COLLECTION, { ...event, at: Date.now() });
+  await $global.updateUserState(event.account, { ownsFullGame: true });
+  return true;
 }
 
 // The XP of an account, read from the matches it has finished.

@@ -2,6 +2,7 @@ import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
 import { levelOf, xpOf } from "../../src/game/account/level";
+import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
 import { readClass } from "../../src/game/match/classes";
 import { rankOf, type StatsView } from "../../src/game/account/ranking";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
@@ -29,7 +30,7 @@ import { stepVote } from "../../src/game/match/vote";
 import {
   LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
   partyMember, readCostume, readPlayerClass, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
-  readRanking, writeRanking,
+  readRanking, writeRanking, grantPurchase, ownsFullGame,
   readSecret, readXp, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
   writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
 } from "./store";
@@ -84,7 +85,7 @@ async function betweenFriends<T>(other: string, rule: (me: FriendSide, them: Fri
 // Your account as the menu sees it: your name and the level your finished matches add up to.
 async function accountView(account: string, nickname: string | null): Promise<AccountView> {
   const xp = await readXp(account);
-  return { account, nickname, xp, level: levelOf(xp) };
+  return { account, nickname, xp, level: levelOf(xp), owned: await ownsFullGame(account) };
 }
 
 // Who findMatch seats: you alone, or your party if you lead one and everyone is back at the menu.
@@ -279,6 +280,16 @@ export class Server {
     await betweenFriends(requireText(account), removeFriend);
   }
 
+  // Verse8 calls this when a VX Shop purchase completes. It may call again with the same receipt, so
+  // each purchaseId unlocks once; a replay still answers success so the platform stops retrying.
+  async $onItemPurchased(raw: unknown): Promise<{ success: boolean; code: string }> {
+    const event = readPurchaseEvent(raw);
+    if (!event) return { success: false, code: "invalid_event" };
+    if (event.productId !== FULL_GAME_PRODUCT) return { success: false, code: "unknown_product" };
+    const granted = await $lock(`purchase:${event.purchaseId}`, () => grantPurchase(event));
+    return { success: true, code: granted ? "granted" : "already_granted" };
+  }
+
   async setClass(id: unknown): Promise<void> {
     const picked = readClass(id);
     if (!picked) throw new RuleViolation("unavailable");
@@ -384,6 +395,8 @@ export class Server {
     const account = $sender.account;
     const now = Date.now();
     const seats = await partySeats(account, now);
+    // Online play is the paid game. A leader who owns it brings the whole party along.
+    if (!(await ownsFullGame(account))) throw new RuleViolation("not_owned");
     const roomId = await withMatchmakingLock(async () => {
       const lobbies = await listLobbies();
       const missing = (players: string[]) => seats.filter((s) => !players.includes(s)).length;
