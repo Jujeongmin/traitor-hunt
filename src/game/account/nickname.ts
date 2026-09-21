@@ -1,3 +1,4 @@
+import type { CharacterView } from "./characters";
 import type { LevelView } from "./level";
 
 import { RuleViolation } from "../world/types";
@@ -25,17 +26,17 @@ export function parseNickname(raw: unknown): Nickname {
 
 export interface AccountView {
   account: string;
-  // Null until the player picks one; the menu asks for it before online play.
-  nickname: string | null;
-  // Earned out in the world (see level.ts), so the menu can show how far along you are.
-  xp: number;
-  level: LevelView;
   // Bought the full game (the paid zones and levels).
   owned: boolean;
   // The server picked when you last started (see worlds.ts); null if you never picked one.
   world: string | null;
-  // The class the character was made with; null until one is picked (a new character).
+  // Your characters on that server, and the one you play (null until you pick or make one).
+  characters: CharacterView[];
+  active: CharacterView | null;
+  // The active character, spelled out for the menus; null and level 1 without one.
+  nickname: string | null;
+  xp: number;
+  level: LevelView;
   playerClass: string | null;
-  // The costume id saved with the character; null until one is saved.
   costume: string | null;
 }

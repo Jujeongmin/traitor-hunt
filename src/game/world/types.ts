@@ -35,7 +35,7 @@ export const PLAYER_HP = 100;
 export const RANGE_SLACK = 1.5;
 
 export const RULE_ERRORS = [
-  "unavailable", "not_owned", "no_zone", "not_near", "zone_full", "too_fast", "blocking",
+  "unavailable", "not_owned", "no_character", "character_limit", "no_zone", "not_near", "zone_full", "too_fast", "blocking",
   "no_monster", "monster_dead", "out_of_range",
   "nickname_invalid", "nickname_taken",
   "friend_not_found", "friend_self", "already_friends", "friend_limit", "request_limit", "no_request",

@@ -12,7 +12,7 @@ function as(server: any, account: string): any {
 // Everyone gets a name and comes online; test-a befriends each of `friends`.
 async function setup(server: any, friends: string[] = ["test-b", "test-c", "test-d", "test-e"]): Promise<void> {
   for (const [account, name] of Object.entries(NAMES)) {
-    await as(server, account).setNickname(name);
+    await as(server, account).createCharacter(name, "warrior", "0000");
     await server.syncFriends();
   }
   for (const account of friends) {
@@ -28,7 +28,6 @@ async function partyOf(server: any, account: string): Promise<any> {
 describe("party invites", () => {
   test("an accepted invite puts both in a party led by the inviter", async (server) => {
     await setup(server);
-    await as(server, "test-b").setCostume("1413");
     await as(server, "test-a").inviteToParty("test-b");
     expect((await as(server, "test-b").syncParty()).invites).toEqual([{ account: "test-a", nickname: "Hunter" }]);
     await server.acceptPartyInvite("test-a");
@@ -36,7 +35,7 @@ describe("party invites", () => {
     expect(party.leader).toBe("test-a");
     expect(party.members).toEqual([
       { account: "test-a", nickname: "Hunter", costume: "0000", playerClass: "warrior", online: true, activity: "menu" },
-      { account: "test-b", nickname: "Seeker", costume: "1413", playerClass: "warrior", online: true, activity: "menu" },
+      { account: "test-b", nickname: "Seeker", costume: "0000", playerClass: "warrior", online: true, activity: "menu" },
     ]);
     expect((await as(server, "test-b").syncParty()).invites).toEqual([]);
   });
@@ -113,14 +112,5 @@ describe("leaving a party", () => {
     await $global.updateUserState("test-c", { lastSeenAt: 0 });
     expect((await partyOf(server, "test-a")).members.map((m: any) => m.account)).toEqual(["test-a", "test-b"]);
     expect(await partyOf(server, "test-c")).toBeNull();
-  });
-});
-
-describe("setCostume", () => {
-  test("accepts only known costumes", async (server) => {
-    as(server, "test-a");
-    await server.setCostume("1413");
-    expect((await $global.getUserState("test-a")).costume).toBe("1413");
-    expect(await errorOf(server.setCostume("pirate"))).toContain("unavailable");
   });
 });

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useGameServer } from "@agent8/gameserver";
 import { readClass } from "./game/combat/classes";
-import { costumeById } from "./game/render/costumes";
+import { COSTUMES, costumeById } from "./game/render/costumes";
 import { loadRanking } from "./net/account";
 import { Verse8Transport } from "./net/verse8Transport";
 import { devLocalTransport } from "./net/devLocal";
@@ -9,7 +9,6 @@ import { WorldClient } from "./net/worldClient";
 import { Lobby } from "./ui/Lobby";
 import { ModelGallery, galleryEnabled } from "./ui/ModelGallery";
 import { WorldScreen } from "./ui/WorldScreen";
-import { myClass, myCostume, setMyClass, setMyCostume } from "./ui/profile";
 import { useAccount } from "./ui/useAccount";
 import { useFriends } from "./ui/useFriends";
 import { useParty } from "./ui/useParty";
@@ -28,19 +27,11 @@ export default function App() {
     () => DEV_LOCAL ?? (ONLINE_AVAILABLE && connected ? new Verse8Transport(server) : null),
     [connected, server],
   );
-  const { view, failed, save, pickWorld, refresh } = useAccount(transport);
+  const { view, failed, pickWorld, checkName, create, select, refresh } = useAccount(transport);
   const purchase = usePurchase(transport, refresh);
   const friends = useFriends(transport);
   const party = useParty(transport, inWorld ? "world" : "menu");
   const world = useMemo(() => (transport ? new WorldClient(transport) : null), [transport]);
-
-  // The character saved on the server wins over whatever this browser remembered.
-  useEffect(() => {
-    const saved = readClass(view?.playerClass);
-    if (saved && saved !== myClass()) setMyClass(saved);
-    const look = costumeById(view?.costume);
-    if (look && look.id !== myCostume().id) setMyCostume(look);
-  }, [view?.playerClass, view?.costume]);
 
   // Losing the server takes you back to the menu.
   useEffect(() => {
@@ -49,15 +40,16 @@ export default function App() {
 
   const rotate = <div className="rotate-hint">화면을 가로로 돌리면 더 편하게 즐길 수 있어요</div>;
   if (galleryEnabled()) return <ModelGallery />;
-  if (inWorld && world && view) {
+  const active = view?.active ?? null;
+  if (inWorld && world && view && active) {
     return (
       <>
         {rotate}
         <WorldScreen
           client={world}
-          playerClass={myClass()}
-          costume={myCostume()}
-          name={view.nickname ?? ""}
+          playerClass={readClass(active.playerClass) ?? "warrior"}
+          costume={costumeById(active.costume) ?? COSTUMES[0]}
+          name={active.name}
           owned={view.owned}
           onExit={() => {
             setInWorld(false);
@@ -76,8 +68,10 @@ export default function App() {
         view={view}
         accountFailed={failed}
         online={!!transport}
-        onSaveNickname={view ? save : null}
         onPickWorld={pickWorld}
+        checkName={checkName}
+        onCreate={create}
+        onSelect={select}
         loadRanking={transport ? () => loadRanking(transport) : null}
         onBuy={purchase.buy}
         purchase={purchase.state}

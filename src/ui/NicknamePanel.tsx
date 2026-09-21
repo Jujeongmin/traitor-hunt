@@ -1,60 +1,51 @@
 import { useState, type FormEvent } from "react";
 import { NICKNAME_MAX, parseNickname } from "../game/account/nickname";
 import { nicknameProblem } from "../net/account";
+import { RuleViolation } from "../game/world/types";
 
 interface NicknamePanelProps {
-  current: string | null;
-  onSave: (nickname: string) => Promise<void>;
-  // "start": asked because you pressed quick start; "first": no nickname yet; "rename": changing it.
-  purpose: "start" | "first" | "rename";
-  // Left out on the first pick: online play needs a nickname.
-  onClose?: () => void;
+  current: string;
+  // Asks the server whether the name is free.
+  isFree: (name: string) => Promise<boolean>;
+  onNext: (name: string) => void;
+  onClose: () => void;
 }
 
-export function NicknamePanel({ current, purpose, onSave, onClose }: NicknamePanelProps) {
-  const [value, setValue] = useState(current ?? "");
+// Naming a new character: the name is checked against every other character before you go on.
+export function NicknamePanel({ current, isFree, onNext, onClose }: NicknamePanelProps) {
+  const [value, setValue] = useState(current);
   const [problem, setProblem] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (saving) return;
-    setSaving(true);
+    if (checking) return;
+    setChecking(true);
     setProblem(null);
     try {
-      parseNickname(value);
-      await onSave(value);
-      // While starting, saving moves on to the next step instead of closing.
-      if (purpose !== "start") onClose?.();
+      const { name } = parseNickname(value);
+      if (!(await isFree(name))) throw new RuleViolation("nickname_taken");
+      onNext(name);
     } catch (error) {
       setProblem(nicknameProblem(error));
     } finally {
-      setSaving(false);
+      setChecking(false);
     }
   };
 
   return (
     <div className="menu-modal" onClick={onClose}>
       <div className="solid-panel nickname-panel" onClick={(e) => e.stopPropagation()}>
-        <h2>{purpose === "rename" ? "닉네임 바꾸기" : "닉네임 정하기"}</h2>
-        <p className="note">
-          {purpose === "start" ? "게임에서 쓸 닉네임을 정해 주세요. " : ""}
-          다른 플레이어와 친구가 이 이름으로 당신을 봅니다. 한글·영문·숫자·_ 로 2~12자.
-        </p>
+        <h2>캐릭터 이름</h2>
+        <p className="note">다른 플레이어와 친구가 이 이름으로 당신을 봅니다. 한글·영문·숫자·_ 로 2~12자, 다른 캐릭터와 겹칠 수 없어요.</p>
         <form className="nickname-form" onSubmit={submit}>
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            maxLength={NICKNAME_MAX}
-            placeholder="닉네임"
-            autoFocus
-          />
-          <button type="submit" className="text-button" disabled={saving || value.trim() === ""}>
-            {saving ? "저장 중…" : purpose === "start" ? "다음" : "저장"}
+          <input value={value} onChange={(e) => setValue(e.target.value)} maxLength={NICKNAME_MAX} placeholder="이름" autoFocus />
+          <button type="submit" className="text-button" disabled={checking || value.trim() === ""}>
+            {checking ? "확인 중…" : "다음"}
           </button>
         </form>
         {problem && <p className="nickname-problem">{problem}</p>}
-        {onClose && <button type="button" className="text-button close" onClick={onClose}>닫기</button>}
+        <button type="button" className="text-button close" onClick={onClose}>뒤로</button>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CHARACTERS_PER_WORLD } from "../game/account/characters";
 import type { FriendsView } from "../game/account/friends";
 import type { AccountView } from "../game/account/nickname";
 import type { PartyView } from "../game/account/party";
@@ -6,7 +7,9 @@ import type { RankingView } from "../game/account/ranking";
 import { readWorld } from "../game/account/worlds";
 import { playMusic } from "../game/audio/music";
 import { CLASS_LABEL, readClass, type PlayerClass } from "../game/combat/classes";
+import { COSTUMES, costumeById, type Costume } from "../game/render/costumes";
 import { MenuScene } from "../game/render/MenuScene";
+import { nicknameProblem } from "../net/account";
 import type { FriendsClient } from "../net/friends";
 import { partyLineup, partyProblem, type PartyClient } from "../net/party";
 import { GAME_TITLE } from "./brand";
@@ -17,7 +20,6 @@ import { RankingPanel } from "./RankingPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { Wardrobe } from "./Wardrobe";
 import { WorldPicker } from "./WorldPicker";
-import { myClass, myCostume, onMyClass, onMyCostume, setMyClass, setMyCostume } from "./profile";
 
 interface LobbyProps {
   account: string;
@@ -26,8 +28,10 @@ interface LobbyProps {
   accountFailed: boolean;
   // Starting needs the Verse8 server.
   online: boolean;
-  onSaveNickname: ((nickname: string) => Promise<void>) | null;
   onPickWorld: (world: string) => Promise<void>;
+  checkName: (name: string) => Promise<boolean>;
+  onCreate: (name: string, playerClass: string, costume: string) => Promise<void>;
+  onSelect: (id: string) => Promise<void>;
   loadRanking: (() => Promise<RankingView>) | null;
   // Opens Verse8's purchase dialog; null when there is no shop.
   onBuy: (() => void) | null;
@@ -37,41 +41,43 @@ interface LobbyProps {
   friendsView: FriendsView | null;
   party: PartyClient | null;
   partyView: PartyView | null;
-  // Into the world.
+  // Into the world with the active character.
   onStart: () => void;
-  // Back from the world: straight to your character, not the title.
+  // Back from the world: straight to your characters, not the title.
   returning: boolean;
 }
 
-// title: the logo over the village, tap to go on. world: which server. class, name, look: making a
-// new character. ready: your character, and the way into the world.
-type Step = "title" | "world" | "class" | "name" | "look" | "ready";
-type Sheet = "none" | "settings" | "ranking" | "wardrobe";
+// title: the logo over the village, tap to go on. world: which server. characters: yours on that
+// server, to play or to make another. class, name, look: making a new one.
+type Step = "title" | "world" | "characters" | "class" | "name" | "look";
+type Sheet = "none" | "settings" | "ranking";
 
 export function Lobby({
-  account, view, accountFailed, online, onSaveNickname, onPickWorld, loadRanking, onBuy, purchase, price,
+  account, view, accountFailed, online, onPickWorld, checkName, onCreate, onSelect, loadRanking, onBuy, purchase, price,
   friends, friendsView, party, partyView, onStart, returning,
 }: LobbyProps) {
   const stage = useRef<HTMLDivElement>(null);
   const scene = useRef<MenuScene | null>(null);
   const [loading, setLoading] = useState(0);
-  const [step, setStep] = useState<Step>(returning ? "ready" : "title");
+  const [step, setStep] = useState<Step>(returning ? "characters" : "title");
   const [sheet, setSheet] = useState<Sheet>("none");
   const [friendsOpen, setFriendsOpen] = useState(false);
-  const [renaming, setRenaming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [picked, setPicked] = useState<PlayerClass | null>(null);
-  const [costume, setCostume] = useState(myCostume());
-  const [playerClass, setPlayerClass] = useState(myClass());
   const [leaving, setLeaving] = useState(false);
   const [inviteProblem, setInviteProblem] = useState<string | null>(null);
+  // The character being made: its class, name and look until it is saved.
+  const [draftClass, setDraftClass] = useState<PlayerClass | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const [draftCostume, setDraftCostume] = useState<Costume>(COSTUMES[0]);
+  const [creating, setCreating] = useState(false);
 
-  const hasCharacter = !!view && view.nickname !== null && view.playerClass !== null;
-  const name = view?.nickname ?? "";
-  const dressing = step === "look" || sheet === "wardrobe";
+  const active = view?.active ?? null;
+  const characters = view?.characters ?? [];
+  const making = step === "class" || step === "name" || step === "look";
+  // Who stands in the square: the character being made, else the one you play.
+  const shownClass: PlayerClass = (making ? draftClass : readClass(active?.playerClass)) ?? "warrior";
+  const shownCostume = making ? draftCostume : costumeById(active?.costume) ?? COSTUMES[0];
 
-  useEffect(() => onMyCostume(setCostume), []);
-  useEffect(() => onMyClass(setPlayerClass), []);
   useEffect(() => playMusic("menu"), []);
 
   useEffect(() => {
@@ -86,17 +92,19 @@ export function Lobby({
     };
   }, []);
 
-  // The row of classes while picking one; otherwise you (and your party) in the square.
+  // The row of classes while picking one (and behind the title for a newcomer); otherwise the
+  // character in the square.
   useEffect(() => {
-    scene.current?.setMode(step === "class" || (step === "title" && !hasCharacter) ? "lineup" : "party");
-    scene.current?.setPicked(step === "class" ? picked : null);
-  }, [step, picked, hasCharacter, loading]);
+    scene.current?.setMode(step === "class" || (step === "title" && !active) ? "lineup" : "party");
+    scene.current?.setPicked(step === "class" ? draftClass : null);
+  }, [step, draftClass, active, loading]);
   useEffect(() => {
-    scene.current?.setWardrobe(dressing);
-  }, [dressing]);
+    scene.current?.setWardrobe(step === "look");
+  }, [step]);
   useEffect(() => {
-    scene.current?.setParty(partyLineup({ account, name: name || "나", costume, playerClass }, partyView));
-  }, [account, name, costume, playerClass, partyView, loading]);
+    const me = { account, name: making ? draftName || "새 캐릭터" : active?.name ?? "", costume: shownCostume, playerClass: shownClass };
+    scene.current?.setParty(step === "characters" && !active ? [] : partyLineup(me, making ? null : partyView));
+  }, [account, making, draftName, active, shownCostume, shownClass, partyView, step, loading]);
 
   const invite = partyView?.invites[0] ?? null;
   const answer = async (accept: boolean) => {
@@ -130,15 +138,38 @@ export function Lobby({
     setStep("world");
   };
 
+  const startMaking = () => {
+    setDraftClass(null);
+    setDraftName("");
+    setDraftCostume(COSTUMES[0]);
+    setNotice(null);
+    setStep("class");
+  };
+
+  const finishMaking = async () => {
+    if (!draftClass || creating) return;
+    setCreating(true);
+    setNotice(null);
+    try {
+      await onCreate(draftName, draftClass, draftCostume.id);
+      setStep("characters");
+    } catch (error) {
+      setNotice(nicknameProblem(error));
+      // A name taken while you dressed goes back to the name step.
+      setStep("name");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const start = () => {
-    if (leaving) return;
+    if (leaving || !active) return;
     setLeaving(true);
     if (scene.current) scene.current.enter(onStart);
     else onStart();
   };
 
-  const classOf = readClass(view?.playerClass) ?? playerClass;
-  const worldName = readWorld(view?.world)?.name ?? null;
+  const worldName = readWorld(view?.world)?.name ?? readWorld("w1")?.name ?? "";
 
   return (
     <div className="main-menu">
@@ -149,7 +180,7 @@ export function Lobby({
           if (step === "title") tapTitle();
           if (step === "class") {
             const c = scene.current?.classAt(e.clientX, e.clientY) ?? null;
-            if (c) setPicked(c);
+            if (c) setDraftClass(c);
           }
         }}
       />
@@ -164,7 +195,7 @@ export function Lobby({
           </div>
         )}
 
-        {step !== "title" && !dressing && step !== "class" && (
+        {step === "characters" && (
           <div className="menu-corner">
             <button type="button" className="brush-button small" onClick={() => setFriendsOpen((v) => !v)}>
               친구{(friendsView?.incoming.length ?? 0) > 0 && <span className="badge">{friendsView?.incoming.length}</span>}
@@ -187,57 +218,36 @@ export function Lobby({
             current={view?.world ?? null}
             onPick={async (id) => {
               await onPickWorld(id);
-              setStep(hasCharacter ? "ready" : "class");
+              setStep("characters");
             }}
             onClose={() => setStep("title")}
           />
         )}
 
-        {step === "class" && (
-          <ClassPanel
-            picked={picked}
-            onPick={setPicked}
-            onBack={() => setStep("world")}
-            onConfirm={(c) => {
-              setMyClass(c);
-              setStep(view?.nickname ? "look" : "name");
-            }}
-          />
-        )}
-
-        {step === "name" && onSaveNickname && (
-          <NicknamePanel
-            current={view?.nickname ?? null}
-            purpose="start"
-            onSave={async (next) => {
-              await onSaveNickname(next);
-              setStep("look");
-            }}
-            onClose={() => setStep("class")}
-          />
-        )}
-
-        {(step === "look" || sheet === "wardrobe") && (
-          <Wardrobe
-            costume={costume}
-            online={online}
-            onPick={setMyCostume}
-            onSpin={(r) => scene.current?.spin(r)}
-            onClose={() => (step === "look" ? setStep("class") : setSheet("none"))}
-            onStart={step === "look" ? start : undefined}
-          />
-        )}
-
-        {step === "ready" && sheet !== "wardrobe" && (
-          <nav className="menu-left">
+        {step === "characters" && (
+          <nav className="menu-left character-select">
             <h1 className="game-title small">{GAME_TITLE}</h1>
-            <div className="ready-card band">
-              <b>{name}</b>
-              <span>Lv {view?.level.level ?? 1} · {CLASS_LABEL[classOf]}</span>
-              {worldName && <span className="note">{worldName}</span>}
-            </div>
-            <button type="button" className="brush-button" onClick={start} disabled={leaving}>게임 시작</button>
-            <button type="button" className="brush-button" onClick={() => setSheet("wardrobe")}>외형 바꾸기</button>
+            <p className="note">{worldName} · 캐릭터 {characters.length}/{CHARACTERS_PER_WORLD}</p>
+            <ul className="character-list">
+              {characters.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className={`character-card${c.id === active?.id ? " picked" : ""}`}
+                    onClick={() => void onSelect(c.id)}
+                  >
+                    <b>{c.name}</b>
+                    <span>Lv {c.level.level} · {CLASS_LABEL[c.playerClass]}</span>
+                  </button>
+                </li>
+              ))}
+              {characters.length < CHARACTERS_PER_WORLD && (
+                <li>
+                  <button type="button" className="character-card new" onClick={startMaking}>+ 캐릭터 생성</button>
+                </li>
+              )}
+            </ul>
+            <button type="button" className="brush-button" onClick={start} disabled={leaving || !active}>게임 시작</button>
             <button type="button" className="brush-button" onClick={() => setSheet("ranking")}>랭킹</button>
             <button type="button" className="brush-button" onClick={() => setStep("world")}>서버 바꾸기</button>
             {view && !view.owned && onBuy && (
@@ -245,10 +255,47 @@ export function Lobby({
                 정식판 구매 ({price} VX)
               </button>
             )}
+            {!active && <p className="note">캐릭터를 만들어 모험을 시작하세요.</p>}
             {view && !view.owned && <p className="note">무료로 마을과 숲 필드 1을 즐길 수 있어요. 정식판은 숲 필드 2와 보스 구역을 엽니다.</p>}
             {purchase === "confirming" && <p className="note">결제를 확인하는 중…</p>}
             {purchase === "late" && <p className="note">결제 확인이 늦어지고 있어요. 잠시 뒤 새로고침해 주세요.</p>}
           </nav>
+        )}
+
+        {step === "class" && (
+          <ClassPanel
+            picked={draftClass}
+            onPick={setDraftClass}
+            onBack={() => setStep("characters")}
+            onConfirm={(c) => {
+              setDraftClass(c);
+              setStep("name");
+            }}
+          />
+        )}
+
+        {step === "name" && (
+          <NicknamePanel
+            current={draftName}
+            isFree={checkName}
+            onNext={(name) => {
+              setDraftName(name);
+              setStep("look");
+            }}
+            onClose={() => setStep("class")}
+          />
+        )}
+        {step === "name" && notice && <div className="hud-error band">{notice}</div>}
+
+        {step === "look" && (
+          <Wardrobe
+            costume={draftCostume}
+            onPick={setDraftCostume}
+            onSpin={(r) => scene.current?.spin(r)}
+            onClose={() => setStep("name")}
+            onStart={() => void finishMaking()}
+            busy={creating}
+          />
         )}
 
         {friendsOpen && (
@@ -259,16 +306,7 @@ export function Lobby({
             account={account}
             party={party}
             partyView={partyView}
-            needsNickname={!!onSaveNickname && !view?.nickname}
-            onPickNickname={() => setRenaming(true)}
-          />
-        )}
-        {onSaveNickname && renaming && (
-          <NicknamePanel
-            current={view?.nickname ?? null}
-            purpose={view?.nickname ? "rename" : "first"}
-            onSave={onSaveNickname}
-            onClose={() => setRenaming(false)}
+            hasCharacter={!!active}
           />
         )}
         {sheet === "settings" && <SettingsPanel onClose={() => setSheet("none")} />}

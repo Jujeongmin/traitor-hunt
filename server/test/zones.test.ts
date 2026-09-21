@@ -1,5 +1,5 @@
 import { CHANNEL_CAPACITY, arrivalFrom, portalsOf, zoneLayout } from "../../src/game/world/zones";
-import { errorOf, inRoom } from "./helpers";
+import { errorOf, inRoom, makeCharacter } from "./helpers";
 
 // A real wallet account: it does not play for free like the test- accounts.
 const BUYER = "0x1111111111111111111111111111111111111111";
@@ -8,8 +8,7 @@ describe("entering the world", () => {
   test("a new character starts in the village, channel 1 of its server, showing its look", async (server) => {
     server.connect({ account: "test-a" });
     await server.setWorld("w2");
-    await server.setNickname("새싹");
-    await server.setClass("ranger");
+    await server.createCharacter("새싹", "ranger", "0000");
     const entry = await server.enterWorld();
     const spawn = zoneLayout("village").playerSpawn;
     expect(entry).toEqual({ roomId: "rpg-w2-village-1", zone: "village", channel: 1, x: spawn.x, z: spawn.z });
@@ -21,24 +20,26 @@ describe("entering the world", () => {
   test("players on different servers never share a room", async (server) => {
     server.connect({ account: "test-a" });
     await server.setWorld("w1");
+    await server.createCharacter("에이", "warrior", "0000");
     const a = await server.enterWorld();
     server.connect({ account: "test-b" });
     await server.setWorld("w4");
+    await server.createCharacter("비이", "warrior", "0000");
     const b = await server.enterWorld();
     expect(a.roomId === b.roomId).toBe(false);
   });
 
   test("a full channel sends the next player to the next one", async (server) => {
     for (let i = 0; i < CHANNEL_CAPACITY; i++) {
-      server.connect({ account: `test-p${i}` });
+      await makeCharacter(server, `test-p${i}`, `손님${i}`);
       expect((await server.enterWorld()).channel).toBe(1);
     }
-    server.connect({ account: "test-late" });
+    await makeCharacter(server, "test-late", "늦은손님");
     expect((await server.enterWorld()).channel).toBe(2);
   });
 
   test("comes back where it left", async (server) => {
-    server.connect({ account: "test-a" });
+    await makeCharacter(server, "test-a", "에이");
     const entry = await server.enterWorld();
     inRoom(server, "test-a", entry.roomId);
     await server.reportPose({ x: 10, z: 13, yaw: 1 });
@@ -50,7 +51,7 @@ describe("entering the world", () => {
 
 describe("portals", () => {
   test("take you to the next zone only while you stand at the portal", async (server) => {
-    server.connect({ account: "test-a" });
+    await makeCharacter(server, "test-a", "에이");
     const entry = await server.enterWorld();
     inRoom(server, "test-a", entry.roomId);
     expect(await errorOf(server.travel("forest1"))).toContain("not_near");
@@ -62,7 +63,7 @@ describe("portals", () => {
   });
 
   test("lead nowhere but the zones next door", async (server) => {
-    server.connect({ account: "test-a" });
+    await makeCharacter(server, "test-a", "에이");
     const entry = await server.enterWorld();
     inRoom(server, "test-a", entry.roomId);
     expect(await errorOf(server.travel("boss"))).toContain("no_zone");
@@ -70,6 +71,7 @@ describe("portals", () => {
   });
 
   test("the second field needs the full game", async (server) => {
+    await makeCharacter(server, BUYER, "구매자");
     const into = async (account: string) => {
       server.connect({ account });
       let entry = await server.enterWorld();

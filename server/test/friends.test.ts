@@ -2,7 +2,7 @@ import { errorOf } from "./helpers";
 
 async function named(server: any, account: string, nickname: string): Promise<void> {
   server.connect({ account });
-  await server.setNickname(nickname);
+  await server.createCharacter(nickname, "warrior", "0000");
 }
 
 describe("friends", () => {

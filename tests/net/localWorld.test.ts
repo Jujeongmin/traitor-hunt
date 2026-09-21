@@ -4,9 +4,15 @@ import { LocalWorld, type WorldEvent } from "../../src/net/local/localWorld";
 
 const PLAYERS = ["test-a", "test-b", "test-c", "test-d"];
 
+// Makes a character for the account, then walks it into the world.
+async function enter(world: LocalWorld, account: string): Promise<{ roomId: string }> {
+  await world.call(account, null, "createCharacter", [`p${account.replace(/[^a-z0-9]/g, "")}`, "warrior", "0000"]);
+  return (await world.call(account, null, "enterWorld")) as { roomId: string };
+}
+
 async function enterAll(world: LocalWorld): Promise<string> {
   let roomId = "";
-  for (const p of PLAYERS) roomId = ((await world.call(p, null, "enterWorld")) as { roomId: string }).roomId;
+  for (const p of PLAYERS) roomId = (await enter(world, p)).roomId;
   return roomId;
 }
 
@@ -48,7 +54,7 @@ describe("LocalWorld", () => {
 
   it("serializes overlapping calls and restores the globals afterwards", async () => {
     const world = new LocalWorld(new Server());
-    const results = await Promise.all(PLAYERS.map((p) => world.call(p, null, "enterWorld")));
+    const results = await Promise.all(PLAYERS.map((p) => enter(world, p)));
     expect(new Set(results.map((r) => (r as { roomId: string }).roomId)).size).toBe(1);
     expect((globalThis as Record<string, unknown>).$global).toBeUndefined();
     expect((globalThis as Record<string, unknown>).$sender).toBeUndefined();
@@ -59,8 +65,8 @@ describe("LocalWorld", () => {
     const second = new LocalWorld(new Server());
     const calls: Promise<unknown>[] = [];
     for (const p of PLAYERS) {
-      calls.push(first.call(p, null, "enterWorld"));
-      calls.push(second.call(`${p}-2`, null, "enterWorld"));
+      calls.push(enter(first, p));
+      calls.push(enter(second, `${p}-2`));
     }
     const ids = (await Promise.all(calls)).map((r) => (r as { roomId: string }).roomId);
     expect(first.roomState(ids[0]).$users).toEqual(PLAYERS);
@@ -77,7 +83,7 @@ describe("LocalWorld", () => {
 
   it("drops a player from the room list when they leave", async () => {
     const world = new LocalWorld(new Server());
-    const first = (await world.call("test-x", null, "enterWorld")) as { roomId: string };
+    const first = await enter(world, "test-x");
     await world.call("test-x", first.roomId, "leaveWorld");
     expect(world.roomState(first.roomId).$users).toEqual([]);
   });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AccountView } from "../game/account/nickname";
-import { loadAccount, saveNickname, saveWorld } from "../net/account";
+import { createCharacter, loadAccount, nameFree, saveWorld, selectCharacter } from "../net/account";
 import type { MatchTransport } from "../net/transport";
 
 // Your server-side account while on the menu; null transport means offline.
@@ -22,15 +22,24 @@ export function useAccount(transport: MatchTransport | null) {
     };
   }, [transport]);
 
-  const save = useCallback(async (nickname: string) => {
+  const online = useCallback(() => {
     if (!transport) throw new Error("offline");
-    setView(await saveNickname(transport, nickname));
+    return transport;
   }, [transport]);
 
   const pickWorld = useCallback(async (world: string) => {
-    if (!transport) throw new Error("offline");
-    setView(await saveWorld(transport, world));
-  }, [transport]);
+    setView(await saveWorld(online(), world));
+  }, [online]);
+
+  const checkName = useCallback((name: string) => nameFree(online(), name), [online]);
+
+  const create = useCallback(async (name: string, playerClass: string, costume: string) => {
+    setView(await createCharacter(online(), name, playerClass, costume));
+  }, [online]);
+
+  const select = useCallback(async (id: string) => {
+    setView(await selectCharacter(online(), id));
+  }, [online]);
 
   // Reads the account again (after a purchase the server unlocks it a moment later).
   const refresh = useCallback(async () => {
@@ -40,5 +49,5 @@ export function useAccount(transport: MatchTransport | null) {
     return next;
   }, [transport]);
 
-  return { view, failed, save, pickWorld, refresh };
+  return { view, failed, pickWorld, checkName, create, select, refresh };
 }

@@ -9,7 +9,7 @@ async function players(world: LocalWorld, ...names: string[]): Promise<FriendsCl
   const clients: FriendsClient[] = [];
   for (const [i, name] of names.entries()) {
     const transport = new LocalTransport(world, `test-${i}`);
-    await transport.call("setNickname", [name]);
+    await transport.call("createCharacter", [name, "warrior", "0000"]);
     const client = new FriendsClient(transport);
     await client.start();
     clients.push(client);

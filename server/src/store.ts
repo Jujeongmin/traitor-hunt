@@ -3,14 +3,15 @@ import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
 import { levelOf, readXp } from "../../src/game/account/level";
+import { readCharacters, readSpot, type Character, type Spot } from "../../src/game/account/characters";
 import { DEFAULT_WORLD, readWorld, type World } from "../../src/game/account/worlds";
 import { playsFree, type PurchaseEvent } from "../../src/game/account/purchase";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
 import { COSTUMES, costumeById } from "../../src/game/render/costumes";
-import { CLASSES, readClass, type PlayerClass } from "../../src/game/combat/classes";
+import { readClass } from "../../src/game/combat/classes";
 import { RuleViolation, readSwing, type Pose } from "../../src/game/world/types";
 import {
-  CHANNEL_CAPACITY, MAX_CHANNELS, channelRoomId, readZone, zoneLayout, type ZoneId, type ZoneLook,
+  CHANNEL_CAPACITY, MAX_CHANNELS, channelRoomId, zoneLayout, type ZoneId, type ZoneLook,
 } from "../../src/game/world/zones";
 import { solidAt } from "../../src/game/rules/levelLayout";
 import { readJumpY } from "../../src/game/rules/movement";
@@ -18,30 +19,22 @@ import { maxFeetY } from "../../src/game/rules/platforms";
 
 // One row per purchase the platform reported, so a replayed receipt is noticed.
 const PURCHASES_COLLECTION = "purchases";
-// One row per account, so the board is a short read instead of a scan over every account.
+// One row per character, so the board is a short read instead of a scan over every account.
 const RANKING_COLLECTION = "ranking";
 // Read a few more rows than the board shows, so a row that has slipped down still lands in order.
 const RANKING_READ = RANKING_SIZE * 5;
 
-// Writes this account's line on the board. Called whenever its XP or its name changes; an account
+// Writes a character's line on the board. Called whenever its XP or its name changes; a character
 // with no XP yet leaves no row behind.
-export async function writeRanking(account: string): Promise<void> {
-  const state = await $global.getUserState(account);
-  const xp = readXp(state.xp);
-  if (xp <= 0) return;
-  const row: RankRow = {
-    account,
-    nickname: typeof state.nickname === "string" ? state.nickname : null,
-    xp,
-    level: levelOf(xp).level,
-  };
-  const id = typeof state.rankingId === "string" ? state.rankingId : null;
-  if (id) {
-    await $global.updateCollectionItem(RANKING_COLLECTION, { __id: id, ...row });
-    return;
-  }
-  const item = await $global.addCollectionItem(RANKING_COLLECTION, { ...row });
-  await $global.updateUserState(account, { rankingId: item.__id });
+export async function writeRanking(account: string, character: Character): Promise<void> {
+  if (character.xp <= 0) return;
+  const row: RankRow = { id: character.id, account, nickname: character.name, xp: character.xp, level: levelOf(character.xp).level };
+  const [stored] = await $global.getCollectionItems(RANKING_COLLECTION, {
+    filters: [{ field: "id", operator: "==", value: character.id }],
+    limit: 1,
+  });
+  if (stored) await $global.updateCollectionItem(RANKING_COLLECTION, { __id: stored.__id, ...row });
+  else await $global.addCollectionItem(RANKING_COLLECTION, { ...row });
 }
 
 // The board, best first.
@@ -66,15 +59,54 @@ export async function grantPurchase(event: PurchaseEvent): Promise<boolean> {
   return true;
 }
 
-// The XP a character has earned.
-export async function readAccountXp(account: string): Promise<number> {
-  return readXp((await $global.getUserState(account)).xp);
+// An account's characters and the active one. Accounts from before characters (one nickname and
+// class on the account) come back as one character on the server they last picked.
+export interface Profile { characters: Character[]; active: Character | null }
+
+export async function readProfile(account: string): Promise<Profile> {
+  const state = await $global.getUserState(account);
+  let characters = readCharacters(state.characters);
+  if (!Array.isArray(state.characters) && typeof state.nickname === "string" && readClass(state.playerClass)) {
+    characters = [{
+      id: `c-${token(10)}`,
+      world: readWorld(state.world)?.id ?? DEFAULT_WORLD.id,
+      name: state.nickname,
+      playerClass: readClass(state.playerClass)!,
+      costume: costumeById(state.costume)?.id ?? COSTUMES[0].id,
+      xp: readXp(state.xp),
+      spot: readSpot(state.spot),
+    }];
+    await saveProfile(account, characters, characters[0].id);
+  }
+  const activeId = Array.isArray(state.characters) ? state.active : characters[0]?.id;
+  return { characters, active: characters.find((c) => c.id === activeId) ?? null };
+}
+
+// Saves the characters, and mirrors the active one's name on the account (friends find you by it).
+export async function saveProfile(account: string, characters: Character[], activeId: string | null): Promise<void> {
+  const active = characters.find((c) => c.id === activeId) ?? null;
+  await $global.updateUserState(account, { characters, active: active?.id ?? null, nickname: active?.name ?? null });
+}
+
+// Changes the active character with `change` and saves.
+export async function updateActive(account: string, change: (c: Character) => Character): Promise<Character> {
+  const { characters, active } = await readProfile(account);
+  if (!active) throw new RuleViolation("no_character");
+  const next = change(active);
+  await saveProfile(account, characters.map((c) => (c.id === active.id ? next : c)), next.id);
+  return next;
+}
+
+export function token(length: number): string {
+  let out = "";
+  for (let i = 0; i < length; i++) out += Math.floor(Math.random() * 36).toString(36);
+  return out;
 }
 
 // One item per taken nickname, looked up by its case-insensitive key.
 export const NICKNAMES_COLLECTION = "nicknames";
 
-interface NicknameItem { __id: string; key: string; name: string; account: string }
+interface NicknameItem { __id: string; key: string; name: string; account: string; character?: string }
 
 export function withNicknameLock<T>(fn: () => Promise<T>): Promise<T> {
   return $lock("de-nicknames", fn);
@@ -88,21 +120,13 @@ export async function findNickname(key: string): Promise<NicknameItem | null> {
   return (item as NicknameItem | undefined) ?? null;
 }
 
-// Moves the account's nickname to `key`, freeing whatever name it held before. Call inside withNicknameLock.
-export async function claimNickname(account: string, key: string, name: string): Promise<void> {
-  const owned = await findNickname(key);
-  if (owned && owned.account !== account) throw new RuleViolation("nickname_taken");
-  const state = await $global.getUserState(account);
-  let nicknameId = owned?.__id;
-  if (owned) {
-    await $global.updateCollectionItem(NICKNAMES_COLLECTION, { __id: owned.__id, name });
-  } else {
-    if (typeof state.nicknameId === "string") await $global.deleteCollectionItem(NICKNAMES_COLLECTION, state.nicknameId);
-    nicknameId = (await $global.addCollectionItem(NICKNAMES_COLLECTION, { key, name, account })).__id;
-  }
-  await $global.updateUserState(account, { nickname: name, nicknameId });
+// Takes a name for a new character. Call inside withNicknameLock.
+export async function claimName(account: string, character: string, key: string, name: string): Promise<void> {
+  if (await findNickname(key)) throw new RuleViolation("nickname_taken");
+  await $global.addCollectionItem(NICKNAMES_COLLECTION, { key, name, account, character });
 }
 
+// The active character's name, which is how friends and parties see the account.
 export async function readNickname(account: string): Promise<string | null> {
   const nickname: unknown = (await $global.getUserState(account)).nickname;
   return typeof nickname === "string" ? nickname : null;
@@ -177,48 +201,34 @@ export async function writePartyInvites(account: string, invites: PartyInvite[])
   await $global.updateUserState(account, { partyInvites: invites });
 }
 
-// The class an account picked in the menu, or null for anyone who never picked.
-export async function readPlayerClass(account: string): Promise<PlayerClass | null> {
-  return readClass((await $global.getUserState(account)).playerClass);
-}
-
 // The server an account picked when it last started; the first one for anyone who never picked.
 export async function readAccountWorld(account: string): Promise<World> {
   return readWorld((await $global.getUserState(account)).world) ?? DEFAULT_WORLD;
 }
 
-// The costume an account picked in the menu, or null for anyone who never picked (their seat decides).
-export async function readCostume(account: string): Promise<string | null> {
-  const state = await $global.getUserState(account);
-  return costumeById(state.costume)?.id ?? null;
-}
-
 export async function partyMember(account: string, now: number): Promise<PartyMemberView> {
   const state = await $global.getUserState(account);
+  const { active } = await readProfile(account);
   return {
     account,
-    nickname: typeof state.nickname === "string" ? state.nickname : null,
-    costume: costumeById(state.costume)?.id ?? COSTUMES[0].id,
-    playerClass: readClass(state.playerClass) ?? CLASSES[0],
+    nickname: active?.name ?? null,
+    costume: active?.costume ?? COSTUMES[0].id,
+    playerClass: active?.playerClass ?? "warrior",
     online: isOnline(state.lastSeenAt, now),
     activity: readActivity(state.activity),
   };
 }
 
-// Where a character last stood, so it comes back to the same spot.
-export interface Spot { zone: ZoneId; x: number; z: number }
-
-export async function readSavedSpot(account: string): Promise<Spot | null> {
-  const raw = (await $global.getUserState(account)).spot as Partial<Spot> | undefined;
-  const zone = readZone(raw?.zone);
-  if (!zone || typeof raw?.x !== "number" || typeof raw?.z !== "number") return null;
-  // A spot that is no longer open ground (the map changed) sends you to the zone's own spawn.
-  if (solidAt(zoneLayout(zone), raw.x, raw.z)) return { zone, ...zoneLayout(zone).playerSpawn };
-  return { zone, x: raw.x, z: raw.z };
+// Where the active character comes back in. A spot that is no longer open ground (the map changed)
+// sends it to the zone's own spawn.
+export function returnSpot(spot: Spot | null): Spot | null {
+  if (!spot) return null;
+  if (solidAt(zoneLayout(spot.zone), spot.x, spot.z)) return { zone: spot.zone, ...zoneLayout(spot.zone).playerSpawn };
+  return spot;
 }
 
 export async function saveSpot(account: string, spot: Spot): Promise<void> {
-  await $global.updateUserState(account, { spot, zone: spot.zone });
+  await updateActive(account, (c) => ({ ...c, spot }));
 }
 
 // Joins the first channel of a zone on this server that has room, counting from 1. You never
@@ -237,15 +247,9 @@ export async function joinChannel(world: string, zone: ZoneId, account: string):
   });
 }
 
-// What the others in a zone see of you: name, class, costume and level.
-export async function zoneLook(account: string): Promise<ZoneLook> {
-  const state = await $global.getUserState(account);
-  return {
-    name: typeof state.nickname === "string" ? state.nickname : account,
-    costume: costumeById(state.costume)?.id ?? COSTUMES[0].id,
-    playerClass: readClass(state.playerClass) ?? CLASSES[0],
-    level: levelOf(readXp(state.xp)).level,
-  };
+// What the others in a zone see of a character: name, class, costume and level.
+export function zoneLook(c: Character): ZoneLook {
+  return { name: c.name, costume: c.costume, playerClass: c.playerClass, level: levelOf(c.xp).level };
 }
 
 // Stores a reported pose, held to the zone: inside the map, and no higher than what is underfoot

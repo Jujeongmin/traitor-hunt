@@ -8,7 +8,7 @@ import { PartyClient, partyProblem } from "../../src/net/party";
 async function lobby(world: LocalWorld, ...names: string[]): Promise<PartyClient[]> {
   const transports = names.map((_, i) => new LocalTransport(world, `test-${i}`));
   for (const [i, t] of transports.entries()) {
-    await t.call("setNickname", [names[i]]);
+    await t.call("createCharacter", [names[i], "warrior", "0000"]);
     await t.call("syncFriends");
   }
   for (const [i, t] of transports.entries()) {
@@ -60,17 +60,6 @@ describe("PartyClient", () => {
     await world.idle();
     expect(accounts(hunter)).toEqual(["test-0", "test-1"]);
     expect(raider.view?.party).toBeNull();
-  });
-
-  it("shows each member's costume", async () => {
-    const world = new LocalWorld(new Server());
-    const [hunter, seeker] = await lobby(world, "Hunter", "Seeker");
-    await seeker.setCostume("1413");
-    await hunter.invite("test-1");
-    await world.idle();
-    await seeker.accept("test-0");
-    await world.idle();
-    expect(hunter.view?.party?.members.map((m) => m.costume)).toEqual(["0000", "1413"]);
   });
 
   it("explains failures in Korean", async () => {

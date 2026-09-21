@@ -2,6 +2,7 @@ import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
 import { levelOf } from "../../src/game/account/level";
+import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/game/account/characters";
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
 import { readClass } from "../../src/game/combat/classes";
 import { rankOf, type RankingView } from "../../src/game/account/ranking";
@@ -16,10 +17,10 @@ import {
   START_ZONE, ZONES, arrivalFrom, portalsOf, readChannelRoom, readZone, zoneLayout, type ZoneEntry, type ZoneId,
 } from "../../src/game/world/zones";
 import {
-  claimNickname, findNickname, friendEntry, grantPurchase, joinChannel, markSeen, ownsFullGame, partyMember,
-  readAccountWorld, readAccountXp, readFriendSide, readNickname, readPartyInvites, readPartyOf, readRanking,
-  readSavedSpot, saveSpot, withFriendsLock, withNicknameLock, withPartyLock, writeFriendSide, writeParty,
-  writePartyInvites, writeRanking, writeZonePose, zoneLook,
+  claimName, findNickname, friendEntry, grantPurchase, joinChannel, markSeen, ownsFullGame, partyMember,
+  readAccountWorld, readFriendSide, readNickname, readPartyInvites, readPartyOf, readProfile, readRanking,
+  returnSpot, saveProfile, saveSpot, token, withFriendsLock, withNicknameLock, withPartyLock, writeFriendSide,
+  writeParty, writePartyInvites, writeZonePose, zoneLook,
 } from "./store";
 
 // How often a walking character's spot is saved to the account (the room keeps the live pose).
@@ -44,27 +45,38 @@ async function betweenFriends<T>(other: string, rule: (me: FriendSide, them: Fri
   });
 }
 
-// Your account as the menu sees it: your character and how far along it is.
-async function accountView(account: string, nickname: string | null): Promise<AccountView> {
+// Your account as the menu sees it: your server, your characters there and the one you play.
+async function accountView(account: string): Promise<AccountView> {
   const state = await $global.getUserState(account);
-  const xp = await readAccountXp(account);
+  // An account that never picked plays on the first server.
+  const world = (await readAccountWorld(account)).id;
+  const { characters, active } = await readProfile(account);
+  const here = characters.filter((c) => c.world === world);
+  const mine = active && active.world === world ? characterView(active) : null;
   return {
-    account, nickname, xp, level: levelOf(xp), owned: await ownsFullGame(account),
-    world: readWorld(state.world)?.id ?? null,
-    playerClass: readClass(state.playerClass),
-    costume: costumeById(state.costume)?.id ?? null,
+    account, owned: await ownsFullGame(account), world: readWorld(state.world)?.id ?? null,
+    characters: here.map(characterView), active: mine,
+    nickname: mine?.name ?? null, xp: mine?.xp ?? 0, level: mine?.level ?? levelOf(0),
+    playerClass: mine?.playerClass ?? null, costume: mine?.costume ?? null,
   };
 }
 
-// Puts you in a channel of `zone` at (x, z): the first channel of your server with room to spare.
-async function enter(account: string, zone: ZoneId, x: number, z: number): Promise<ZoneEntry> {
-  if (ZONES[zone].paid && !(await ownsFullGame(account))) throw new RuleViolation("not_owned");
+// The character you play, on the server you picked.
+async function playing(account: string): Promise<Character> {
   const world = (await readAccountWorld(account)).id;
-  const { roomId, channel } = await joinChannel(world, zone, account);
+  const { active } = await readProfile(account);
+  if (!active || active.world !== world) throw new RuleViolation("no_character");
+  return active;
+}
+
+// Puts your character in a channel of `zone` at (x, z): the first channel of your server with room.
+async function enter(account: string, character: Character, zone: ZoneId, x: number, z: number): Promise<ZoneEntry> {
+  if (ZONES[zone].paid && !(await ownsFullGame(account))) throw new RuleViolation("not_owned");
+  const { roomId, channel } = await joinChannel(character.world, zone, account);
   const now = Date.now();
   await $global.updateRoomUserState(roomId, account, {
     pose: { x, z, yaw: 0, y: 0, block: false, swing: 0, skill: 0, at: now },
-    look: await zoneLook(account),
+    look: zoneLook(character),
     savedAt: now,
   });
   await saveSpot(account, { zone, x, z });
@@ -78,25 +90,52 @@ export class Server {
   }
 
   async getAccount(): Promise<AccountView> {
-    const account = $sender.account;
-    return accountView(account, await readNickname(account));
+    return accountView($sender.account);
   }
 
-  async setNickname(requested: unknown): Promise<AccountView> {
+  // Whether a name is free for a new character (asked while typing it, before the rest is picked).
+  async checkName(requested: unknown): Promise<{ free: boolean }> {
+    const { key } = parseNickname(requested);
+    return { free: !(await findNickname(key)) };
+  }
+
+  // A new character on the server you picked, with its class and look fixed for good. It becomes
+  // the one you play.
+  async createCharacter(requested: unknown, playerClass: unknown, costume: unknown): Promise<AccountView> {
+    const account = $sender.account;
     const { name, key } = parseNickname(requested);
-    const account = $sender.account;
-    await withNicknameLock(() => claimNickname(account, key, name));
-    // The board carries names, so it hears about a rename too.
-    await writeRanking(account);
-    return accountView(account, name);
+    const picked = readClass(playerClass);
+    const look = costumeById(costume);
+    if (!picked || !look) throw new RuleViolation("unavailable");
+    const world = (await readAccountWorld(account)).id;
+    const { characters } = await readProfile(account);
+    if (characters.filter((c) => c.world === world).length >= CHARACTERS_PER_WORLD) throw new RuleViolation("character_limit");
+    const character: Character = {
+      id: `c-${token(10)}`, world, name, playerClass: picked, costume: look.id, xp: 0, spot: null,
+    };
+    await withNicknameLock(() => claimName(account, character.id, key, name));
+    await saveProfile(account, [...characters, character], character.id);
+    return accountView(account);
   }
 
-  // Your level, where you sit on the board, and the board itself.
+  // Plays another of your characters on this server.
+  async selectCharacter(id: unknown): Promise<AccountView> {
+    const account = $sender.account;
+    const world = (await readAccountWorld(account)).id;
+    const { characters } = await readProfile(account);
+    const picked = characters.find((c) => c.id === id && c.world === world);
+    if (!picked) throw new RuleViolation("no_character");
+    await saveProfile(account, characters, picked.id);
+    return accountView(account);
+  }
+
+  // Your character's level, where it sits on the board, and the board itself.
   async getRanking(): Promise<RankingView> {
     const account = $sender.account;
-    const xp = await readAccountXp(account);
+    const { active } = await readProfile(account);
+    const xp = active?.xp ?? 0;
     const board = await readRanking();
-    return { xp, level: levelOf(xp), rank: rankOf(board, account), board };
+    return { xp, level: levelOf(xp), rank: active ? rankOf(board, active.id) : null, board };
   }
 
   // Marks you online (the menu calls it every HEARTBEAT_MS) and returns your lists with names and presence.
@@ -146,30 +185,24 @@ export class Server {
     if (!world) throw new RuleViolation("unavailable");
     const account = $sender.account;
     await $global.updateUserState(account, { world: world.id });
-    return accountView(account, await readNickname(account));
-  }
-
-  async setClass(id: unknown): Promise<void> {
-    const picked = readClass(id);
-    if (!picked) throw new RuleViolation("unavailable");
-    await $global.updateUserState($sender.account, { playerClass: picked });
-  }
-
-  async setCostume(id: unknown): Promise<void> {
-    const costume = costumeById(id);
-    if (!costume) throw new RuleViolation("unavailable");
-    await $global.updateUserState($sender.account, { costume: costume.id });
+    // The characters there stay as they were; the last one played there comes back active.
+    const { characters, active } = await readProfile(account);
+    if (active?.world !== world.id) {
+      await saveProfile(account, characters, characters.find((c) => c.world === world.id)?.id ?? null);
+    }
+    return accountView(account);
   }
 
   // Into the world: back where you last stood, or in the village the first time (and when the
   // zone you were in has since locked).
   async enterWorld(): Promise<ZoneEntry> {
     const account = $sender.account;
-    const spot = await readSavedSpot(account);
+    const character = await playing(account);
+    const spot = returnSpot(character.spot);
     const owned = await ownsFullGame(account);
-    if (spot && (!ZONES[spot.zone].paid || owned)) return enter(account, spot.zone, spot.x, spot.z);
+    if (spot && (!ZONES[spot.zone].paid || owned)) return enter(account, character, spot.zone, spot.x, spot.z);
     const home = zoneLayout(START_ZONE).playerSpawn;
-    return enter(account, START_ZONE, home.x, home.z);
+    return enter(account, character, START_ZONE, home.x, home.z);
   }
 
   // Through a portal: only to a zone next to the one you are in, and only while standing at that
@@ -187,7 +220,7 @@ export class Server {
       throw new RuleViolation("not_near");
     }
     const at = arrivalFrom(target, here.zone);
-    return enter(account, target, at.x, at.z);
+    return enter(account, await playing(account), target, at.x, at.z);
   }
 
   async leaveWorld(): Promise<void> {

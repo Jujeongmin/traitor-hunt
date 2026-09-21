@@ -5,25 +5,32 @@ import { LocalWorld } from "../../src/net/local/localWorld";
 import { LocalTransport } from "../../src/net/localTransport";
 import { WorldClient } from "../../src/net/worldClient";
 
-function clients(...accounts: string[]): { world: LocalWorld; list: WorldClient[] } {
+// Each account gets a character named after it, ready to enter.
+async function clients(...accounts: string[]): Promise<{ world: LocalWorld; list: WorldClient[] }> {
   const world = new LocalWorld(new Server());
-  return { world, list: accounts.map((a) => new WorldClient(new LocalTransport(world, a))) };
+  const list: WorldClient[] = [];
+  for (const a of accounts) {
+    const transport = new LocalTransport(world, a);
+    await transport.call("createCharacter", [a.replace(/[^a-z0-9]/g, ""), "warrior", "0000"]);
+    list.push(new WorldClient(transport));
+  }
+  return { world, list };
 }
 
 describe("WorldClient", () => {
   it("enters the village and sees the others who are there, with their names", async () => {
-    const { world, list: [a, b] } = clients("test-a", "test-b");
+    const { world, list: [a, b] } = await clients("test-a", "test-b");
     await a.enter();
     await b.enter();
     await world.idle();
     expect(a.state.phase).toBe("in");
     expect(a.state.entry?.zone).toBe("village");
     expect(a.state.others.map((o) => o.account)).toEqual(["test-b"]);
-    expect(a.state.others[0].look.name).toBe("test-b");
+    expect(a.state.others[0].look.name).toBe("testb");
   });
 
   it("follows the others as they move", async () => {
-    const { world, list: [a, b] } = clients("test-a", "test-b");
+    const { world, list: [a, b] } = await clients("test-a", "test-b");
     await a.enter();
     await b.enter();
     b.reportPose({ x: 9, z: 10, yaw: 1, swing: 2 });
@@ -32,7 +39,7 @@ describe("WorldClient", () => {
   });
 
   it("drops someone who leaves, and walks through a portal", async () => {
-    const { world, list: [a, b] } = clients("test-a", "test-b");
+    const { world, list: [a, b] } = await clients("test-a", "test-b");
     await a.enter();
     await b.enter();
     await b.leave();
@@ -47,7 +54,7 @@ describe("WorldClient", () => {
   });
 
   it("stays put when a portal refuses", async () => {
-    const { list: [a] } = clients("test-a");
+    const { list: [a] } = await clients("test-a");
     await a.enter();
     expect(await a.travel("forest1")).toBe("not_near");
     expect(a.state.phase).toBe("in");

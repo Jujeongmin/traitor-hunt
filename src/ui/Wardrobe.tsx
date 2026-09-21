@@ -9,18 +9,19 @@ interface WardrobeProps {
   // Turns the hero on screen as you drag across the left side.
   onSpin: (radians: number) => void;
   onClose: () => void;
-  online: boolean;
-  // The last step of starting a game: the button reads "게임 시작" and starts instead of closing.
-  onStart?: () => void;
+  // The last step of making a character: saves it.
+  onStart: () => void;
+  // While the character is being saved.
+  busy: boolean;
 }
 
 
 // Radians of turn per pixel dragged.
 const SPIN_PER_PIXEL = 0.012;
 
-// The wardrobe: a screen of its own where your hero stands on the left, turning as you drag, and the
-// right side picks each part of your look. Every change is kept at once.
-export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: WardrobeProps) {
+// The last step of making a character: it stands on the left, turning as you drag, and the right
+// side picks each part of its look, fixed once the character is made.
+export function Wardrobe({ costume, onPick, onSpin, onClose, onStart, busy }: WardrobeProps) {
   const drag = useRef<number | null>(null);
 
   // Escape leaves, like the other screens.
@@ -56,8 +57,8 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
 
       <aside className="wardrobe-panel">
         <header className="wardrobe-head">
-          <h2>{onStart ? "캐릭터 외형 정하기" : "캐릭터 꾸미기"}</h2>
-          <button type="button" className="text-button" onClick={onClose}>{onStart ? "취소" : "완료"}</button>
+          <h2>캐릭터 외형 정하기</h2>
+          <button type="button" className="text-button" onClick={onClose}>뒤로</button>
         </header>
 
         <section>
@@ -78,11 +79,11 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
           <PartRows keys={PART_KEYS} costume={costume} onPick={onPick} />
         </section>
 
-        {onStart && <button type="button" className="brush-button wardrobe-start" onClick={onStart}>게임 시작</button>}
+        <button type="button" className="brush-button wardrobe-start" onClick={onStart} disabled={busy}>
+          {busy ? "만드는 중…" : "캐릭터 만들기"}
+        </button>
 
-        <p className="note">
-          바꾸는 즉시 저장돼요. {online ? "같은 방의 다른 플레이어에게도 이 모습으로 보입니다." : "Verse8 서버에 연결되면 다른 플레이어에게도 보입니다."}
-        </p>
+        <p className="note">외형은 캐릭터를 만든 뒤에는 바꿀 수 없어요.</p>
       </aside>
     </div>
   );

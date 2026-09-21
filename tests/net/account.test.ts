@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Server } from "../../server/src/server";
-import { FIRST_LEVEL_XP } from "../../src/game/account/level";
-import { loadAccount, loadRanking, nicknameProblem, saveNickname, saveWorld } from "../../src/net/account";
+import {
+  createCharacter, loadAccount, loadRanking, nameFree, nicknameProblem, saveWorld, selectCharacter,
+} from "../../src/net/account";
 import { LocalWorld } from "../../src/net/local/localWorld";
 import { LocalTransport } from "../../src/net/localTransport";
 
@@ -20,17 +21,19 @@ async function failure(promise: Promise<unknown>): Promise<unknown> {
 }
 
 describe("account", () => {
-  it("has no nickname until one is saved", async () => {
+  it("has no character until one is made", async () => {
     const [a] = seats("test-a");
-    expect(await loadAccount(a)).toMatchObject({ account: "test-a", nickname: null });
-    expect(await saveNickname(a, "유적왕")).toMatchObject({ account: "test-a", nickname: "유적왕" });
-    expect(await loadAccount(a)).toMatchObject({ account: "test-a", nickname: "유적왕" });
+    expect(await loadAccount(a)).toMatchObject({ account: "test-a", characters: [], active: null });
+    const view = await createCharacter(a, "유적왕", "rogue", "0000");
+    expect(view.active).toMatchObject({ name: "유적왕", playerClass: "rogue" });
+    expect(await loadAccount(a)).toMatchObject({ nickname: "유적왕" });
   });
 
-  it("starts at level 1 and carries the level through a rename", async () => {
+  it("switches between its characters", async () => {
     const [a] = seats("test-a");
-    expect(await loadAccount(a)).toMatchObject({ xp: 0, level: { level: 1, into: 0, need: FIRST_LEVEL_XP } });
-    expect(await saveNickname(a, "등반가")).toMatchObject({ xp: 0, level: { level: 1 } });
+    const first = await createCharacter(a, "하나", "warrior", "0000");
+    await createCharacter(a, "둘째", "cleric", "0000");
+    expect((await selectCharacter(a, first.active!.id)).active?.name).toBe("하나");
   });
 
   it("reads an empty board for a new account", async () => {
@@ -41,25 +44,13 @@ describe("account", () => {
     expect(view.board).toEqual([]);
   });
 
-  it("lets two players hold different names", async () => {
+  it("checks names before a character is made, and explains problems in Korean", async () => {
     const [a, b] = seats("test-a", "test-b");
-    await saveNickname(a, "Hunter");
-    expect(await saveNickname(b, "Seeker")).toMatchObject({ account: "test-b", nickname: "Seeker" });
-  });
-
-  it("frees a name when its owner renames", async () => {
-    const [a, b] = seats("test-a", "test-b");
-    await saveNickname(a, "Hunter");
-    await saveNickname(a, "Seeker");
-    expect(await saveNickname(b, "hunter")).toMatchObject({ account: "test-b", nickname: "hunter" });
-  });
-
-  it("explains a taken or invalid name in Korean", async () => {
-    const [a, b] = seats("test-a", "test-b");
-    await saveNickname(a, "Hunter");
-    expect(nicknameProblem(await failure(saveNickname(b, "HUNTER")))).toBe("이미 쓰고 있는 닉네임이에요");
-    expect(nicknameProblem(await failure(saveNickname(b, "봇 1")))).toBe("한글·영문·숫자·_ 로 2~12자까지 쓸 수 있어요");
-    expect(nicknameProblem(new Error("socket closed"))).toBe("저장하지 못했어요. 잠시 뒤 다시 시도해 주세요");
+    await createCharacter(a, "Hunter", "warrior", "0000");
+    expect(await nameFree(b, "hunter")).toBe(false);
+    expect(await nameFree(b, "Seeker")).toBe(true);
+    expect(nicknameProblem(await failure(createCharacter(b, "HUNTER", "warrior", "0000")))).toBe("이미 쓰고 있는 이름이에요");
+    expect(nicknameProblem(await failure(createCharacter(b, "봇 1", "warrior", "0000")))).toBe("한글·영문·숫자·_ 로 2~12자까지 쓸 수 있어요");
   });
 });
 
