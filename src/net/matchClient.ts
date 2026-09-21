@@ -154,13 +154,15 @@ export class MatchClient {
     if (this.current.phase !== "playing" && this.current.phase !== "lobby") return;
     const sent = {
       x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true, swing: readSwing(pose.swing),
+      skill: readSwing(pose.skill),
     };
     const now = this.now();
     const last = this.lastPose;
     const moved = !last || Math.abs(sent.x - last.x) > POSE_EPSILON || Math.abs(sent.z - last.z) > POSE_EPSILON
       || Math.abs(sent.yaw - last.yaw) > POSE_EPSILON || Math.abs(sent.y - (last.y ?? 0)) > POSE_EPSILON;
     // Raising or lowering the shield, or a swing, goes out at once: a late block is no block.
-    const shieldChanged = !!last && (sent.block !== (last.block === true) || sent.swing !== (last.swing ?? 0));
+    const shieldChanged = !!last && (sent.block !== (last.block === true) || sent.swing !== (last.swing ?? 0)
+      || sent.skill !== (last.skill ?? 0));
     if (last && !shieldChanged && now - last.at < (moved ? POSE_THROTTLE_MS : IDLE_POSE_MS)) return;
     this.lastPose = { ...sent, at: now };
     void this.transport.call("reportPose", [sent], { needResponse: false });
@@ -191,6 +193,10 @@ export class MatchClient {
 
   strikeMonster(monsterId: string): Promise<string | null> {
     return this.act("strikeMonster", [monsterId]);
+  }
+
+  useSkill(): Promise<string | null> {
+    return this.act("useSkill", []);
   }
 
   attackWithMonster(monsterId: string, target: string): Promise<string | null> {

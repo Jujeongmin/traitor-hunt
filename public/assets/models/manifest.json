@@ -49,7 +49,7 @@
     },
     "hero": {
       "url": "assets/models/hero.glb",
-      "bytes": 842984,
+      "bytes": 897208,
       "animations": [
         "Idle_Normal_SwordAndShield",
         "Idle_Battle_SwordAndShiled",
@@ -62,6 +62,8 @@
         "JumpFull_Normal_InPlace_SwordAndShield",
         "Attack01_SwordAndShiled",
         "Attack02_SwordAndShiled",
+        "Attack03_SwordAndShiled",
+        "Attack04_Spinning_SwordAndShield",
         "Defend_SwordAndShield",
         "DefendHit_SwordAndShield",
         "GetHit01_SwordAndShield",

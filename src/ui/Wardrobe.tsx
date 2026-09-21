@@ -3,6 +3,7 @@ import { CLASSES, CLASS_LABEL, WEAPONS, type PlayerClass } from "../game/match/c
 import {
   COSTUMES, PARTS, PART_KEYS, optionOf, randomCostume, withPart, type Costume, type PartKey,
 } from "../game/render/costumes";
+import { SKILLS } from "../game/match/skills";
 import { myClass, onMyClass, setMyClass } from "./profile";
 
 interface WardrobeProps {
@@ -82,6 +83,7 @@ export function Wardrobe({ costume, onPick, onSpin, onClose, online, onStart }: 
                 <b>{CLASS_LABEL[c]}</b>
                 <span>{CLASS_BLURB[c]}</span>
                 <small>공격 {WEAPONS[c].damage} · 막기 {Math.round(WEAPONS[c].block * 100)}%</small>
+                <em>스킬 {SKILLS[c].name}: {SKILLS[c].blurb} (재사용 {SKILLS[c].cooldownMs / 1000}초)</em>
               </button>
             ))}
           </div>

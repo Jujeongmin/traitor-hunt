@@ -5,9 +5,9 @@ export type EndReason = "escaped" | "wiped" | "humans_out";
 
 export interface Vec2 { x: number; z: number }
 // y: how high the player has jumped. Only drawn, never used by a rule; missing means standing.
-// y: feet height (jumps and platforms). block: the shield is raised. swing: how many swings so far, so
-// others can play each one.
-export interface Pose extends Vec2 { yaw: number; y?: number; block?: boolean; swing?: number }
+// y: feet height (jumps and platforms). block: the shield is raised. swing and skill: how many swings
+// and skills so far, so others can play each one.
+export interface Pose extends Vec2 { yaw: number; y?: number; block?: boolean; swing?: number; skill?: number }
 
 // A swing count from a client: a whole number, kept small so it never grows without bound.
 export function readSwing(value: unknown): number {
@@ -118,6 +118,8 @@ export interface SecretMatch {
   possession: Possession | null;
   readyAt: number;
   lastShotAt: Record<string, number>;
+  // Account -> when they last used their skill; missing in matches saved before skills.
+  skillAt?: Record<string, number>;
   stats: Record<string, PlayerStats>;
 }
 

@@ -1,4 +1,5 @@
 import { WEAPONS, classFor, type Weapon } from "./classes";
+import { SKILLS, skillTargets, type Skill } from "./skills";
 import {
   EXIT_RADIUS, LINK_DAMAGE_RATIO,
   MONSTER_DEATH_BODY_DAMAGE, MONSTER_STATS, PAIN_RADIUS, RANGE_SLACK,
@@ -49,7 +50,38 @@ export function strikeMonster(
   if (!inStrikeReach(from, monster, weapon, true)) throw new RuleViolation("out_of_range");
 
   secret.lastShotAt[shooter] = now;
-  const dealt = Math.min(weapon.damage, monster.hp);
+  events.push(...hitMonster(match, secret, shooter, monsterId, weapon.damage, poses, now));
+  return events;
+}
+
+// Your class's skill (see skills.ts). It fires whether or not anything is in reach, and the
+// cooldown starts either way.
+export function useSkill(
+  match: PublicMatch, secret: SecretMatch, account: string, pose: Pose | null, poses: Poses, now: number,
+): MatchEvent[] {
+  const events = expirePossession(match, secret, now);
+  const from = beginAction(match, secret, account, pose, now);
+  const skill = skillOf(match, account);
+  secret.skillAt ??= {};
+  const last = secret.skillAt[account];
+  if (last !== undefined && now - last < skill.cooldownMs) throw new RuleViolation("too_fast");
+  secret.skillAt[account] = now;
+  for (const id of skillTargets(from, match.monsters, skill, true)) {
+    const monster = match.monsters[id];
+    if (skill.stunMs > 0) monster.stunnedUntil = Math.max(monster.stunnedUntil, now + skill.stunMs);
+    events.push(...hitMonster(match, secret, account, id, skill.damage, poses, now));
+  }
+  return events;
+}
+
+// Takes damage off a monster, counts it for the one who dealt it, and passes the hurt on to a
+// possessing traitor's body.
+function hitMonster(
+  match: PublicMatch, secret: SecretMatch, shooter: string, monsterId: string, damage: number, poses: Poses, now: number,
+): MatchEvent[] {
+  const events: MatchEvent[] = [];
+  const monster = match.monsters[monsterId];
+  const dealt = Math.min(damage, monster.hp);
   monster.hp -= dealt;
   const stats = secret.stats[shooter];
   stats.monsterDamage += dealt;
@@ -72,6 +104,11 @@ export function strikeMonster(
     if (killed) events.push(...endPossession(match, secret, now));
   }
   return events;
+}
+
+// The skill a player's class gives them.
+export function skillOf(match: PublicMatch, account: string): Skill {
+  return SKILLS[classFor(match.classes, account, match.players.indexOf(account))];
 }
 
 export function monsterAttack(
@@ -124,17 +161,22 @@ export function weaponOf(match: PublicMatch, account: string): Weapon {
 }
 
 function beginStrike(match: PublicMatch, secret: SecretMatch, shooter: string, shooterPose: Pose | null, now: number): Pose {
-  if (match.phase !== "playing") throw new RuleViolation("not_playing");
-  if (!isActive(match, shooter)) throw new RuleViolation("unavailable");
-  if (isBound(match, shooter, now)) throw new RuleViolation("bound");
-  // A possessing traitor's body stands frozen; it cannot swing.
-  if (secret.possession && secret.traitor === shooter) throw new RuleViolation("unavailable");
   const last = secret.lastShotAt[shooter];
   if (last !== undefined && now - last < weaponOf(match, shooter).intervalMs) throw new RuleViolation("too_fast");
-  if (!shooterPose) throw new RuleViolation("out_of_range");
+  return beginAction(match, secret, shooter, shooterPose, now);
+}
+
+// What any swing or skill needs: a free, living player with a known pose and the shield down.
+function beginAction(match: PublicMatch, secret: SecretMatch, account: string, pose: Pose | null, now: number): Pose {
+  if (match.phase !== "playing") throw new RuleViolation("not_playing");
+  if (!isActive(match, account)) throw new RuleViolation("unavailable");
+  if (isBound(match, account, now)) throw new RuleViolation("bound");
+  // A possessing traitor's body stands frozen; it cannot swing.
+  if (secret.possession && secret.traitor === account) throw new RuleViolation("unavailable");
+  if (!pose) throw new RuleViolation("out_of_range");
   // The shield arm is up; lower it to swing.
-  if (shooterPose.block) throw new RuleViolation("blocking");
-  return shooterPose;
+  if (pose.block) throw new RuleViolation("blocking");
+  return pose;
 }
 
 function damageBody(match: PublicMatch, secret: SecretMatch, account: string, amount: number, now: number): MatchEvent[] {

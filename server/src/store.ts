@@ -103,7 +103,7 @@ export function isPose(value: unknown): value is Pose {
 export async function readPose(roomId: string, account: string): Promise<Pose | null> {
   const pose: unknown = (await $global.getRoomUserState(roomId, account)).pose;
   return isPose(pose)
-    ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true, swing: readSwing(pose.swing) }
+    ? { x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true, swing: readSwing(pose.swing), skill: readSwing(pose.skill) }
     : null;
 }
 
@@ -118,7 +118,8 @@ export async function writePose(roomId: string, account: string, pose: Pose, at:
   const y = Math.min(readJumpY(pose.y), maxFeetY(LEVEL.platforms, pose.x, pose.z));
   const block = pose.block === true;
   const swing = readSwing(pose.swing);
-  await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, block, swing, at } });
+  const skill = readSwing(pose.skill);
+  await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, block, swing, skill, at } });
 }
 
 // Writes this account's line on the board. Called whenever its XP or its name changes; a fresh

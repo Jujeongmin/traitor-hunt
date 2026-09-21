@@ -191,6 +191,14 @@ export function Hud({ hud, now }: { hud: HudState; now: number }) {
       {error && <div className="hud-error band">{error}</div>}
       {inside && !hud.possession && <div className="crosshair" />}
       {hud.blocking && <div className="hud-shield band">방패 막는 중</div>}
+      {hud.skill && (
+        <div className={`hud-skill${hud.skill.readyInMs > 0 ? " cooling" : ""}`}>
+          <span className="hud-skill-key">1</span>
+          <b>{hud.skill.name}</b>
+          <span>{hud.skill.readyInMs > 0 ? `${Math.ceil(hud.skill.readyInMs / 1000)}초` : "준비됨"}</span>
+          <i style={{ width: `${Math.round((1 - hud.skill.readyInMs / hud.skill.cooldownMs) * 100)}%` }} />
+        </div>
+      )}
       {hud.guide && <GuidePanel guide={hud.guide} />}
     </>
   );

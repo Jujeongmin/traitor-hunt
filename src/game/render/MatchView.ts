@@ -6,7 +6,8 @@ import {
   SEAL_DURATION_MS, SEAL_RADIUS, SHARD_COUNT, VOTE_DECIDE_HOLD_MS,
 } from "../match/constants";
 import { botFillInMs, isActive, isBound } from "../match/lifecycle";
-import { weaponOf } from "../match/damage";
+import { skillOf, weaponOf } from "../match/damage";
+import { classFor } from "../match/classes";
 import { inStrikeReach } from "../match/melee";
 import { bearingTo, guideFor } from "../match/guide";
 import { BOSS_ID, interactableNear, type Interactable } from "../match/objectives";
@@ -108,6 +109,8 @@ export interface HudState {
   guide: GuideHud | null;
   // The shield is up.
   blocking: boolean;
+  // Your class's skill on key 1, and how long until it is ready again.
+  skill: { name: string; readyInMs: number; cooldownMs: number } | null;
 }
 
 export interface GuideHud {
@@ -167,6 +170,8 @@ export class MatchView {
   private props: ObjectiveProps | null = null;
   private pose: Pose;
   private swings = 0;
+  private skills = 0;
+  private lastSkillAt = Number.NEGATIVE_INFINITY;
   private air: Airborne = GROUNDED;
   private yaw = 0;
   private pitch = 0;
@@ -313,7 +318,9 @@ export class MatchView {
     const jump = this.input.consumePress("Space");
     const ground = groundAt(this.layout.platforms, this.pose.x, this.pose.z, PLAYER_RADIUS);
     this.air = active && !possession && !bound ? stepJump(this.air, jump, dt, ground) : GROUNDED;
-    this.pose = { ...this.pose, y: this.air.y, block: active && !possession && !bound && this.input.blocking, swing: this.swings };
+    this.pose = {
+      ...this.pose, y: this.air.y, block: active && !possession && !bound && this.input.blocking, swing: this.swings, skill: this.skills,
+    };
     if (match) this.handleActions(match, state, possession, active, bound);
     if (active && !possession) this.client.reportPose(this.pose);
     this.options.onFrame?.(dt, active ? this.pose : null);
@@ -345,6 +352,7 @@ export class MatchView {
     const pressPossess = this.input.consumePress("KeyQ");
     const pressEscape = this.input.consumePress("KeyF");
     const pressRelease = this.input.consumePress("KeyR");
+    const pressSkill = this.input.consumePress("Digit1");
     if (!active) return;
 
     if (possession) {
@@ -372,6 +380,7 @@ export class MatchView {
     }
     if (!this.pendingAction && pressInteract) this.perform(() => this.client.interact());
     if (!this.pendingAction && pressEscape) this.perform(() => this.client.escape());
+    if (pressSkill) this.useSkill(match);
     // Holding the shield up keeps the sword down.
     const weapon = weaponOf(match, this.client.account);
     if (this.input.firing && !this.input.blocking && this.client.serverNow() - this.lastShotAt >= weapon.intervalMs) {
@@ -397,6 +406,22 @@ export class MatchView {
     return this.client.strikeMonster(best.id).then((code) => {
       if (code) this.fail(code);
       return code;
+    });
+  }
+
+  // Your class's skill: it plays at once and the server decides what it hits.
+  private useSkill(match: PublicMatch): void {
+    const skill = skillOf(match, this.client.account);
+    const now = this.client.serverNow();
+    if (this.input.blocking) {
+      this.fail("blocking");
+      return;
+    }
+    if (now - this.lastSkillAt < skill.cooldownMs) return;
+    this.lastSkillAt = now;
+    this.skills += 1;
+    void this.client.useSkill().then((code) => {
+      if (code) this.fail(code);
     });
   }
 
@@ -470,9 +495,11 @@ export class MatchView {
     for (const account of match.players) {
       let actor = this.players.get(account);
       if (!actor) {
-        const costume = wearing(match.looks, account, match.players.indexOf(account));
+        const seat = match.players.indexOf(account);
+        const costume = wearing(match.looks, account, seat);
         actor = new PlayerActor(account, {
           object: library.instance(costume.model), clips: library.get(costume.model).animations, costume,
+          playerClass: classFor(match.classes, account, seat),
         });
         this.scene.add(actor.object);
         this.players.set(account, actor);
@@ -545,6 +572,10 @@ export class MatchView {
       sealed: !!match && match.revealed === me,
       guide: this.options.tutorial && match && active && !possession ? this.guideHud(match) : null,
       blocking: !!this.pose.block,
+      skill: match && playing && free ? (() => {
+        const skill = skillOf(match, me);
+        return { name: skill.name, cooldownMs: skill.cooldownMs, readyInMs: Math.max(0, this.lastSkillAt + skill.cooldownMs - serverNow) };
+      })() : null,
     };
     this.lastHud = hud;
     for (const listener of this.hudListeners) listener(hud);

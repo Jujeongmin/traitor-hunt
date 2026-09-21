@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { Pose } from "../match/types";
 import { PART_MESHES, shownMeshes, type Costume } from "./costumes";
 import { applyDyes } from "./dyes";
+import type { PlayerClass } from "../match/classes";
 import { createLabel, setLabel } from "./labels";
 import { ActionBlender, clipByName, skinnedHeight } from "./skinned";
 
@@ -23,6 +24,8 @@ const CLIPS = {
   block: "Defend_SwordAndShield",
   jump: "JumpFull_Normal_InPlace_SwordAndShield",
   death: "Die01_SwordAndShield",
+  // Each class's skill (see skills.ts).
+  skills: { striker: "Attack04_Spinning_SwordAndShield", guardian: "Attack03_SwordAndShiled" },
 } as const;
 
 export type PlayerStatus = "active" | "dead" | "escaped";
@@ -31,6 +34,8 @@ export interface PlayerModel {
   object: THREE.Object3D;
   clips: THREE.AnimationClip[];
   costume: Costume;
+  // Picks the skill clip; the striker's when left out.
+  playerClass?: PlayerClass;
 }
 
 interface Animated {
@@ -44,6 +49,7 @@ interface Animated {
   block: THREE.AnimationAction;
   jump: THREE.AnimationAction;
   death: THREE.AnimationAction;
+  skill: THREE.AnimationAction;
   blender: ActionBlender;
 }
 
@@ -76,6 +82,7 @@ export class PlayerActor {
   private placed = false;
   private dead = false;
   private lastSwing: number | null = null;
+  private lastSkill: number | null = null;
   private swingLeft = 0;
   private nextAttack = 0;
   private jumpLeft = 0;
@@ -101,7 +108,7 @@ export class PlayerActor {
     setLabel(this.tag, text, revealed ? "#ff6b5a" : "#ffb35a");
   }
 
-  private static animate({ object, clips, costume }: PlayerModel): Animated {
+  private static animate({ object, clips, costume, playerClass = "striker" }: PlayerModel): Animated {
     // The modular hero carries every part; hide the ones this costume does not wear. Measured after,
     // so a long cloak or a tall hairdo does not shrink the body.
     const shown = shownMeshes(costume);
@@ -124,6 +131,7 @@ export class PlayerActor {
       block: once(action(CLIPS.block), true),
       jump: once(action(CLIPS.jump), false),
       death: once(action(CLIPS.death), true),
+      skill: once(action(CLIPS.skills[playerClass]), false),
       blender: new ActionBlender(idle),
     };
   }
@@ -170,6 +178,14 @@ export class PlayerActor {
       else a.blender.fadeTo(attack, 0.05);
     }
     this.lastSwing = swing;
+    // Likewise a higher skill count plays the class's skill.
+    const skill = pose.skill ?? 0;
+    if (this.lastSkill !== null && skill > this.lastSkill && !this.dead) {
+      this.swingLeft = a.skill.getClip().duration;
+      if (a.blender.active === a.skill) a.skill.reset().play();
+      else a.blender.fadeTo(a.skill, 0.05);
+    }
+    this.lastSkill = skill;
     this.swingLeft = Math.max(0, this.swingLeft - dt);
 
     // Leaving the ground starts the jump clip once.

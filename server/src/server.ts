@@ -14,7 +14,7 @@ import {
 import { costumeById } from "../../src/game/render/costumes";
 import { MATCH_PLAYERS, PROTOCOL_VERSION } from "../../src/game/match/constants";
 import {
-  applyMonsterPoses, monsterAttack, reachExit, strikeMonster, type MonsterPoseUpdate,
+  applyMonsterPoses, monsterAttack, reachExit, strikeMonster, useSkill, type MonsterPoseUpdate,
 } from "../../src/game/match/damage";
 import {
   createLobby, fillWithBots, isBot, joinLobby, leaveLobby, matchHost, monsterSpawnsFor, startMatch,
@@ -167,6 +167,14 @@ const seatActions = {
       const secret = requireLive(ctx);
       const poses = await readPoses(ctx.roomId, ctx.match.players);
       ctx.events.push(...strikeMonster(ctx.match, secret, ctx.account, id, poses[ctx.account] ?? null, poses, ctx.now));
+    }, account);
+  },
+
+  async useSkill(account: string): Promise<void> {
+    await inRoom(async (ctx) => {
+      const secret = requireLive(ctx);
+      const poses = await readPoses(ctx.roomId, ctx.match.players);
+      ctx.events.push(...useSkill(ctx.match, secret, ctx.account, poses[ctx.account] ?? null, poses, ctx.now));
     }, account);
   },
 
@@ -551,6 +559,10 @@ export class Server {
       const to = await readPose(ctx.roomId, who);
       ctx.events.push(...monsterAttack(ctx.match, secret, ctx.account, id, who, to, ctx.now));
     });
+  }
+
+  async useSkill(): Promise<void> {
+    await seatActions.useSkill($sender.account);
   }
 
   async interact(): Promise<void> {
