@@ -19,7 +19,7 @@ import {
 import {
   claimName, findNickname, friendEntry, grantPurchase, joinChannel, markSeen, ownsFullGame, partyMember,
   readAccountWorld, readFriendSide, readNickname, readPartyInvites, readPartyOf, readProfile, readRanking,
-  returnSpot, saveProfile, saveSpot, token, withFriendsLock, withNicknameLock, withPartyLock, writeFriendSide,
+  returnSpot, saveProfile, saveSpot, token, withFriendsLock, withNicknameLock, withPartyLock, withProfileLock, writeFriendSide,
   writeParty, writePartyInvites, writeZonePose, zoneLook,
 } from "./store";
 
@@ -108,13 +108,15 @@ export class Server {
     const look = costumeById(costume);
     if (!picked || !look) throw new RuleViolation("unavailable");
     const world = (await readAccountWorld(account)).id;
-    const { characters } = await readProfile(account);
-    if (characters.filter((c) => c.world === world).length >= CHARACTERS_PER_WORLD) throw new RuleViolation("character_limit");
-    const character: Character = {
-      id: `c-${token(10)}`, world, name, playerClass: picked, costume: look.id, xp: 0, spot: null,
-    };
-    await withNicknameLock(() => claimName(account, character.id, key, name));
-    await saveProfile(account, [...characters, character], character.id);
+    await withProfileLock(account, async () => {
+      const { characters } = await readProfile(account);
+      if (characters.filter((c) => c.world === world).length >= CHARACTERS_PER_WORLD) throw new RuleViolation("character_limit");
+      const character: Character = {
+        id: `c-${token(10)}`, world, name, playerClass: picked, costume: look.id, xp: 0, spot: null, made: Date.now(),
+      };
+      await withNicknameLock(() => claimName(account, character.id, key, name));
+      await saveProfile(account, [...characters, character], character.id);
+    });
     return accountView(account);
   }
 
@@ -122,10 +124,12 @@ export class Server {
   async selectCharacter(id: unknown): Promise<AccountView> {
     const account = $sender.account;
     const world = (await readAccountWorld(account)).id;
-    const { characters } = await readProfile(account);
-    const picked = characters.find((c) => c.id === id && c.world === world);
-    if (!picked) throw new RuleViolation("no_character");
-    await saveProfile(account, characters, picked.id);
+    await withProfileLock(account, async () => {
+      const { characters } = await readProfile(account);
+      const picked = characters.find((c) => c.id === id && c.world === world);
+      if (!picked) throw new RuleViolation("no_character");
+      await saveProfile(account, characters, picked.id);
+    });
     return accountView(account);
   }
 
@@ -186,10 +190,12 @@ export class Server {
     const account = $sender.account;
     await $global.updateUserState(account, { world: world.id });
     // The characters there stay as they were; the last one played there comes back active.
-    const { characters, active } = await readProfile(account);
-    if (active?.world !== world.id) {
-      await saveProfile(account, characters, characters.find((c) => c.world === world.id)?.id ?? null);
-    }
+    await withProfileLock(account, async () => {
+      const { characters, active } = await readProfile(account);
+      if (active?.world !== world.id) {
+        await saveProfile(account, characters, characters.find((c) => c.world === world.id)?.id ?? null);
+      }
+    });
     return accountView(account);
   }
 

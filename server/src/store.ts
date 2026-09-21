@@ -3,7 +3,9 @@ import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
 import { levelOf, readXp } from "../../src/game/account/level";
-import { readCharacters, readSpot, type Character, type Spot } from "../../src/game/account/characters";
+import {
+  characterMap, legacyMatchXp, readCharacters, readSpot, type Character, type Spot,
+} from "../../src/game/account/characters";
 import { DEFAULT_WORLD, readWorld, type World } from "../../src/game/account/worlds";
 import { playsFree, type PurchaseEvent } from "../../src/game/account/purchase";
 import { RANKING_SIZE, rankRows, type RankRow } from "../../src/game/account/ranking";
@@ -59,42 +61,72 @@ export async function grantPurchase(event: PurchaseEvent): Promise<boolean> {
   return true;
 }
 
-// An account's characters and the active one. Accounts from before characters (one nickname and
-// class on the account) come back as one character on the server they last picked.
+// An account's characters and the active one. Reading never writes: accounts from before characters
+// (one nickname and class on the account) read back as one character on the server they last picked,
+// with the XP of their old match record, and are saved that way the next time anything changes.
 export interface Profile { characters: Character[]; active: Character | null }
 
 export async function readProfile(account: string): Promise<Profile> {
   const state = await $global.getUserState(account);
-  let characters = readCharacters(state.characters);
-  if (!Array.isArray(state.characters) && typeof state.nickname === "string" && readClass(state.playerClass)) {
+  const oldXp = state.legacyXpApplied === true ? 0 : legacyMatchXp(state.profile);
+  // Saved as characterMap; the first saves were under characters, as an array or however the
+  // platform handed that array back (an object keyed by index).
+  const saved = isObject(state.characterMap) ? state.characterMap
+    : Array.isArray(state.characters) || isObject(state.characters) ? state.characters : null;
+  let characters = readCharacters(saved);
+  if (!saved && typeof state.nickname === "string" && readClass(state.playerClass)) {
     characters = [{
-      id: `c-${token(10)}`,
+      // Fixed per account, so two reads of an unsaved account agree on it.
+      id: `c-legacy-${account}`,
       world: readWorld(state.world)?.id ?? DEFAULT_WORLD.id,
       name: state.nickname,
       playerClass: readClass(state.playerClass)!,
       costume: costumeById(state.costume)?.id ?? COSTUMES[0].id,
-      xp: readXp(state.xp),
+      xp: Math.max(readXp(state.xp), oldXp),
       spot: readSpot(state.spot),
+      made: 0,
     }];
-    await saveProfile(account, characters, characters[0].id);
+  } else if (oldXp > 0) {
+    // Moved over before its old XP was carried: the character named like the account's first name
+    // (the name claimed before characters existed) gets it.
+    const names = (await $global.getCollectionItems(NICKNAMES_COLLECTION, {
+      filters: [{ field: "account", operator: "==", value: account }],
+    })) as unknown as NicknameItem[];
+    const first = names.find((i) => !i.character);
+    characters = characters.map((c) => (first && c.name === first.name ? { ...c, xp: Math.max(c.xp, oldXp) } : c));
   }
-  const activeId = Array.isArray(state.characters) ? state.active : characters[0]?.id;
+  const activeId = saved ? state.active : characters[0]?.id;
   return { characters, active: characters.find((c) => c.id === activeId) ?? null };
 }
 
 // Saves the characters, and mirrors the active one's name on the account (friends find you by it).
+// Call inside withProfileLock.
 export async function saveProfile(account: string, characters: Character[], activeId: string | null): Promise<void> {
   const active = characters.find((c) => c.id === activeId) ?? null;
-  await $global.updateUserState(account, { characters, active: active?.id ?? null, nickname: active?.name ?? null });
+  await $global.updateUserState(account, {
+    characterMap: characterMap(characters), active: active?.id ?? null, nickname: active?.name ?? null, legacyXpApplied: true,
+  });
+}
+
+// One writer at a time for an account's characters, so a spot saved while a character is made or
+// picked does not undo the other.
+function isObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+export function withProfileLock<T>(account: string, fn: () => Promise<T>): Promise<T> {
+  return $lock(`profile-${account}`, fn);
 }
 
 // Changes the active character with `change` and saves.
 export async function updateActive(account: string, change: (c: Character) => Character): Promise<Character> {
-  const { characters, active } = await readProfile(account);
-  if (!active) throw new RuleViolation("no_character");
-  const next = change(active);
-  await saveProfile(account, characters.map((c) => (c.id === active.id ? next : c)), next.id);
-  return next;
+  return withProfileLock(account, async () => {
+    const { characters, active } = await readProfile(account);
+    if (!active) throw new RuleViolation("no_character");
+    const next = change(active);
+    await saveProfile(account, characters.map((c) => (c.id === active.id ? next : c)), next.id);
+    return next;
+  });
 }
 
 export function token(length: number): string {

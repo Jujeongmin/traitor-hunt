@@ -18,6 +18,8 @@ export interface Character {
   costume: string;
   xp: number;
   spot: Spot | null;
+  // When it was made (ms), for listing in order; 0 for characters from before this was kept.
+  made: number;
 }
 
 // What the menus show of a character.
@@ -39,20 +41,36 @@ export function readSpot(raw: unknown): Spot | null {
   return { zone, x: s.x, z: s.z };
 }
 
-// Saved characters, trusted only as far as each one reads back whole.
+// Saved characters, trusted only as far as each one reads back whole, oldest first. They are saved as
+// an object keyed by id (see saveProfile); an array is read too, from the first saves.
 export function readCharacters(raw: unknown): Character[] {
-  if (!Array.isArray(raw)) return [];
+  const items = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [];
   const out: Character[] = [];
-  for (const item of raw) {
+  for (const item of items) {
     const c = item as Partial<Record<keyof Character, unknown>> | null;
     const playerClass = readClass(c?.playerClass);
     const costume = costumeById(c?.costume);
     if (!c || typeof c.id !== "string" || typeof c.world !== "string" || typeof c.name !== "string" || !playerClass || !costume) {
       continue;
     }
-    out.push({ id: c.id, world: c.world, name: c.name, playerClass, costume: costume.id, xp: readXp(c.xp), spot: readSpot(c.spot) });
+    const made = typeof c.made === "number" && Number.isFinite(c.made) ? c.made : 0;
+    out.push({ id: c.id, world: c.world, name: c.name, playerClass, costume: costume.id, xp: readXp(c.xp), spot: readSpot(c.spot), made });
   }
-  return out;
+  return out.sort((a, b) => a.made - b.made);
+}
+
+// The characters as saved: an object keyed by id. The platform keeps objects as they are, which a
+// top-level array may not survive.
+export function characterMap(characters: readonly Character[]): Record<string, Character> {
+  return Object.fromEntries(characters.map((c) => [c.id, c]));
+}
+
+// The XP an account earned in the old match game, by that game's rules (10 a game, 20 a win,
+// 10 an escape, 2 a monster). Its record is still on the account; this carries it into the character.
+export function legacyMatchXp(raw: unknown): number {
+  const p = (raw ?? {}) as Record<string, unknown>;
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
+  return n(p.games) * 10 + n(p.wins) * 20 + n(p.escapes) * 10 + n(p.monsterKills) * 2;
 }
 
 export function characterView(c: Character): CharacterView {

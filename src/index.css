@@ -463,3 +463,4 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .character-card:hover { border-color: rgba(255, 179, 90, 0.7); }
 .character-card.new { align-items: center; font: 700 15px var(--font-head); color: var(--ember); border-style: dashed; }
 .wardrobe-panel { align-self: flex-start; max-height: calc(100% - 28px); }
+.character-select .guest-note { color: #ffcf8a; max-width: 280px; line-height: 1.5; }

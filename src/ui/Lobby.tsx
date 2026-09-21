@@ -10,6 +10,7 @@ import { CLASS_LABEL, readClass, type PlayerClass } from "../game/combat/classes
 import { COSTUMES, costumeById, type Costume } from "../game/render/costumes";
 import { MenuScene } from "../game/render/MenuScene";
 import { nicknameProblem } from "../net/account";
+import { loginState } from "../net/login";
 import type { FriendsClient } from "../net/friends";
 import { partyLineup, partyProblem, type PartyClient } from "../net/party";
 import { GAME_TITLE } from "./brand";
@@ -70,6 +71,8 @@ export function Lobby({
   const [draftName, setDraftName] = useState("");
   const [draftCostume, setDraftCostume] = useState<Costume>(COSTUMES[0]);
   const [creating, setCreating] = useState(false);
+  // A guest's characters live on an address made for this visit only.
+  const [guest] = useState(() => loginState() === "guest");
 
   const active = view?.active ?? null;
   const characters = view?.characters ?? [];
@@ -255,6 +258,7 @@ export function Lobby({
                 정식판 구매 ({price} VX)
               </button>
             )}
+            {guest && <p className="note guest-note">로그인하지 않은 상태예요. 이대로 만든 캐릭터는 다음에 접속하면 불러올 수 없어요. Verse8에 로그인한 뒤 시작해 주세요.</p>}
             {!active && <p className="note">캐릭터를 만들어 모험을 시작하세요.</p>}
             {view && !view.owned && <p className="note">무료로 마을과 숲 필드 1을 즐길 수 있어요. 정식판은 숲 필드 2와 보스 구역을 엽니다.</p>}
             {purchase === "confirming" && <p className="note">결제를 확인하는 중…</p>}

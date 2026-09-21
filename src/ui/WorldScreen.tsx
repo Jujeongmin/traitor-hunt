@@ -34,7 +34,10 @@ export function WorldScreen({ client, playerClass, costume, name, owned, onExit 
   const [problem, setProblem] = useState<{ text: string; at: number } | null>(null);
 
   useEffect(() => {
-    const off = client.onChange(setState);
+    // The screen only cares where you are and whether you are moving between zones; the others'
+    // poses change many times a second and go straight to the 3D view, not through React.
+    const off = client.onChange((next) =>
+      setState((prev) => (prev.phase === next.phase && prev.entry === next.entry && prev.error === next.error ? prev : next)));
     void client.enter();
     return () => {
       off();

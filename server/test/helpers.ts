@@ -24,6 +24,7 @@ export async function makeCharacter(server: any, account: string, name: string, 
 // Sets the XP of an account's active character, as hunting will.
 export async function giveXp(account: string, xp: number): Promise<void> {
   const state = await $global.getUserState(account);
-  const characters = (state.characters as any[]).map((c) => (c.id === state.active ? { ...c, xp } : c));
-  await $global.updateUserState(account, { characters });
+  const map = { ...state.characterMap };
+  map[state.active] = { ...map[state.active], xp };
+  await $global.updateUserState(account, { characterMap: map });
 }

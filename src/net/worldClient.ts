@@ -23,6 +23,9 @@ export interface WorldState {
 // Moving, your pose goes out this often; standing still, this often, so the others keep hearing you.
 export const POSE_THROTTLE_MS = 100;
 export const IDLE_POSE_MS = 1000;
+// Verse8 turns away more than 10 calls a second to one function, so no two poses leave closer than
+// this; a guard, attack or skill that comes sooner goes out with the next one.
+export const MIN_POSE_GAP_MS = 110;
 // Smaller changes than these count as standing still.
 const POSE_EPSILON = 0.01;
 
@@ -96,9 +99,10 @@ export class WorldClient {
   }
 
   // Every POSE_THROTTLE_MS while moving, every IDLE_POSE_MS while standing still; a guard, an attack
-  // or a skill goes out at once.
+  // or a skill as soon as MIN_POSE_GAP_MS allows. Called every frame, so nothing held back is lost.
   reportPose(pose: Pose): void {
     if (this.current.phase !== "in") return;
+    if (this.lastPose && this.now() - this.lastPose.at < MIN_POSE_GAP_MS) return;
     const sent = {
       x: pose.x, z: pose.z, yaw: pose.yaw, y: readJumpY(pose.y), block: pose.block === true,
       swing: readSwing(pose.swing), skill: readSwing(pose.skill),

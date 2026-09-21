@@ -61,3 +61,31 @@ describe("WorldClient", () => {
     expect(a.state.entry?.zone).toBe("village");
   });
 });
+
+describe("WorldClient pose rate", () => {
+  it("never sends more than ten poses a second, and still sends an attack made in between", async () => {
+    let now = 0;
+    const world = new LocalWorld(new Server());
+    const transport = new LocalTransport(world, "test-a", () => now);
+    await transport.call("createCharacter", ["testa", "warrior", "0000"]);
+    const client = new WorldClient(transport, () => now);
+    await client.enter();
+    const sent: unknown[] = [];
+    const call = transport.call.bind(transport);
+    transport.call = ((name: string, args?: unknown[], options?: object) => {
+      if (name === "reportPose") sent.push(args?.[0]);
+      return call(name, args, options);
+    }) as typeof transport.call;
+    // One second of frames at 60 fps, attacking on every frame.
+    for (let frame = 0; frame < 60; frame++) {
+      now = frame * (1000 / 60);
+      client.reportPose({ x: 5 + frame * 0.1, z: 5, yaw: 0, swing: frame });
+    }
+    expect(sent.length).toBeLessThanOrEqual(10);
+    expect(sent.length).toBeGreaterThanOrEqual(8);
+    // The last attack still goes out on the next frame the gap allows.
+    now = 1000 + 200;
+    client.reportPose({ x: 11, z: 5, yaw: 0, swing: 60 });
+    expect((sent.at(-1) as { swing: number }).swing).toBe(60);
+  });
+});
