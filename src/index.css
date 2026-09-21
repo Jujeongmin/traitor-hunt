@@ -244,7 +244,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .main-menu > .menu-modal { z-index: 5; }
 .menu-loading { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); font-size: 14px; }
 .menu-profile { position: absolute; top: 18px; left: 22px; display: flex; align-items: baseline; gap: 12px; }
-.menu-level { font: 800 16px var(--font-logo); color: var(--ember); }
+.menu-level { font: 800 16px var(--font-logo); color: var(--ember); display: flex; align-items: center; gap: 8px; }
+/* How far into the level you are, under the ember number. */
+.level-bar { width: 56px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.level-bar > span { display: block; height: 100%; background: var(--ember); }
 .menu-name { font: 700 18px var(--font-head); }
 .menu-corner { position: absolute; top: 10px; right: 14px; display: flex; gap: 4px; }
 .brush-button.small { min-width: 0; font-size: 15px; padding: 12px 26px; }

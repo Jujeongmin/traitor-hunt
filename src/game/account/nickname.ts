@@ -1,3 +1,5 @@
+import type { LevelView } from "./level";
+
 import { RuleViolation } from "../match/types";
 
 export const NICKNAME_MIN = 2;
@@ -25,4 +27,7 @@ export interface AccountView {
   account: string;
   // Null until the player picks one; the menu asks for it before online play.
   nickname: string | null;
+  // Earned in matches (see level.ts), so the menu can show how far along you are.
+  xp: number;
+  level: LevelView;
 }

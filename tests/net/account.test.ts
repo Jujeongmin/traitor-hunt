@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Server } from "../../server/src/server";
+import { FIRST_LEVEL_XP } from "../../src/game/account/level";
 import { loadAccount, nicknameProblem, saveNickname } from "../../src/net/account";
 import { LocalWorld } from "../../src/net/local/localWorld";
 import { LocalTransport } from "../../src/net/localTransport";
@@ -21,22 +22,28 @@ async function failure(promise: Promise<unknown>): Promise<unknown> {
 describe("account", () => {
   it("has no nickname until one is saved", async () => {
     const [a] = seats("test-a");
-    expect(await loadAccount(a)).toEqual({ account: "test-a", nickname: null });
-    expect(await saveNickname(a, "유적왕")).toEqual({ account: "test-a", nickname: "유적왕" });
-    expect(await loadAccount(a)).toEqual({ account: "test-a", nickname: "유적왕" });
+    expect(await loadAccount(a)).toMatchObject({ account: "test-a", nickname: null });
+    expect(await saveNickname(a, "유적왕")).toMatchObject({ account: "test-a", nickname: "유적왕" });
+    expect(await loadAccount(a)).toMatchObject({ account: "test-a", nickname: "유적왕" });
+  });
+
+  it("starts at level 1 and carries the level through a rename", async () => {
+    const [a] = seats("test-a");
+    expect(await loadAccount(a)).toMatchObject({ xp: 0, level: { level: 1, into: 0, need: FIRST_LEVEL_XP } });
+    expect(await saveNickname(a, "등반가")).toMatchObject({ xp: 0, level: { level: 1 } });
   });
 
   it("lets two players hold different names", async () => {
     const [a, b] = seats("test-a", "test-b");
     await saveNickname(a, "Hunter");
-    expect(await saveNickname(b, "Seeker")).toEqual({ account: "test-b", nickname: "Seeker" });
+    expect(await saveNickname(b, "Seeker")).toMatchObject({ account: "test-b", nickname: "Seeker" });
   });
 
   it("frees a name when its owner renames", async () => {
     const [a, b] = seats("test-a", "test-b");
     await saveNickname(a, "Hunter");
     await saveNickname(a, "Seeker");
-    expect(await saveNickname(b, "hunter")).toEqual({ account: "test-b", nickname: "hunter" });
+    expect(await saveNickname(b, "hunter")).toMatchObject({ account: "test-b", nickname: "hunter" });
   });
 
   it("explains a taken or invalid name in Korean", async () => {

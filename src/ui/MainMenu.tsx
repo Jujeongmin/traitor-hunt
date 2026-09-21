@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FriendsView } from "../game/account/friends";
+import type { LevelView } from "../game/account/level";
 import type { PartyView } from "../game/account/party";
 import { MenuScene } from "../game/render/MenuScene";
 import { ownName } from "../game/render/names";
@@ -14,6 +15,8 @@ interface MainMenuProps {
   account: string;
   // Your server nickname; null while offline, loading, or not yet picked.
   nickname: string | null;
+  // What your finished matches add up to; null while offline or loading.
+  level: LevelView | null;
   // Null until the server account has loaded.
   onSaveNickname: ((nickname: string) => Promise<void>) | null;
   accountFailed: boolean;
@@ -33,7 +36,7 @@ interface MainMenuProps {
 type Sheet = "none" | "settings" | "help";
 
 export function MainMenu({
-  account, nickname, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
+  account, nickname, level, onSaveNickname, accountFailed, friends, friendsView, party, partyView, partyCall, onFollowParty,
   onPractice, onOnline, onlineAvailable,
 }: MainMenuProps) {
   const stage = useRef<HTMLDivElement>(null);
@@ -125,7 +128,14 @@ export function MainMenu({
       {loading < 1 && <div className="menu-loading band">유적을 여는 중… {Math.round(loading * 100)}%</div>}
 
       <div className="menu-profile band">
-        <span className="menu-level">Lv 1</span>
+        <span className="menu-level" title={level ? `경험치 ${level.into} / ${level.need}` : undefined}>
+          Lv {level?.level ?? 1}
+          {level && (
+            <span className="level-bar" aria-hidden="true">
+              <span style={{ width: `${Math.round((level.into / level.need) * 100)}%` }} />
+            </span>
+          )}
+        </span>
         {onSaveNickname ? (
           <button type="button" className="menu-name name-button" title="닉네임 바꾸기" onClick={() => setRenaming(true)}>
             {name}

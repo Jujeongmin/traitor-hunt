@@ -2,6 +2,7 @@ import { isOnline, readFriendLists, type FriendEntry, type FriendSide } from "..
 import {
   readActivity, readInvites, type Party, type PartyInvite, type PartyMemberView,
 } from "../../src/game/account/party";
+import { xpOf } from "../../src/game/account/level";
 import { COSTUMES } from "../../src/game/render/costumes";
 import { isBot } from "../../src/game/match/lifecycle";
 import { RUINS, TILE_SIZE, parseLevel } from "../../src/game/rules/levelLayout";
@@ -102,6 +103,11 @@ export async function writePose(roomId: string, account: string, pose: Pose, at:
   // Trust the height only as far as the map allows: what is under them plus a jump.
   const y = Math.min(readJumpY(pose.y), maxFeetY(LEVEL.platforms, pose.x, pose.z));
   await $global.updateRoomUserState(roomId, account, { pose: { x: pose.x, z: pose.z, yaw: pose.yaw, y, at } });
+}
+
+// The XP of an account, read from the matches it has finished.
+export async function readXp(account: string): Promise<number> {
+  return xpOf(readProfile((await $global.getUserState(account)).profile));
 }
 
 export async function saveResults(matchId: string, results: PlayerResult[]): Promise<void> {

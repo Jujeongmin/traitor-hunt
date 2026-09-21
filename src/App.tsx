@@ -42,6 +42,7 @@ export default function App() {
     <MainMenu
       account={menuTransport?.account ?? (connected ? server.account : PRACTICE_ACCOUNT)}
       nickname={view?.nickname ?? null}
+      level={view?.level ?? null}
       onSaveNickname={view ? save : null}
       accountFailed={failed}
       friends={friends.client}

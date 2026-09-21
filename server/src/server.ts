@@ -1,6 +1,7 @@
 import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
+import { levelOf } from "../../src/game/account/level";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
 import {
   addInvite, checkInvite, joinParty, kickFromParty, leaveParty, readActivity, readPartyMatch, type Party,
@@ -25,7 +26,7 @@ import { stepVote } from "../../src/game/match/vote";
 import {
   LEVEL, claimNickname, createSecret, deleteSecret, findNickname, friendEntry, isPose, listLobbies, markSeen, newRoomId,
   partyMember, readFriendSide, readMatch, readNickname, readPartyInvites, readPartyOf, readPose, readPoses,
-  readSecret, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
+  readSecret, readXp, saveResults, withFriendsLock, withMatchmakingLock, withNicknameLock, withPartyLock, withRoomLock,
   writeFriendSide, writeMatch, writeParty, writePartyInvites, writePose, writeSecret,
 } from "./store";
 
@@ -74,6 +75,12 @@ async function betweenFriends<T>(other: string, rule: (me: FriendSide, them: Fri
     if (JSON.stringify(them.lists) !== before[1]) await writeFriendSide(them);
     return value;
   });
+}
+
+// Your account as the menu sees it: your name and the level your finished matches add up to.
+async function accountView(account: string, nickname: string | null): Promise<AccountView> {
+  const xp = await readXp(account);
+  return { account, nickname, xp, level: levelOf(xp) };
 }
 
 // Who findMatch seats: you alone, or your party if you lead one and everyone is back at the menu.
@@ -216,14 +223,14 @@ export class Server {
 
   async getAccount(): Promise<AccountView> {
     const account = $sender.account;
-    return { account, nickname: await readNickname(account) };
+    return accountView(account, await readNickname(account));
   }
 
   async setNickname(requested: unknown): Promise<AccountView> {
     const { name, key } = parseNickname(requested);
     const account = $sender.account;
     await withNicknameLock(() => claimNickname(account, key, name));
-    return { account, nickname: name };
+    return accountView(account, name);
   }
 
   // Marks you online (the menu calls it every HEARTBEAT_MS) and returns your lists with names and presence.
