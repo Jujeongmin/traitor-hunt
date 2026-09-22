@@ -130,7 +130,8 @@ digital media"에 넣는 것을 허락하고 Unity 엔진을 조건으로 두지
 | art-src 폴더 | 에셋 | 제작 | 라이선스 | 게임 사용처 |
 |---|---|---|---|---|
 | rpg-characters | RPG Character Pack (2020-11) — https://quaternius.com/packs/rpgcharacters.html | Quaternius | CC0 1.0 | 직업 6개의 영웅(hero_warrior·ranger·wizard·cleric·rogue·monk) |
-| ultimate-monsters | Ultimate Monsters — https://quaternius.com/packs/ultimatemonsters.html | Quaternius | CC0 1.0 | 일반 몬스터(mon_green_blob·mushnub·goleling·bat), 보스(mon_mushroom_king), 마을 NPC(npc_merchant = Big/Bunny, npc_elder = Blob/Wizard) |
+| ultimate-monsters | Ultimate Monsters — https://quaternius.com/packs/ultimatemonsters.html | Quaternius | CC0 1.0 | 일반 몬스터(mon_green_blob·mushnub·goleling·bat), 보스(mon_mushroom_king), ~~마을 NPC~~ (사람 모델로 교체, 아래 줄) |
+| ultimate-characters | Ultimate Animated Character Pack (2019-11) — https://quaternius.com/packs/ultimatedanimatedcharacter.html | Quaternius | CC0 1.0 (받은 폴더의 License.txt) | 마을 NPC: npc_merchant = OldClassy_Male, npc_elder = OldClassy_Female (glTF의 Skin 색이 검게 나와 게임에서 색을 덮어씀) |
 | ultimate-monsters (FBX-20260921T060420Z zip) | Quaternius 애니메이션 동물 FBX(Rat·Frog·Snake·Spider·Wasp) | Quaternius | CC0 1.0 (같이 받은 License 파일 4개 모두 CC0 1.0) | 숲 몬스터(mon_rat·frog·snake·spider·wasp) |
 
 변환: `npm run import-gltf`(scripts/gltf-list.json의 glTF → art-src/_glb) 다음 `npm run models`.

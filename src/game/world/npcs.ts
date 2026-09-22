@@ -15,19 +15,24 @@ export interface Npc {
   height: number;
   idle: string;
   greet: string;
+  // Colours laid over the model's materials, by material name (the pack's skin comes out black).
+  colors: Record<string, number>;
   // Where they stand, in cells from the village spawn (the nearest open cell to it is used).
   offset: [number, number];
 }
 
 export const NPCS: readonly Npc[] = [
-  // A rabbit shopkeeper (Quaternius Ultimate Monsters, Big/Bunny) and a blob wizard for the elder
-  // (Blob/Wizard), CC0: nobody can play them, so they never look like another player.
+  // Villagers from Quaternius's Ultimate Animated Character Pack (CC0): an old gentleman in a top
+  // hat keeps the shop, an old lady is the elder. Nobody can play them, so they never look like
+  // another player.
   {
-    id: "merchant", name: "상인 한스", role: "상점", model: "npc_merchant", height: 1.6, idle: "Idle", greet: "Wave",
+    id: "merchant", name: "상인 한스", role: "상점", model: "npc_merchant", height: 1.75, idle: "Idle", greet: "Victory",
+    colors: { Skin: 0xe8b98f, Shirt: 0xeee6d6, Pants: 0x5b4a2e, Detail: 0x9a5424 },
     offset: [2, -2],
   },
   {
-    id: "elder", name: "촌장 마르타", role: "퀘스트", model: "npc_elder", height: 1.3, idle: "Idle", greet: "Yes",
+    id: "elder", name: "촌장 마르타", role: "퀘스트", model: "npc_elder", height: 1.6, idle: "Idle", greet: "Victory",
+    colors: { Skin: 0xf0c9a4, Shirt: 0x7d5a9e, Pants: 0x4e3d63, Hair: 0xd9d4cc, Hat: 0x3b2a4a },
     offset: [-2, -2],
   },
 ];

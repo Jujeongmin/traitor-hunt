@@ -46,11 +46,11 @@
     },
     {
       "name": "npc_elder",
-      "src": "art-src/ultimate-monsters/x/Blob/glTF/Wizard.gltf"
+      "src": "art-src/ultimate-characters/x/glTF/OldClassy_Female.gltf"
     },
     {
       "name": "npc_merchant",
-      "src": "art-src/ultimate-monsters/x/Big/glTF/Bunny.gltf"
+      "src": "art-src/ultimate-characters/x/glTF/OldClassy_Male.gltf"
     }
   ]
 }

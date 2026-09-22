@@ -1,14 +1,16 @@
 import * as THREE from "three";
-import { ActionBlender, clipByName, skinnedHeight } from "./skinned";
+import { ActionBlender, clipByName, ownMaterials, skinnedHeight } from "./skinned";
 import { createLabel, setLabel } from "./labels";
 
-// How a village NPC is drawn: its model (Quaternius Ultimate Monsters, CC0), its standing height,
-// and its clips: one to stand in, one to greet you with when you walk up.
+// How a village NPC is drawn: its model (Quaternius, CC0), its standing height, its clips (one to
+// stand in, one to greet you with when you walk up) and any colours to lay over its materials.
 export interface NpcLook {
   model: string;
   height: number;
   idle: string;
   greet: string;
+  // Colours laid over its materials, by material name.
+  colors: Record<string, number>;
 }
 
 // Names fade out between these distances from the camera (as players' do).
@@ -32,6 +34,10 @@ export class NpcActor {
 
   constructor(body: THREE.Object3D, clips: THREE.AnimationClip[], look: NpcLook, label: string, x: number, z: number, yaw: number) {
     body.scale.setScalar(look.height / skinnedHeight(body));
+    for (const material of ownMaterials(body)) {
+      const colour = look.colors[material.name];
+      if (colour !== undefined) material.color.setHex(colour);
+    }
     this.mixer = new THREE.AnimationMixer(body);
     this.idle = this.mixer.clipAction(clipByName(clips, look.idle));
     this.greet = this.mixer.clipAction(clipByName(clips, look.greet));

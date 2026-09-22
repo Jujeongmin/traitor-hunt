@@ -245,37 +245,48 @@
     },
     "npc_elder": {
       "url": "assets/models/npc_elder.glb",
-      "bytes": 47652,
+      "bytes": 436100,
       "animations": [
-        "Bite_Front",
-        "Dance",
         "Death",
-        "HitRecieve",
+        "Defeat",
         "Idle",
         "Jump",
-        "No",
+        "PickUp",
+        "Punch",
+        "RecieveHit",
+        "Roll",
+        "Run",
+        "Run_Carry",
+        "Shoot_OneHanded",
+        "SitDown",
+        "StandUp",
+        "SwordSlash",
+        "Victory",
         "Walk",
-        "Yes"
+        "Walk_Carry"
       ]
     },
     "npc_merchant": {
       "url": "assets/models/npc_merchant.glb",
-      "bytes": 429988,
+      "bytes": 417644,
       "animations": [
         "Death",
-        "Duck",
-        "HitReact",
+        "Defeat",
         "Idle",
         "Jump",
-        "Jump_Idle",
-        "Jump_Land",
-        "No",
+        "PickUp",
         "Punch",
+        "RecieveHit",
+        "Roll",
         "Run",
+        "Run_Carry",
+        "Shoot_OneHanded",
+        "SitDown",
+        "StandUp",
+        "SwordSlash",
+        "Victory",
         "Walk",
-        "Wave",
-        "Weapon",
-        "Yes"
+        "Walk_Carry"
       ]
     },
     "pt_apple_tree": {
