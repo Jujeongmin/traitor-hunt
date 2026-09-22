@@ -587,12 +587,11 @@ export class Server {
     return bagView(next);
   }
 
-  // The smith enhances what you wear in a slot by one +: the gold and 강화석 are spent whatever
+  // Enhances what you wear in a slot by one + (from the forge in the menu, anywhere): the gold and 강화석 are spent whatever
   // happens; a failure on the way to +6 and above may break the gear (see forge.ts).
   async enhanceGear(rawSlot: unknown): Promise<{ outcome: EnhanceOutcome; bag: BagView }> {
     if (rawSlot !== "weapon" && rawSlot !== "armor") throw new RuleViolation("unavailable");
     const slot: Slot = rawSlot;
-    await requireNpc("smith");
     const account = $sender.account;
     const current = await playing(account);
     const item = current.gear[slot];
@@ -623,11 +622,10 @@ export class Server {
     }
   }
 
-  // The smith makes something from materials and gold (see RECIPES in forge.ts).
+  // Makes something from materials and gold (see RECIPES in forge.ts), anywhere.
   async craftItem(rawRecipe: unknown): Promise<BagView> {
     const recipe = readRecipe(rawRecipe);
     if (!recipe) throw new RuleViolation("unavailable");
-    await requireNpc("smith");
     const account = $sender.account;
     const current = await playing(account);
     if (!hasMaterials(current.bag, recipe)) throw new RuleViolation("no_item");

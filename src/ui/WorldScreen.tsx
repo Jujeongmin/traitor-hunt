@@ -224,10 +224,11 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
               ["ranking", "랭킹", () => setPanel("ranking")],
               ["quests", "퀘스트", () => setPanel((p) => (p === "quests" ? null : "quests"))],
               ["skills", "스킬", () => setPanel((p) => (p === "skills" ? null : "skills"))],
+              ["forge", "대장간", () => setPanel((p) => (p === "smith" ? null : "smith"))],
               ["bag", "가방", () => setPanel("bag")],
               ["menu", "메뉴", () => setMenu(true)],
             ] as const).map(([id, label, open]) => (
-              <button key={id} type="button" className={`hud-icon-button${panel === id ? " on" : ""}`} onClick={open}>
+              <button key={id} type="button" className={`hud-icon-button${panel === id || (id === "forge" && panel === "smith") ? " on" : ""}`} onClick={open}>
                 <img src={iconFor(`ui_${id}`) ?? undefined} alt="" draggable={false} />
                 <span>{label}</span>
               </button>

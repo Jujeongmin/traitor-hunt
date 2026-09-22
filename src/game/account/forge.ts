@@ -1,7 +1,8 @@
 import { ITEMS, MAX_PLUS, type Bag, type ItemId } from "./items";
 
-// The village smith: enhancing worn gear (+1 to +10) and making gear and potions from what monsters
-// drop. The server rolls every attempt; these tables are what it and the smith's screen go by.
+// The forge (in the menu, anywhere; the village smith opens it too): enhancing worn gear (+1 to +10)
+// and making gear and potions from what monsters drop. The server rolls every attempt; these tables
+// are what it and the forge's screen go by.
 
 // The chance of reaching each + (index 1 is +1), and, for a failure on the way to +6 and above, the
 // chance the gear breaks and is lost. Below +6 a failure only costs what was spent.

@@ -13,8 +13,8 @@ const OUTCOME: Record<EnhanceOutcome, string> = {
 
 const percent = (n: number) => `${Math.round(n * 100)}%`;
 
-// The smith in the village: enhance what you wear (+1 to +10, riskier the higher it goes) and make
-// gear and potions from what monsters drop.
+// The forge, from the menu anywhere (or from the village smith): enhance what you wear (+1 to +10,
+// riskier the higher it goes) and make gear and potions from what monsters drop.
 export function SmithPanel({ client, bag, onClose }: { client: WorldClient; bag: BagView | null; onClose: () => void }) {
   const [tab, setTab] = useState<"enhance" | "craft">("enhance");
   const [note, setNote] = useState<{ text: string; tone: "good" | "bad" } | null>(null);

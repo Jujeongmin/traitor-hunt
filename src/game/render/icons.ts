@@ -366,8 +366,12 @@ const cache = new Map<string, string>();
 // Null where there is no canvas (tests).
 // Items (potions, gear, materials) are pictures from the 496 RPG icons pack (Henrique Lazarini, CC0),
 // one file each under assets/ui/items; everything else is drawn from the grids above.
+// Menu icons that are pictures from the same pack rather than grids.
+const ICON_FILES: Record<string, string> = { ui_forge: "assets/ui/icons/forge.png" };
+
 export function iconFor(id: string): string | null {
   if (id in ITEMS) return publicUrl(`assets/ui/items/${id}.png`);
+  if (ICON_FILES[id]) return publicUrl(ICON_FILES[id]);
   if (typeof document === "undefined") return null;
   const cached = cache.get(id);
   if (cached) return cached;

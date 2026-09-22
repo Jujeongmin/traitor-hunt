@@ -3,7 +3,7 @@ import { ITEMS } from "../../src/game/account/items";
 import { enterAs, errorOf, makeCharacter, toNpc } from "./helpers";
 import { readProfile, updateActive } from "../src/store";
 
-// A character by the smith, wearing a weapon, with gold and 강화석 to spend.
+// A character by the smith (the forge works anywhere), wearing a weapon, with gold and 강화석 to spend.
 async function atTheForge(server: any, stones = 20, gold = 5000): Promise<void> {
   await makeCharacter(server, "test-a", "대장장이손님");
   await enterAs(server, "test-a");
@@ -61,7 +61,7 @@ describe("the smith", () => {
     expect(broken.bag.plus.weapon_2).toBeUndefined();
   });
 
-  test("is the smith's, and wants what it costs", async (server) => {
+  test("wants what it costs, and works anywhere", async (server) => {
     await atTheForge(server, 0, 0);
     expect(await errorOf(server.enhanceGear("weapon"))).toContain("no_item");
     await updateActive("test-a", (c) => ({ ...c, bag: { ...c.bag, stone: 5 } }));
@@ -69,8 +69,11 @@ describe("the smith", () => {
     expect(await errorOf(server.enhanceGear("armor"))).toContain("unavailable");
     await updateActive("test-a", (c) => ({ ...c, plus: { weapon_2: 10 } }));
     expect(await errorOf(server.enhanceGear("weapon"))).toContain("max_plus");
+    // Away from the smith it works all the same.
     await toNpc(server, "merchant");
-    expect(await errorOf(server.craftItem("potion_big"))).toContain("not_near");
+    await updateActive("test-a", (c) => ({ ...c, bag: { ...c.bag, jelly: 4 } }));
+    await $asset.mint("gold", 100);
+    expect((await server.craftItem("potion_big")).bag.potion_big).toBe(2);
   });
 
   test("makes things from materials and gold", async (server) => {
