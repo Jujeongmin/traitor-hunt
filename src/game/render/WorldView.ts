@@ -20,7 +20,7 @@ import { NPCS, NPC_MODELS, npcNear, npcFacing, npcSpot, type NpcId } from "../wo
 import { NpcActor } from "./NpcActor";
 import type { Pose } from "../world/types";
 import { PORTAL_RADIUS, START_ZONE, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
-import { playCue, playHurt, playShot, playSkill, playStep, playSwing, preloadCues } from "../audio/sfx";
+import { playCue, preloadCues } from "../audio/sfx";
 import { costumeById, type Costume } from "./costumes";
 import { Effects } from "./effects";
 import { FpsInput } from "./FpsInput";
@@ -77,9 +77,9 @@ const GAIN_MS = 1500;
 const NOTE_MS = 3000;
 // In a hidden tab the game steps this often (ms), and no step covers more than this (s).
 const BACKGROUND_STEP_MS = 200;
+// A monster falling further off than this makes no sound.
+const DIE_HEARD = 18;
 const BACKGROUND_MAX_DT = 0.25;
-// A footstep sounds every this many metres walked.
-const STRIDE = 1.7;
 // Potions go down no faster than this.
 const POTION_GAP_MS = 1000;
 
@@ -407,9 +407,6 @@ export class WorldView {
   }
 
   private stopBackground: () => void = () => {};
-  // Where the last footstep sounded, and the level last heard (for the level-up jingle).
-  private lastStepAt = { x: 0, z: 0 };
-  private heardLevel = 0;
   private stopQuality: () => void = () => {};
 
   // One step of the game: `draw` is false in a hidden tab, which only needs the game to go on.
@@ -470,13 +467,6 @@ export class WorldView {
       slot: this.lastSlot,
     };
     if (here) this.client.reportPose(this.pose);
-    // Footsteps on the grass, one every stride, while walking on the ground (and being watched).
-    const walked = Math.hypot(this.pose.x - this.lastStepAt.x, this.pose.z - this.lastStepAt.z);
-    if (!draw || !here || this.air.y > 0 || walked > STRIDE * 4) this.lastStepAt = { x: this.pose.x, z: this.pose.z };
-    else if (walked >= STRIDE) {
-      this.lastStepAt = { x: this.pose.x, z: this.pose.z };
-      playStep();
-    }
     this.checkPortals(here);
 
     this.showHurt(state.me?.hp ?? null);
@@ -656,8 +646,7 @@ export class WorldView {
       this.lastAttackAt = now;
       this.swings += 1;
       const shot = HEROES[c].shot;
-      if (shot) playShot(shot);
-      else playSwing();
+      playCue(shot ?? "swing");
       if (target) void this.client.strike(target, yaw);
     }
     if (now - Math.max(...this.lastSkillAt) < SKILL_GAP_MS) return yaw;
@@ -686,7 +675,7 @@ export class WorldView {
     this.lastSkillAt[index] = now;
     this.lastSlot = index;
     this.skills += 1;
-    playSkill();
+    playCue("skill");
     void this.client.useSkill(index, yaw).then((r) => {
       for (const id of r?.hit ?? []) this.skillHits.set(id, performance.now());
     });
@@ -713,6 +702,7 @@ export class WorldView {
       const recent = this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : 0;
       this.gain = { xp: recent + result.xp, at: now };
     }
+    if (result.gold > 0 || result.items.length > 0) playCue("gold");
     if (result.gold > 0) this.notes.push({ text: `+${result.gold} 골드`, at: now });
     for (const id of result.items) this.notes.push({ text: `${ITEMS[id]?.name ?? id} 획득`, at: now });
   }
@@ -805,7 +795,6 @@ export class WorldView {
       const at = new THREE.Vector3(this.pose.x, 2.1, this.pose.z);
       if (settings().damageNumbers) this.effects.floatText(at, `-${Math.round(this.lastHp - hp)}`, "#ff5a4a");
       this.hurtAt = performance.now();
-      playHurt();
     }
     this.lastHp = hp;
   }
@@ -832,7 +821,11 @@ export class WorldView {
         if (big) this.skillHits.delete(id);
         if (settings().damageNumbers) this.effects.floatText(at, String(Math.round(change.damage)), big ? "#ffb347" : "#fff4dc", big);
       }
-      if (change.died) this.effects.burst(new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z), 0xfff1c9);
+      if (change.died) {
+        this.effects.burst(new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z), 0xfff1c9);
+        // Heard only near you, not from across the field.
+        if (Math.hypot(actor.object.position.x - this.pose.x, actor.object.position.z - this.pose.z) < DIE_HEARD) playCue("die");
+      }
       if (change.slammed) {
         const ground = new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z);
         this.effects.ring(ground, BOSS_MOVES.slamRadius, 0xff7a3a);
@@ -879,9 +872,6 @@ export class WorldView {
     const near = this.nearestPortal();
     const me = this.client.state.me;
     const level = levelOf(me?.xp ?? 0);
-    // A new level: a jingle (not for the level you arrive with).
-    if (me && this.heardLevel > 0 && level.level > this.heardLevel) playCue("levelup");
-    if (me) this.heardLevel = level.level;
     const fighting = this.target ? this.client.state.monsters[this.target] : undefined;
     const hud: WorldHud = {
       zone: ZONES[entry.zone].name,

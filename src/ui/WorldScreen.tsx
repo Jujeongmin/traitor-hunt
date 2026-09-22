@@ -146,7 +146,6 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     // Only a quest seen going from unfinished to finished, not one already done when you arrive.
     if (last && last.index === bag.quest.index && !last.done && done) {
       setFinished(bag.quest.index);
-      playCue("quest");
     }
     lastQuest.current = { index: bag.quest.index, done };
   }, [bag]);

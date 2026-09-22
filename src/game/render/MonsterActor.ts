@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { BOSS_MOVES, type MonsterState } from "../world/monsters";
 import { ActionBlender, clipByName, ownMaterials, skinnedHeight } from "./skinned";
-import { playHit } from "../audio/sfx";
 
 const HIT_FLASH_SECONDS = 0.08;
 const FOLLOW_RATE = 12;
@@ -145,7 +144,6 @@ export class MonsterActor {
     if (this.lastHp !== null && state.hp < this.lastHp) {
       this.flashLeft = HIT_FLASH_SECONDS;
       change.damage = this.lastHp - state.hp;
-      playHit();
       if (this.blowFrom) {
         const away = new THREE.Vector3(p.x - this.blowFrom.x, 0, p.z - this.blowFrom.z);
         if (away.lengthSq() > 1e-6) this.knock.copy(away.normalize().multiplyScalar(KNOCK_DISTANCE));

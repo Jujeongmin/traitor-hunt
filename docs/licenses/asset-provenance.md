@@ -110,19 +110,24 @@ npm 패키지(@fontsource)로 넣었고 모두 SIL Open Font License 1.1이다(�
 
 ## 효과음 (2026-09-22)
 
-전투음(휘두르기, 활·마법, 타격, 스킬, 피격)은 Web Audio로 합성한다(`src/game/audio/sfx.ts`). 그 밖의 소리는 Kenney의
-CC0 팩(Reroll-Beasts/art-src에서 복사)을 `public/assets/sfx/`에 그대로 넣었다(합계 약 160 KB).
+모두 CC0. 사용자가 후보 페이지(art-src/sfx/후보.html)에서 귀로 골랐다. 원본 zip과 풀린 파일은 `art-src/sfx/`에 있다.
+WAV는 모노 22.05 kHz로 줄이고 앞뒤 무음을 잘랐고, OGG는 그대로 복사했다. 크기는 `src/game/audio/sfx.ts`의 `CUES`에서 맞춘다.
+타격음, 피격음, 레벨업, 퀘스트 완료, 발소리는 소리를 내지 않는다(사용자 선택).
 
-| 파일 | 원본 | 팩 |
-|---|---|---|
-| `levelup.ogg` | jingles_STEEL03 | Kenney Music Jingles |
-| `quest.ogg` | jingles_STEEL12 | Kenney Music Jingles |
-| `enhance_ok.ogg` | jingles_PIZZI10 | Kenney Music Jingles |
-| `enhance_fail.ogg` | error_004 | Kenney Interface Sounds |
-| `enhance_break.ogg` | glass_006 | Kenney Interface Sounds |
-| `potion.ogg` | glass_002 | Kenney Interface Sounds |
-| `click.ogg`, `open.ogg`, `close.ogg` | click_002, open_001, close_001 | Kenney Interface Sounds |
-| `step_0~3.ogg` | footstep_grass_000~003 | Kenney Impact Sounds |
+| 파일 | 원본 | 팩 | 제작자 | 출처 |
+|---|---|---|---|---|
+| `swing.ogg` | sword.3.ogg | 20 Sword Sound Effects | StarNinjas | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes |
+| `arrow.wav` | swish-12.wav | 13 Swishes | artisticdude | https://opengameart.org/content/swishes-sound-pack |
+| `bolt.ogg` | spell_fire_01.ogg | 80 CC0 RPG SFX | rubberduck | https://opengameart.org/content/80-cc0-rpg-sfx |
+| `skill.ogg` | spell_fire_07.ogg | 80 CC0 RPG SFX | rubberduck | https://opengameart.org/content/80-cc0-rpg-sfx |
+| `die.ogg` | creature_slime_01.ogg | 80 CC0 RPG SFX | rubberduck | https://opengameart.org/content/80-cc0-rpg-sfx |
+| `enhance_fail.ogg` | stones_01.ogg | 80 CC0 RPG SFX | rubberduck | https://opengameart.org/content/80-cc0-rpg-sfx |
+| `enhance_break.ogg` | stones_03.ogg | 80 CC0 RPG SFX | rubberduck | https://opengameart.org/content/80-cc0-rpg-sfx |
+| `potion.wav` | inventory/bubble2.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
+| `gold.wav` | inventory/coin.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
+| `click.wav` | interface/interface1.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
+| `cloth.wav` (창 열기·닫기) | inventory/cloth.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
+| `enhance_ok.wav` | inventory/metal-ringing.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
 
 ## 야외·치비 전환 (2026-09-21)
 
