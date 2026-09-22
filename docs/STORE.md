@@ -100,7 +100,7 @@ RPG, MMORPG, Multiplayer, 3D, Action, Fantasy, Adventure, Co-op
 ```
 - 숲과 마을이 새로워졌습니다: 진짜 나무 숲, 흙길과 풀밭, 마을의 집들, 멀리 보이는 성채
 - 상인과 촌장이 마을 집 앞으로 이사했습니다
-- 채널 채팅과 말풍선이 생겼습니다 (PC는 Enter)
+- 채널 채팅이 생겼습니다 (PC는 Enter)
 - 몬스터 보상은 가장 많이 싸운 사람에게, 퀘스트는 한 대만 때려도 카운트됩니다
 - 스킬 칸 설정이 계정에 저장됩니다
 - 채널 인원이 10명으로 바뀌었습니다
@@ -111,7 +111,7 @@ English:
 ```
 - A new look for the forest and the village: a real forest, dirt paths and meadows, village houses and a castle on the far hills
 - The merchant and the elder moved to the doors of the village's houses
-- Channel chat with speech bubbles (Enter on PC)
+- Channel chat (Enter on PC)
 - A monster's rewards go to whoever fought it hardest; a single hit counts toward your quest
 - Your skill bar is saved to your account
 - Channels now hold 10 players

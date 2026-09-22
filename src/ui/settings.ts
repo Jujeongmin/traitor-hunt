@@ -11,14 +11,11 @@ export interface Settings extends Controls {
   music: number;
   // Renderer exposure.
   brightness: number;
-  // Moving the mouse up looks down.
-  invertY: boolean;
   // How much the world draws (see QUALITY).
   quality: Quality;
-  // Other players' names over them, damage numbers over monsters and you, chat lines over speakers.
+  // Other players' names over them, and damage numbers over monsters and you.
   showNames: boolean;
   damageNumbers: boolean;
-  chatBubbles: boolean;
   // From Controls: which of the potion and the three skills auto-battle may use on its own
   // (dragged down under their slots to turn on), and what sits in the three skill slots of the bar,
   // per class (a skill's index, or null for an empty slot; a learned skill is dragged in from the
@@ -58,7 +55,7 @@ export const QUALITY: Record<Quality, { label: string; pixelRatio: number; near:
 const COARSE = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
 
 export const DEFAULT_SETTINGS: Settings = {
-  invertY: false, quality: COARSE ? "mid" : "high", showNames: true, damageNumbers: true, chatBubbles: true,
+  quality: COARSE ? "mid" : "high", showNames: true, damageNumbers: true,
   sensitivity: 1, volume: 0.8, music: 0.5, brightness: 1, autoPotion: true, potionAt: POTION_AT.start, autoSkills: [true, false, false], hotbars: {},
 };
 

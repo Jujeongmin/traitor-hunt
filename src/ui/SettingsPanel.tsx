@@ -28,7 +28,6 @@ const SCREEN: Slider[] = [
 const SHOWN: { key: FlagKey; label: string }[] = [
   { key: "showNames", label: "다른 플레이어 이름" },
   { key: "damageNumbers", label: "데미지 숫자" },
-  { key: "chatBubbles", label: "채팅 말풍선" },
 ];
 const KEYS: [string, string][] = [
   ["WASD", "이동"], ["Space", "점프"], ["좌클릭 / 우클릭", "공격 / 막기"], ["1 ~ 3", "스킬"], ["Q", "물약"],
@@ -68,7 +67,6 @@ export function SettingsPanel({ onClose, onExit }: { onClose: () => void; onExit
         {SOUND.map(slider)}
         <h3>조작</h3>
         {CONTROL.map(slider)}
-        {flag("invertY", "마우스 상하 반전")}
         <h3>화면</h3>
         {SCREEN.map(slider)}
         <div className="setting-row">

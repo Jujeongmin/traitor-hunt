@@ -153,8 +153,6 @@ export class WorldView {
   private readonly input: FpsInput;
   private readonly effects = new Effects(this.scene);
   private readonly others = new Map<string, { actor: PlayerActor; key: string }>();
-  // The last chat line put over someone's head; lines from before this zone are not.
-  private chatShown: number;
   private readonly monsters = new Map<string, MonsterActor>();
   private readonly npcs: { id: NpcId; actor: NpcActor; at: Point2 }[] = [];
   // Where you were sent to walk (to an NPC), and whom to talk to on arrival.
@@ -211,7 +209,6 @@ export class WorldView {
     private readonly options: WorldViewOptions,
   ) {
     this.layout = zoneLayout(options.entry.zone);
-    this.chatShown = client.state.chat.at(-1)?.id ?? 0;
     this.portals = portalsOf(options.entry.zone);
     this.walls = solidWith(this.layout, Infinity);
     this.pose = { x: options.entry.x, z: options.entry.z, yaw: 0 };
@@ -420,7 +417,7 @@ export class WorldView {
     const state = this.client.state;
 
     const look = this.input.consumeLook();
-    const view = applyLook(this.yaw, this.pitch, look.dx, settings().invertY ? -look.dy : look.dy, LOOK_SENSITIVITY * settings().sensitivity);
+    const view = applyLook(this.yaw, this.pitch, look.dx, look.dy, LOOK_SENSITIVITY * settings().sensitivity);
     this.renderer.toneMappingExposure = settings().brightness;
     this.yaw = view.yaw;
     this.pitch = view.pitch;
@@ -794,11 +791,6 @@ export class WorldView {
       entry.actor.label(settings().showNames ? `Lv${other.look.level} ${other.look.job ? `${other.look.job} ` : ""}${other.look.name}` : "");
       entry.actor.sync(other.pose, "active", dt);
       entry.actor.fadeLabel(this.camera.position.distanceTo(entry.actor.object.position));
-    }
-    for (const line of this.client.state.chat) {
-      if (line.id <= this.chatShown) continue;
-      this.chatShown = line.id;
-      if (settings().chatBubbles) (line.mine ? this.me : this.others.get(line.account)?.actor)?.say(line.text);
     }
     for (const [account, entry] of this.others) {
       if (seen.has(account)) continue;
