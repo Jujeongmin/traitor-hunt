@@ -1,5 +1,8 @@
-// Player settings, kept in this browser. Read live by the game view and the sound effects.
-export interface Settings {
+import { HOTBAR_SLOTS, type Controls } from "../game/account/controls";
+
+// Player settings, kept in this browser (the bar's set-up is also kept on the account; see
+// syncControls). Read live by the game view and the sound effects.
+export interface Settings extends Controls {
   // Multiplies mouse look speed.
   sensitivity: number;
   // 0 to 1.
@@ -8,16 +11,18 @@ export interface Settings {
   music: number;
   // Renderer exposure.
   brightness: number;
-  // Which of the potion and the three skills auto-battle may use on its own (dragged down under
-  // their slots to turn on).
-  autoPotion: boolean;
-  autoSkills: boolean[];
-  // What sits in the three skill slots of the bar, per class: a skill's index, or null for an
-  // empty slot. A learned skill is dragged in from the skill panel.
-  hotbars: Record<string, (number | null)[]>;
+  // From Controls: which of the potion and the three skills auto-battle may use on its own
+  // (dragged down under their slots to turn on), and what sits in the three skill slots of the bar,
+  // per class (a skill's index, or null for an empty slot; a learned skill is dragged in from the
+  // skill panel).
 }
 
-export const HOTBAR_SLOTS = 3;
+// The part of the settings kept on the account.
+export function controlsOf(s: Settings): Controls {
+  return { hotbars: s.hotbars, autoSkills: s.autoSkills, autoPotion: s.autoPotion };
+}
+
+export { HOTBAR_SLOTS };
 
 // A class's bar: its first skill in the first slot until the player arranges it.
 export function hotbarFor(playerClass: string): (number | null)[] {

@@ -5,6 +5,7 @@ import { COSTUMES, costumeById } from "./game/render/costumes";
 import { loadRanking } from "./net/account";
 import { Verse8Transport } from "./net/verse8Transport";
 import { devLocalTransport } from "./net/devLocal";
+import { syncControls } from "./net/controlsSync";
 import { WorldClient } from "./net/worldClient";
 import { Lobby } from "./ui/Lobby";
 import { ModelGallery, galleryEnabled } from "./ui/ModelGallery";
@@ -32,6 +33,9 @@ export default function App() {
   const friends = useFriends(transport);
   const party = useParty(transport, inWorld ? "world" : "menu");
   const world = useMemo(() => (transport ? new WorldClient(transport) : null), [transport]);
+
+  // The bar's set-up follows the account.
+  useEffect(() => (transport ? syncControls(transport) : undefined), [transport]);
 
   // Losing the server takes you back to the menu.
   useEffect(() => {

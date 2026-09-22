@@ -5,6 +5,7 @@ import { levelOf } from "../../src/game/account/level";
 import {
   GOLD, ITEMS, MAX_STACK, NO_GEAR, addItem, equip, readItemId, sellPrice, unequip, type BagView, type ItemId, type Slot,
 } from "../../src/game/account/items";
+import { readControls, type Controls } from "../../src/game/account/controls";
 import { CHAT_WINDOW_MS, chatAllowed, readChat, type ChatMessage } from "../../src/game/world/chat";
 import { rankHitters, rollLoot, xpFor, type MonsterType } from "../../src/game/world/monsters";
 import { QUESTS, QUEST_START, countKills, questDone } from "../../src/game/account/quests";
@@ -242,6 +243,18 @@ export class Server {
 
   async getAccount(): Promise<AccountView> {
     return accountView($sender.account);
+  }
+
+  // How you set up the bar (skills in slots, what auto-battle may use), kept on the account so it
+  // follows you to any device; null until first saved.
+  async getControls(): Promise<Controls | null> {
+    return readControls((await $global.getUserState($sender.account)).controls);
+  }
+
+  async saveControls(raw: unknown): Promise<void> {
+    const controls = readControls(raw);
+    if (!controls) throw new RuleViolation("unavailable");
+    await $global.updateUserState($sender.account, { controls });
   }
 
   // Whether a name is free for a new character (asked while typing it, before the rest is picked).
