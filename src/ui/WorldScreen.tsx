@@ -209,6 +209,14 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
       on: menu,
     },
   ];
+  // J does what tapping the quest does: go after its monsters, or (done, in the village) report it.
+  const questAct = useRef(() => {});
+  questAct.current = () => {
+    const quest = bag ? QUESTS[bag.quest.index] : undefined;
+    if (!bag || !quest) return;
+    if (!questDone(bag.quest)) view.current?.seekQuest(quest.targets);
+    else if (inVillage) view.current?.walkToNpc("elder");
+  };
   const keys = useRef(menuItems);
   keys.current = menuItems;
   useEffect(() => {
@@ -218,6 +226,10 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         if (open.current.menu) setMenu(false);
         else if (open.current.panel) setPanel(null);
         else setMenuOpen((o) => !o);
+        return;
+      }
+      if (e.code === "KeyJ") {
+        questAct.current();
         return;
       }
       keys.current.find((item) => item.code === e.code)?.act();
@@ -291,13 +303,14 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
             <PadButtons
               controls={view.current.controls} auto={hud.auto} talkTo={hud.npc?.name ?? null}
               onJump={() => view.current?.tapJump()} onAuto={() => view.current?.toggleAuto()} onTalk={() => view.current?.talk()}
+              keys={!touch}
             />
           )}
           <SkillBar hud={hud} playerClass={playerClass} onSkill={(slot) => view.current?.tapSkill(slot)} onPotion={() => view.current?.tapPotion()} />
           {/* The side panels sit where the tracker is; it steps aside while one is open. */}
           {panel !== "quests" && panel !== "skills" && (
             <QuestTracker
-              bag={bag} seeking={hud.seeking} inVillage={inVillage}
+              bag={bag} seeking={hud.seeking} inVillage={inVillage} keyLabel={touch ? null : "J"}
               onSeek={(types) => view.current?.seekQuest(types)} onReport={() => view.current?.walkToNpc("elder")}
             />
           )}
@@ -313,7 +326,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · E 대화 · Enter 채팅 · Esc 메뉴 펼치기 · O 랭킹 · L 퀘스트 · K 스킬 창 · U 대장간 · I 가방 · P 설정 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · E 대화 · R 자동 전투 · J 퀘스트 찾아가기/보고 · Enter 채팅 · Esc 메뉴 펼치기 · O 랭킹 · L 퀘스트 · K 스킬 창 · U 대장간 · I 가방 · P 설정 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>

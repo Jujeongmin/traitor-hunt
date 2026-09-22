@@ -305,24 +305,36 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
   background: rgba(255, 224, 184, 0.75); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); pointer-events: none;
 }
-.touch-buttons { position: absolute; right: 16px; bottom: 96px; display: flex; flex-direction: row-reverse; gap: 8px; align-items: center; }
+/* The round, see-through buttons at the bottom right: a big attack button with guard, jump, auto-battle
+   and talk in an arc round it. */
+.pad-buttons { position: absolute; right: 16px; bottom: 24px; width: 236px; height: 212px; pointer-events: none; }
+.pad-button {
+  position: absolute; width: 62px; height: 62px; border-radius: 50%; padding: 0; pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  background: rgba(14, 11, 9, 0.32); border: 2px solid rgba(255, 255, 255, 0.28); color: rgba(242, 232, 213, 0.9);
+  font: 700 10px var(--font-head); text-shadow: var(--shadow); touch-action: none; user-select: none; cursor: pointer;
+}
+.pad-button img { width: 34px; height: 34px; image-rendering: pixelated; opacity: 0.85; pointer-events: none; }
+.pad-button span { pointer-events: none; }
+.pad-button:hover { background: rgba(14, 11, 9, 0.45); }
+.pad-button:active { transform: scale(0.94); }
+.pad-button .hud-key { top: -4px; right: -8px; }
+.pad-attack { right: 0; bottom: 0; width: 92px; height: 92px; border-color: rgba(255, 179, 90, 0.7); }
+.pad-attack img { width: 50px; height: 50px; }
+.pad-jump { right: 104px; bottom: 2px; }
+.pad-block { right: 86px; bottom: 76px; }
+.pad-auto { right: 14px; bottom: 104px; border-color: rgba(157, 255, 176, 0.55); }
+.pad-auto.on { background: rgba(157, 255, 176, 0.35); border-color: #9dffb0; color: #eaffef; }
+.pad-talk { right: 158px; bottom: 120px; border-color: rgba(255, 211, 106, 0.7); }
 /* With touch controls the quest sits higher, clear of the buttons. */
 .hud-quest { top: 30%; transform: none; }
 .ui.touch .hud-quest { top: 26%; width: 210px; }
-.touch-button {
-  width: 64px; height: 64px; border-radius: 50%; font: 700 14px var(--font-head); color: var(--ink);
-  background: rgba(14, 11, 9, 0.6); border: 2px solid rgba(255, 255, 255, 0.3); touch-action: none; user-select: none;
-}
-.touch-button.attack { width: 84px; height: 84px; border-color: var(--ember); color: var(--ember); }
-.touch-button.talk { border-color: #ffd36a; color: #ffd36a; }
 /* Talking to a village NPC. */
 .npc-panel { width: min(440px, 92%); display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
 .npc-name { margin: 0; font: 800 18px var(--font-head); color: #ffd36a; }
 .npc-line { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink); }
 .npc-quest { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.05); font-size: 12px; color: var(--ink-dim); }
 .npc-quest b { font: 700 15px var(--font-head); color: var(--ink); }
-.touch-button.auto { white-space: pre-line; line-height: 1.1; border-color: #9dffb0; color: #9dffb0; }
-.touch-button.auto.on { background: #9dffb0; color: #1a120b; }
 .hud-quest b { font: 700 14px var(--font-head); color: #ffd36a; }
 .hud-quest .count { color: var(--ink); font-variant-numeric: tabular-nums; }
 .hud-quest .brush-button.small { margin-top: 4px; padding: 8px 16px; font-size: 13px; }
@@ -723,3 +735,5 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .death-panel { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 420px; }
 .death-loss { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; font: 700 15px var(--font-head); color: var(--blood); }
 .death-panel .note { font-size: 12px; color: var(--ink-dim); text-align: center; }
+
+.hud-quest > .hud-key { top: -6px; right: -6px; }

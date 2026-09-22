@@ -11,12 +11,14 @@ interface QuestTrackerProps {
   onSeek: (types: readonly MonsterType[]) => void;
   // Tapping a finished one (in the village) walks you to the elder to report it.
   onReport: () => void;
+  // The key that does what tapping it does, shown in its corner (none on a touch screen).
+  keyLabel: string | null;
 }
 
 // The quest you are on, at the right, kept short: its name, what to hunt and how far along (the
 // reward is in the quest tab). Tapping it goes after its monsters; once done, it is reported to the
 // elder in the village.
-export function QuestTracker({ bag, seeking, inVillage, onSeek, onReport }: QuestTrackerProps) {
+export function QuestTracker({ bag, seeking, inVillage, onSeek, onReport, keyLabel }: QuestTrackerProps) {
   if (!bag) return null;
   const quest = QUESTS[bag.quest.index];
   if (!quest) {
@@ -42,6 +44,7 @@ export function QuestTracker({ bag, seeking, inVillage, onSeek, onReport }: Ques
       <b>{quest.name}{done ? " ✔" : ""}</b>
       <span>{quest.goal} <span className="count">{bag.quest.count}/{quest.count}</span></span>
       <span className="hint">{hint}</span>
+      {keyLabel && <kbd className="hud-key">{keyLabel}</kbd>}
     </div>
   );
 }

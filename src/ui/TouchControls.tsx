@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FpsInput } from "../game/render/FpsInput";
+import { iconFor } from "../game/render/icons";
 
 // Whether this is a touch device (a phone or tablet): then the joystick and the look area show.
 export function isTouchDevice(): boolean {
@@ -91,11 +92,26 @@ interface PadButtonsProps {
   onJump: () => void;
   onAuto: () => void;
   onTalk: () => void;
+  // Keyboard players see each button's key in its corner.
+  keys: boolean;
 }
 
-// The round buttons at the bottom right, on every device: attack (held for a flurry), guard, jump
-// and auto-battle.
-export function PadButtons({ controls, auto, talkTo, onJump, onAuto, onTalk }: PadButtonsProps) {
+// One round, see-through button: its picture (496 RPG icons pack), its name, and its key.
+function PadButton({ id, label, keyLabel, className = "", ...rest }: {
+  id: string; label: string; keyLabel: string | null; className?: string;
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button type="button" className={`pad-button pad-${id} ${className}`} {...rest}>
+      <img src={iconFor(`pad_${id}`) ?? undefined} alt="" draggable={false} />
+      <span>{label}</span>
+      {keyLabel && <kbd className="hud-key">{keyLabel}</kbd>}
+    </button>
+  );
+}
+
+// The round buttons at the bottom right, on every device: a big attack button (held for a flurry)
+// with guard, jump, auto-battle and (by someone) talk round it.
+export function PadButtons({ controls, auto, talkTo, onJump, onAuto, onTalk, keys }: PadButtonsProps) {
   useEffect(() => () => {
     controls.setVirtualFiring(false);
     controls.setVirtualBlocking(false);
@@ -111,14 +127,12 @@ export function PadButtons({ controls, auto, talkTo, onJump, onAuto, onTalk }: P
   });
 
   return (
-    <div className="touch-buttons">
-      <button type="button" className="touch-button attack" {...hold((on) => controls.setVirtualFiring(on))}>공격</button>
-      <button type="button" className="touch-button" {...hold((on) => controls.setVirtualBlocking(on))}>막기</button>
-      <button type="button" className="touch-button" onPointerDown={onJump}>점프</button>
-      {talkTo && <button type="button" className="touch-button talk" onClick={onTalk}>대화</button>}
-      <button type="button" className={`touch-button auto${auto ? " on" : ""}`} onClick={onAuto}>
-        {auto ? "자동\n중" : "자동\n전투"}
-      </button>
+    <div className="pad-buttons">
+      <PadButton id="attack" label="공격" keyLabel={keys ? "좌클릭" : null} {...hold((on) => controls.setVirtualFiring(on))} />
+      <PadButton id="block" label="막기" keyLabel={keys ? "우클릭" : null} {...hold((on) => controls.setVirtualBlocking(on))} />
+      <PadButton id="jump" label="점프" keyLabel={keys ? "Space" : null} onPointerDown={onJump} />
+      <PadButton id="auto" label={auto ? "자동 중" : "자동"} keyLabel={keys ? "R" : null} className={auto ? "on" : ""} onClick={onAuto} />
+      {talkTo && <PadButton id="talk" label="대화" keyLabel={keys ? "E" : null} onClick={onTalk} />}
     </div>
   );
 }

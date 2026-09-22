@@ -347,6 +347,7 @@ export class WorldView {
     const rooted = this.me?.rooted === true;
     const potion = this.input.consumePress("KeyQ");
     if (this.input.consumePress("KeyE")) this.talk();
+    if (this.input.consumePress("KeyR")) this.toggleAuto();
     // The auto potion works whether or not auto-battle is on, at the threshold the player set.
     const autoPotion = settings().autoPotion && !!state.me && state.me.hp <= state.me.maxHp * (settings().potionAt / 100);
     if (here && (potion || autoPotion)) this.drinkPotion();
