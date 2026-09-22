@@ -8,10 +8,16 @@ export interface Settings {
   music: number;
   // Renderer exposure.
   brightness: number;
+  // Which of the potion and the three skills auto-battle may use on its own (dragged down under
+  // their slots to turn on).
+  autoPotion: boolean;
+  autoSkills: boolean[];
 }
 
 const STORAGE_KEY = "traitor-hunt:settings";
-export const DEFAULT_SETTINGS: Settings = { sensitivity: 1, volume: 0.8, music: 0.5, brightness: 1 };
+export const DEFAULT_SETTINGS: Settings = {
+  sensitivity: 1, volume: 0.8, music: 0.5, brightness: 1, autoPotion: true, autoSkills: [true, false, false],
+};
 
 function load(): Settings {
   try {

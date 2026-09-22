@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_SETTINGS, onSettings, settings, updateSettings, type Settings } from "./settings";
 
+type NumberKey = { [K in keyof Settings]: Settings[K] extends number ? K : never }[keyof Settings];
+
 interface Slider {
-  key: keyof Settings;
+  key: NumberKey;
   label: string;
   min: number;
   max: number;

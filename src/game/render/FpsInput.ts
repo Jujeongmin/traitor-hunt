@@ -8,6 +8,10 @@ export class FpsInput {
   private readonly pressed = new Set<string>();
   private lookX = 0;
   private lookY = 0;
+  // On-screen controls (touch): a joystick's push, look drags, and held buttons.
+  private virtualMove: MoveInput = { forward: 0, strafe: 0 };
+  private virtualFiring = false;
+  private virtualBlocking = false;
 
   constructor(private readonly element: HTMLElement) {
     element.addEventListener("click", this.onClick);
@@ -26,8 +30,40 @@ export class FpsInput {
 
   moveInput(): MoveInput {
     const k = (code: string) => (this.keys.has(code) ? 1 : 0);
-    return { forward: k("KeyW") - k("KeyS"), strafe: k("KeyD") - k("KeyA") };
+    const forward = k("KeyW") - k("KeyS") + this.virtualMove.forward;
+    const strafe = k("KeyD") - k("KeyA") + this.virtualMove.strafe;
+    return { forward: Math.max(-1, Math.min(1, forward)), strafe: Math.max(-1, Math.min(1, strafe)) };
   }
+
+  // The on-screen controls: the joystick's push (each -1 to 1), a look drag in pixels, a held
+  // attack or guard button, and a tapped key.
+  setVirtualMove(forward: number, strafe: number): void {
+    this.virtualMove = { forward, strafe };
+  }
+
+  addVirtualLook(dx: number, dy: number): void {
+    this.lookX += dx;
+    this.lookY += dy;
+  }
+
+  // A tap on the attack button, too short to be held over a frame, still lands one blow.
+  setVirtualFiring(on: boolean): void {
+    this.virtualFiring = on;
+    this.firing = on || this.mouseFiring;
+    if (on) this.pressed.add("VirtualFire");
+  }
+
+  setVirtualBlocking(on: boolean): void {
+    this.virtualBlocking = on;
+    this.blocking = on || this.mouseBlocking;
+  }
+
+  press(code: string): void {
+    this.pressed.add(code);
+  }
+
+  private mouseFiring = false;
+  private mouseBlocking = false;
 
   consumeLook(): { dx: number; dy: number } {
     const look = { dx: this.lookX, dy: this.lookY };
@@ -59,12 +95,16 @@ export class FpsInput {
     if (!this.locked) this.element.requestPointerLock()?.catch(() => {});
   };
   private onMouseDown = (e: MouseEvent) => {
-    if (e.button === 0 && this.locked) this.firing = true;
-    if (e.button === 2 && this.locked) this.blocking = true;
+    if (e.button === 0 && this.locked) this.mouseFiring = true;
+    if (e.button === 2 && this.locked) this.mouseBlocking = true;
+    this.firing = this.mouseFiring || this.virtualFiring;
+    this.blocking = this.mouseBlocking || this.virtualBlocking;
   };
   private onMouseUp = (e: MouseEvent) => {
-    if (e.button === 0) this.firing = false;
-    if (e.button === 2) this.blocking = false;
+    if (e.button === 0) this.mouseFiring = false;
+    if (e.button === 2) this.mouseBlocking = false;
+    this.firing = this.mouseFiring || this.virtualFiring;
+    this.blocking = this.mouseBlocking || this.virtualBlocking;
   };
   // The right button raises the shield, so it must not open the browser's menu.
   private onContextMenu = (e: MouseEvent) => {
@@ -80,8 +120,10 @@ export class FpsInput {
   private onBlur = () => {
     this.keys.clear();
     this.pressed.clear();
-    this.firing = false;
-    this.blocking = false;
+    this.mouseFiring = false;
+    this.mouseBlocking = false;
+    this.firing = this.virtualFiring;
+    this.blocking = this.virtualBlocking;
   };
   private onMouseMove = (e: MouseEvent) => {
     if (!this.locked) return;

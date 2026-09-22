@@ -11,11 +11,13 @@ import { solidWith, type LevelLayout } from "../rules/levelLayout";
 import {
   GROUNDED, PLAYER_RADIUS, WALK_SPEED, applyLook, stepAround, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
+import { gridRoute } from "../rules/pathing";
 import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
 import { MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
+import type { Point2 } from "../rules/levelLayout";
 import type { Pose } from "../world/types";
-import { PORTAL_RADIUS, ZONES, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
+import { PORTAL_RADIUS, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
 import { playShot, playSkill, playSwing } from "../audio/sfx";
 import { costumeById, type Costume } from "./costumes";
 import { Effects } from "./effects";
@@ -45,6 +47,10 @@ const AUTO_DROP = 70;
 const AUTO_CLOSE = 0.8;
 // How quickly the camera turns to follow an auto-battle.
 const AUTO_CAMERA_RATE = 2.5;
+// Heading for a quest's monsters, the route is worked out again this often.
+const ROUTE_MS = 1500;
+// A route's corner counts as reached this close.
+const WAYPOINT_REACH = 1.2;
 // A heal is used on its own once health falls below this share.
 const AUTO_HEAL_BELOW = 0.75;
 // A click with no monster in your arc still turns you to one this far round from where you look.
@@ -82,6 +88,8 @@ export interface WorldHud {
   // XP just earned, shown for a moment.
   gain: number | null;
   auto: boolean;
+  // Auto-battle is hunting for a quest's monsters.
+  seeking: boolean;
   // The monster you are fighting.
   target: { name: string; hp: number; maxHp: number } | null;
   // Potions in the bag (Q drinks one), and what the last kills paid.
@@ -139,6 +147,9 @@ export class WorldView {
   private lastHudAt = Number.NEGATIVE_INFINITY;
   private auto = false;
   private target: string | null = null;
+  // Hunting for a quest: the kinds it asks for, and the route to the nearest one.
+  private questSeek: MonsterType[] | null = null;
+  private route: { points: Point2[]; at: number } | null = null;
   private gain: { xp: number; at: number } | null = null;
   private notes: { text: string; at: number }[] = [];
   private lastPotionAt = Number.NEGATIVE_INFINITY;
@@ -198,7 +209,41 @@ export class WorldView {
   // Auto-battle on or off (the HUD button; F does the same).
   toggleAuto(): void {
     this.auto = !this.auto;
+    this.questSeek = null;
+    this.route = null;
     if (!this.auto) this.target = null;
+  }
+
+  // Goes hunting for the monsters a quest asks for: auto-battle walks to the nearest of those kinds,
+  // wherever it stands in the zone, and fights them until told otherwise.
+  seekQuest(types: readonly MonsterType[]): void {
+    if (!Object.values(this.client.state.monsters).some((m) => types.includes(m.type))) {
+      const zones = ZONE_IDS.filter((z) => ZONE_MONSTERS[z].some((t) => types.includes(t)) || types.includes(ZONE_BOSS[z]!));
+      this.notes.push({ text: `이 구역에는 없어요${zones.length ? ` (${zones.map((z) => ZONES[z].name).join(", ")})` : ""}`, at: performance.now() });
+      return;
+    }
+    this.questSeek = [...types];
+    this.route = null;
+    this.target = null;
+    this.auto = true;
+  }
+
+  // The on-screen buttons: a skill or the potion by tap, a jump.
+  tapSkill(slot: number): void {
+    this.input.press(SKILL_KEYS[slot]);
+  }
+
+  tapPotion(): void {
+    this.input.press("KeyQ");
+  }
+
+  tapJump(): void {
+    this.input.press("Space");
+  }
+
+  // The on-screen joystick and look area feed the same input as the keyboard and mouse.
+  get controls(): FpsInput {
+    return this.input;
   }
 
   onHud(cb: (hud: WorldHud) => void): () => void {
@@ -237,7 +282,8 @@ export class WorldView {
     const rooted = this.me?.rooted === true;
     if (this.input.consumePress("KeyF")) this.toggleAuto();
     const potion = this.input.consumePress("KeyQ");
-    if (here && (potion || (this.auto && state.me && state.me.hp < state.me.maxHp * AUTO_POTION_BELOW))) this.drinkPotion();
+    const autoPotion = this.auto && settings().autoPotion && !!state.me && state.me.hp < state.me.maxHp * AUTO_POTION_BELOW;
+    if (here && (potion || autoPotion)) this.drinkPotion();
     let facingYaw = this.yaw;
     if (here) {
       this.bodies = state.others.map((o) => ({ x: o.pose.x, z: o.pose.z, r: PLAYER_BODY * 2 }));
@@ -285,15 +331,19 @@ export class WorldView {
   };
 
   // Where auto-battle goes: toward the monster it is fighting (or the nearest one it can find), and
-  // whether it still has to walk to reach it. Null when there is nothing to fight nearby.
+  // whether it still has to walk to reach it. Hunting for a quest, it picks the nearest of the asked
+  // kinds anywhere in the zone and follows a route through the groves to it. Null when there is
+  // nothing to fight.
   private autoChase(monsters: Record<string, MonsterState>): { yaw: number; walk: boolean } | null {
     const current = this.target ? monsters[this.target] : undefined;
-    if (!current?.alive || this.distanceTo(current) > AUTO_DROP) {
+    const wanted = (m: MonsterState) => m.alive && (!this.questSeek || this.questSeek.includes(m.type));
+    if (!current || !wanted(current) || (!this.questSeek && this.distanceTo(current) > AUTO_DROP)) {
       this.target = null;
-      let best = AUTO_SEEK;
+      this.route = null;
+      let best = this.questSeek ? Infinity : AUTO_SEEK;
       for (const [id, m] of Object.entries(monsters)) {
         const d = this.distanceTo(m);
-        if (m.alive && d < best) {
+        if (wanted(m) && d < best) {
           best = d;
           this.target = id;
         }
@@ -302,7 +352,19 @@ export class WorldView {
     const m = this.target ? monsters[this.target] : undefined;
     if (!m) return null;
     const reach = WEAPONS[this.options.playerClass].reach;
-    return { yaw: this.yawTo(m), walk: this.distanceTo(m) > reach * AUTO_CLOSE };
+    const d = this.distanceTo(m);
+    if (d <= reach * AUTO_CLOSE) return { yaw: this.yawTo(m), walk: false };
+    // Close by, straight at it; further off, by the route (walked corner to corner).
+    if (d <= AUTO_SEEK / 2) return { yaw: this.yawTo(m), walk: true };
+    const now = performance.now();
+    if (!this.route || now - this.route.at > ROUTE_MS) {
+      const points = gridRoute(this.layout, this.pose, m);
+      this.route = points ? { points, at: now } : null;
+    }
+    const points = this.route?.points;
+    if (!points || points.length === 0) return { yaw: this.yawTo(m), walk: true };
+    while (points.length > 1 && this.distanceTo(points[0]) < WAYPOINT_REACH) points.shift();
+    return { yaw: this.yawTo(points[0]), walk: true };
   }
 
   private distanceTo(p: { x: number; z: number }): number {
@@ -339,7 +401,8 @@ export class WorldView {
     const weapon = WEAPONS[c];
     const chasing = this.auto && this.target && monsters[this.target]?.alive ? this.target : null;
     const inReach = chasing && this.distanceTo(monsters[chasing]) <= weapon.reach ? chasing : null;
-    if ((this.input.firing || inReach) && now - this.lastAttackAt >= weapon.intervalMs) {
+    const firing = this.input.consumePress("VirtualFire") || this.input.firing;
+    if ((firing || inReach) && now - this.lastAttackAt >= weapon.intervalMs) {
       const target = inReach ?? this.aim(monsters, yaw);
       if (target) yaw = this.yawTo(monsters[target]);
       this.lastAttackAt = now;
@@ -352,10 +415,11 @@ export class WorldView {
     if (now - Math.max(...this.lastSkillAt) < SKILL_GAP_MS) return yaw;
     const ready = (slot: number) => this.skillOpen(SKILLS[c][slot]) && now - this.lastSkillAt[slot] >= SKILLS[c][slot].cooldownMs;
     let slot = pressed.findIndex((p, i) => p && ready(i));
-    // Auto-battle reaches for the strongest skill that would help.
+    // Auto-battle reaches for the strongest skill it may use that would help.
     if (slot < 0 && this.auto) {
+      const allowed = settings().autoSkills;
       for (let i = SKILLS[c].length - 1; i >= 0; i--) {
-        if (ready(i) && this.skillHelps(SKILLS[c][i], monsters, yaw)) {
+        if (allowed[i] && ready(i) && this.skillHelps(SKILLS[c][i], monsters, yaw)) {
           slot = i;
           break;
         }
@@ -544,6 +608,7 @@ export class WorldView {
       xpNeed: level.need,
       gain: this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : null,
       auto: this.auto,
+      seeking: this.auto && this.questSeek !== null,
       target: fighting?.alive ? { name: `Lv${MONSTERS[fighting.type].level} ${MONSTERS[fighting.type].name}`, hp: fighting.hp, maxHp: MONSTERS[fighting.type].hp } : null,
       potions: (this.client.state.bag?.bag.potion_small ?? 0) + (this.client.state.bag?.bag.potion_big ?? 0),
       notes: this.notes.map((n) => n.text),
