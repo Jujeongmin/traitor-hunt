@@ -209,7 +209,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           >
             {hud.auto ? "자동 전투 중" : "자동 전투"} (F)
           </button>
-          <SkillBar hud={hud} onSkill={(slot) => view.current?.tapSkill(slot)} onPotion={() => view.current?.tapPotion()} />
+          <SkillBar hud={hud} playerClass={playerClass} onSkill={(slot) => view.current?.tapSkill(slot)} onPotion={() => view.current?.tapPotion()} />
           <QuestTracker client={client} bag={bag} seeking={hud.seeking} onSeek={(types) => view.current?.seekQuest(types)} />
           {!touch && <div className="crosshair" />}
           {hud.dead && (

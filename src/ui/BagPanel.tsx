@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ITEMS, ITEM_IDS, SHOP_ITEMS, sellPrice, type BagView, type ItemId, type Slot } from "../game/account/items";
 import { ADVANCE_LEVEL, JOBS, jobsOf } from "../game/combat/jobs";
 import type { PlayerClass } from "../game/combat/classes";
+import { iconFor } from "../game/render/icons";
 import type { WorldClient } from "../net/worldClient";
 
 const PROBLEM: Record<string, string> = {
@@ -68,6 +69,7 @@ export function BagPanel({ client, bag, onClose, inVillage, playerClass, level }
             return (
               <div key={slot} className="bag-row">
                 <span className="bag-slot">{SLOT_LABEL[slot]}</span>
+                {worn && <img className="bag-icon" src={iconFor(worn) ?? undefined} alt="" />}
                 <b>{worn ? ITEMS[worn].name : "없음"}</b>
                 <span className="bag-blurb">{worn ? ITEMS[worn].blurb : ""}</span>
                 {worn && <button type="button" className="text-button" onClick={() => act(() => client.unequip(slot))}>해제</button>}
@@ -79,6 +81,7 @@ export function BagPanel({ client, bag, onClose, inVillage, playerClass, level }
           {items.length === 0 && <p className="note">가방이 비었어요</p>}
           {items.map((id) => (
             <div key={id} className="bag-row">
+              <img className="bag-icon" src={iconFor(id) ?? undefined} alt="" />
               <b>{ITEMS[id].name}</b>
               <span className="bag-count">×{bag!.bag[id]}</span>
               <span className="bag-blurb">{ITEMS[id].blurb}</span>
@@ -113,6 +116,7 @@ export function ShopPanel({ client, bag, onClose }: PanelProps) {
         <div className="bag-list">
           {SHOP_ITEMS.map((id) => (
             <div key={id} className="bag-row">
+              <img className="bag-icon" src={iconFor(id) ?? undefined} alt="" />
               <b>{ITEMS[id].name}</b>
               <span className="bag-count">{ITEMS[id].price} 골드</span>
               <span className="bag-blurb">{ITEMS[id].blurb}</span>

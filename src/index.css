@@ -147,21 +147,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; background: var(--ink); border-radius: 50%; box-shadow: 0 0 2px #000; pointer-events: none; }
 /* Shown while the shield is up, just below the crosshair. */
 .hud-shield { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font: 700 13px var(--font-head); color: var(--frost); }
-/* The class skill slot, bottom centre: key, name, and a bar that fills as the cooldown runs out. */
-.hud-skill {
-  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); overflow: hidden;
-  display: flex; align-items: center; gap: 8px; padding: 6px 14px 8px;
-  background: rgba(14, 11, 9, 0.8); border: 1px solid rgba(255, 179, 90, 0.5); border-radius: 8px;
-}
-.hud-skill b { font: 700 14px var(--font-head); }
-.hud-skill span { font-size: 12px; color: var(--ink-dim); }
-.hud-skill-key {
-  width: 20px; height: 20px; display: grid; place-items: center; border-radius: 4px;
-  font: 700 12px var(--font-head); color: #1a120b !important; background: var(--ember);
-}
-.hud-skill i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ember); }
-.hud-skill.cooling { border-color: rgba(255, 255, 255, 0.15); }
-.hud-skill.cooling b { color: var(--ink-dim); }
 
 /* Your level, health and XP, bottom left; the monster you fight, top centre. */
 .hud-vitals {
@@ -197,7 +182,22 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   display: flex; gap: 8px; align-items: flex-start;
 }
 .hud-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.hud-skills .hud-skill { position: relative; left: auto; bottom: auto; transform: none; cursor: pointer; touch-action: none; user-select: none; }
+/* A square slot, like a hotbar's: the icon fills it, the key sits in a corner. */
+.hud-cell {
+  position: relative; width: 56px; height: 56px; border-radius: 6px; overflow: hidden; cursor: pointer;
+  background: rgba(14, 11, 9, 0.85); border: 2px solid rgba(255, 179, 90, 0.55);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.5); touch-action: none; user-select: none;
+}
+.hud-cell img { position: absolute; inset: 6px; width: 44px; height: 44px; image-rendering: pixelated; }
+.hud-cell.locked { border-color: rgba(255, 255, 255, 0.15); }
+.hud-cell.locked img { opacity: 0.35; filter: grayscale(1); }
+.hud-cell-key {
+  position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 3px;
+  font: 700 11px var(--font-head); color: #1a120b; background: var(--ember);
+}
+.hud-cell-corner { position: absolute; right: 4px; bottom: 2px; font: 700 13px var(--font-head); color: var(--ink); text-shadow: var(--shadow); }
+.hud-cell-cooling { position: absolute; left: 0; right: 0; top: 0; background: rgba(0, 0, 0, 0.6); pointer-events: none; }
+.hud-cell-name { font: 600 11px var(--font-head); color: var(--ink); text-shadow: var(--shadow); white-space: nowrap; }
 .hud-auto-mark {
   font: 600 11px var(--font-head); color: var(--ink-dim); background: rgba(14, 11, 9, 0.7); border: 1px dashed rgba(255, 255, 255, 0.35);
   border-radius: 6px; padding: 2px 10px; cursor: pointer;
@@ -245,6 +245,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .bag-gear, .bag-list { display: flex; flex-direction: column; gap: 4px; }
 .bag-gear { padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 .bag-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.bag-icon { width: 28px; height: 28px; image-rendering: pixelated; background: rgba(0, 0, 0, 0.35); border-radius: 4px; padding: 2px; }
 .bag-row b { font: 700 15px var(--font-head); }
 .bag-slot { width: 36px; color: var(--ink-dim); font-size: 13px; }
 .bag-count { color: var(--ink-dim); font-variant-numeric: tabular-nums; }

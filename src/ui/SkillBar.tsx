@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import type { PlayerClass } from "../game/combat/classes";
+import { iconFor, skillIconId } from "../game/render/icons";
 import type { WorldHud } from "../game/render/WorldView";
 import { onSettings, settings, updateSettings } from "./settings";
 
@@ -7,24 +9,34 @@ const DRAG_TOGGLE = 28;
 
 interface SkillBarProps {
   hud: WorldHud;
+  playerClass: PlayerClass;
   onSkill: (slot: number) => void;
   onPotion: () => void;
 }
 
-// The potion and the three skills, bottom centre. A tap uses one; dragging one down onto the
-// "자동" mark under it lets auto-battle use it on its own (dragging again turns that off).
-export function SkillBar({ hud, onSkill, onPotion }: SkillBarProps) {
-  const [auto, setAuto] = useState(() => ({ potion: settings().autoPotion, skills: settings().autoSkills }));
-  useEffect(() => onSettings((s) => setAuto({ potion: s.autoPotion, skills: s.autoSkills })), []);
-  const drag = useRef<{ id: number; y: number; moved: boolean } | null>(null);
+interface CellProps {
+  keyLabel: string;
+  name: string;
+  icon: string | null;
+  // Shown in the corner: a count, or the seconds left.
+  corner: string;
+  // Share of the cooldown still to run (0 when ready); null for a slot not yet open.
+  cooling: number | null;
+  locked: boolean;
+  isAuto: boolean;
+  use: () => void;
+  flip: () => void;
+}
 
-  const slot = (
-    key: string, name: string, note: string, cooling: boolean, fill: number | null, isAuto: boolean,
-    use: () => void, flip: () => void,
-  ) => (
-    <div className="hud-slot" key={key}>
+// One square of the bar: the icon, its key, and the auto mark under it. A tap uses it; a drag down
+// (or a tap on the mark) flips auto.
+function Cell({ keyLabel, name, icon, corner, cooling, locked, isAuto, use, flip }: CellProps) {
+  const drag = useRef<{ id: number; y: number; moved: boolean } | null>(null);
+  return (
+    <div className="hud-slot">
       <div
-        className={`hud-skill${cooling ? " cooling" : ""}`}
+        className={`hud-cell${locked ? " locked" : ""}`}
+        title={name}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           drag.current = { id: e.pointerId, y: e.clientY, moved: false };
@@ -44,37 +56,48 @@ export function SkillBar({ hud, onSkill, onPotion }: SkillBarProps) {
           drag.current = null;
         }}
       >
-        <span className="hud-skill-key">{key}</span>
-        <b>{name}</b>
-        <span>{note}</span>
-        {fill !== null && <i style={{ width: `${Math.round(fill * 100)}%` }} />}
+        {icon && <img src={icon} alt={name} draggable={false} />}
+        <span className="hud-cell-key">{keyLabel}</span>
+        {corner && <span className="hud-cell-corner">{corner}</span>}
+        {cooling !== null && cooling > 0 && <i className="hud-cell-cooling" style={{ height: `${Math.round(cooling * 100)}%` }} />}
       </div>
+      <span className="hud-cell-name">{name}</span>
       <button type="button" className={`hud-auto-mark${isAuto ? " on" : ""}`} onClick={flip}>
         {isAuto ? "자동 ●" : "자동 ○"}
       </button>
     </div>
   );
+}
 
+// The potion and the three skills, bottom centre, as a row of squares.
+export function SkillBar({ hud, playerClass, onSkill, onPotion }: SkillBarProps) {
+  const [auto, setAuto] = useState(() => ({ potion: settings().autoPotion, skills: settings().autoSkills }));
+  useEffect(() => onSettings((s) => setAuto({ potion: s.autoPotion, skills: s.autoSkills })), []);
   return (
     <div className="hud-skills">
-      {slot(
-        "Q", "물약", `${hud.potions}개`, hud.potions === 0, null, auto.potion, onPotion,
-        () => updateSettings({ autoPotion: !settings().autoPotion }),
-      )}
-      {hud.skills.map((skill, i) =>
-        slot(
-          String(i + 1), skill.name,
-          !skill.open ? `Lv${skill.level}` : skill.readyInMs > 0 ? `${Math.ceil(skill.readyInMs / 1000)}초` : "준비됨",
-          !skill.open || skill.readyInMs > 0,
-          skill.open ? 1 - skill.readyInMs / skill.cooldownMs : null,
-          auto.skills[i] === true,
-          () => onSkill(i),
-          () => {
+      <Cell
+        keyLabel="Q" name="물약" icon={iconFor("potion_small")} corner={String(hud.potions)} cooling={null}
+        locked={hud.potions === 0} isAuto={auto.potion} use={onPotion}
+        flip={() => updateSettings({ autoPotion: !settings().autoPotion })}
+      />
+      {hud.skills.map((skill, i) => (
+        <Cell
+          key={i}
+          keyLabel={String(i + 1)}
+          name={skill.name}
+          icon={iconFor(skillIconId(playerClass, i))}
+          corner={!skill.open ? `Lv${skill.level}` : skill.readyInMs > 0 ? `${Math.ceil(skill.readyInMs / 1000)}` : ""}
+          cooling={skill.open ? skill.readyInMs / skill.cooldownMs : null}
+          locked={!skill.open}
+          isAuto={auto.skills[i] === true}
+          use={() => onSkill(i)}
+          flip={() => {
             const next = [...settings().autoSkills];
             next[i] = !next[i];
             updateSettings({ autoSkills: next });
-          },
-        ))}
+          }}
+        />
+      ))}
     </div>
   );
 }

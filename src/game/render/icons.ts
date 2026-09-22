@@ -1,0 +1,374 @@
+// Pixel-art icons for the skills, the potions and the gear, drawn here as 12 x 12 grids and rendered
+// to images once (no files to load). One letter per pixel; see PALETTE.
+
+const PALETTE: Record<string, string> = {
+  k: "#1a1412", w: "#fff6e6", s: "#b9c0c8", S: "#6b7078", t: "#f2cf9a",
+  r: "#e6473a", R: "#8f2318", o: "#ff9a3c", y: "#ffe26a", Y: "#c9971a",
+  g: "#6fd36a", G: "#2f8a3c", b: "#4f8fe6", B: "#244b8f", c: "#aeeaff",
+  p: "#9b6cf0", P: "#4a2c8a", n: "#a8703c", N: "#5e3a1d", d: "#2b2540",
+};
+
+export const ICON_SIZE = 12;
+
+const ICONS: Record<string, string[]> = {
+  potion_small: [
+    "....kkkk....",
+    "....ksSk....",
+    "....ksSk....",
+    "...kknnkk...",
+    "..kwccccck..",
+    "..kcrrrrck..",
+    ".kcrrRrrrck.",
+    ".krrRRRrrRk.",
+    ".krrRRRRRRk.",
+    ".kRRRRRRRRk.",
+    "..kRRRRRRk..",
+    "...kkkkkk...",
+  ],
+  potion_big: [
+    "....kkkk....",
+    "....kyYk....",
+    "...kkyYkk...",
+    "..kwcccccck.",
+    ".kccrrrrrcck",
+    ".kcrrRrrrrck",
+    "kcrrRRRrrrrk",
+    "krrRRRRRrrRk",
+    "krrRRRRRRRRk",
+    "kRRyYYYyRRRk",
+    ".kRRRRRRRRk.",
+    "..kkkkkkkk..",
+  ],
+  // Warrior: a sword swung round, a charging cut, the ground struck.
+  warrior_0: [
+    "...kkkkkk...",
+    "..kyy..yyk..",
+    ".ky......yk.",
+    "ky...kk...yk",
+    "k...kwsk...k",
+    "k..kwsk....k",
+    "k.kwsk.....k",
+    "kknsk.....yk",
+    ".kNk.....yk.",
+    "..k.....yk..",
+    "...kyyyyk...",
+    "....kkkk....",
+  ],
+  warrior_1: [
+    "........kkk.",
+    ".......kwsk.",
+    "......kwsk..",
+    "kkk..kwsk...",
+    "..k.kwsk....",
+    "kk.kwsk.....",
+    "..kwsk......",
+    "kknsk.......",
+    ".kNkk.......",
+    "kkkyk.......",
+    "....k.......",
+    "............",
+  ],
+  warrior_2: [
+    "....kkkk....",
+    "...kSssSk...",
+    "...kSssSk...",
+    "...kkSSkk...",
+    ".....kNk....",
+    ".....knk....",
+    ".....knk....",
+    "..y..knk..y.",
+    ".ky..knk..yk",
+    "kyk.kkkkk.ky",
+    "kkkkkoookkkk",
+    ".kooookooook",
+  ],
+  // Ranger: a piercing arrow, an aimed shot, a rain of arrows.
+  ranger_0: [
+    "........kkkk",
+    ".........kwk",
+    "........kwwk",
+    ".......kwswk",
+    "......kwskkk",
+    ".....kwsk...",
+    "....kwsk....",
+    "...kwsk.....",
+    "..kwsk......",
+    "krknk.......",
+    "krrk........",
+    "kkrk........",
+  ],
+  ranger_1: [
+    "...kkkkkk...",
+    "..krrkkrrk..",
+    ".kr..kk..rk.",
+    "kr...kk...rk",
+    "k....kk....k",
+    "kkkkkwwkkkkk",
+    "kkkkkwwkkkkk",
+    "k....kk....k",
+    "kr...kk...rk",
+    ".kr..kk..rk.",
+    "..krrkkrrk..",
+    "...kkkkkk...",
+  ],
+  ranger_2: [
+    "k...k...k...",
+    "kk..kk..kk..",
+    ".s...s...s..",
+    ".s...s...s..",
+    ".s...s...s..",
+    ".w...w...w..",
+    ".w...w...w..",
+    "knk.knk.knk.",
+    "knk.knk.knk.",
+    ".k...k...k..",
+    "............",
+    "............",
+  ],
+  // Wizard: a burst of fire, an ice spear, a falling meteor.
+  wizard_0: [
+    ".....kk.....",
+    "....krrk....",
+    "...krrork...",
+    "...krooRk...",
+    "..krooyork..",
+    "..kroyyyrk..",
+    ".krroyyyorrk",
+    ".kroyywyork.",
+    "kkroyyyyork.",
+    ".krrooyorrk.",
+    "..krrrrrrk..",
+    "...kkkkkk...",
+  ],
+  wizard_1: [
+    "..........kk",
+    ".........kck",
+    "........kcck",
+    ".......kccwk",
+    "......kccwk.",
+    ".....kccwk..",
+    "....kcbwk...",
+    "...kcbwk....",
+    "..kbBwk.....",
+    ".kbBBk......",
+    "kBBkk.......",
+    "kkk.........",
+  ],
+  wizard_2: [
+    "...........k",
+    "..........ko",
+    ".........koy",
+    "........kooy",
+    ".......koRo.",
+    "kk....koRRo.",
+    "kSk..koRRo..",
+    "kSSkkoRRo...",
+    "kSSSSRRo....",
+    "kSSSSRRk....",
+    ".kSSSSk.....",
+    "..kkkk......",
+  ],
+  // Cleric: healing light, a holy strike, a blessing.
+  cleric_0: [
+    ".....kk.....",
+    "....kggk....",
+    "....kgwgk...",
+    "..kkkgwgkkk.",
+    ".kggggwggggk",
+    ".kgwwwwwwwgk",
+    ".kggggwggggk",
+    "..kkkgwgkkk.",
+    "....kgwgk...",
+    "....kggk....",
+    ".....kk.....",
+    "............",
+  ],
+  cleric_1: [
+    "........kkk.",
+    ".......kyyk.",
+    "......kywyk.",
+    ".....kyyyk..",
+    "....kynk....",
+    "...kknk.....",
+    "..kwnk......",
+    ".kwnk.......",
+    "kwnk........",
+    "knk.........",
+    "kk..........",
+    "............",
+  ],
+  cleric_2: [
+    ".....kk.....",
+    "..k.kyyk.k..",
+    ".ky.kywk.yk.",
+    "..kkkyykkk..",
+    "..kyyyyyyk..",
+    "kkywwywwyykk",
+    "kkyywyywyykk",
+    "..kyyyyyyk..",
+    "..kkkyykkk..",
+    ".ky.kyyk.yk.",
+    "..k.kyyk.k..",
+    ".....kk.....",
+  ],
+  // Rogue: a shadow stab, a fan of blades, a shadow dance.
+  rogue_0: [
+    "..........k.",
+    ".........kpk",
+    "........kpsk",
+    ".......kpsk.",
+    "......kpsk..",
+    ".....kpsk...",
+    "....kpsk....",
+    "...kpsk.....",
+    "..kdsk......",
+    ".kddk.......",
+    "kddk........",
+    "kkk.........",
+  ],
+  rogue_1: [
+    "k....kk....k",
+    "ks...ss...sk",
+    ".ks..ss..sk.",
+    "..ks.ss.sk..",
+    "...kssssk...",
+    "....kssk....",
+    "....kddk....",
+    "....kddk....",
+    "...kddddk...",
+    "...kdkkdk...",
+    "...kk..kk...",
+    "............",
+  ],
+  rogue_2: [
+    "...kkkkkk...",
+    "..kppppppk..",
+    ".kpdddddppk.",
+    "kpd..kk..dpk",
+    "kpd.kppk.dpk",
+    "kpd.kpsk.dpk",
+    "kpd..kk..dpk",
+    "kpdd....ddpk",
+    ".kpddddddpk.",
+    "..kppppppk..",
+    "...kkkkkk...",
+    "............",
+  ],
+  // Monk: a stunning flurry, a whirling kick, the white-hot fist.
+  monk_0: [
+    "y....k....y.",
+    ".y..ktk..y..",
+    "...kttttk...",
+    "..kttttttk..",
+    "..kttkkttk..",
+    "..kttkkttk..",
+    ".kttttttttk.",
+    ".kttttttttk.",
+    "..kttttttk..",
+    "..kkkkkkkk..",
+    ".y........y.",
+    "y..........y",
+  ],
+  monk_1: [
+    ".kkkkkkkkkk.",
+    "kccwwccccwck",
+    ".kkkkkkkkkk.",
+    "..kccwcccck.",
+    "...kkkkkkk..",
+    "...kcwccck..",
+    "....kkkkk...",
+    "....kcwck...",
+    ".....kkk....",
+    ".....kck....",
+    "....kntk....",
+    "....kkkk....",
+  ],
+  monk_2: [
+    ".....kk.....",
+    "....kyyk....",
+    "...kyoyyk...",
+    "..kyottoyk..",
+    "..koktttok..",
+    ".kyotkkttyk.",
+    ".kyotkktttk.",
+    ".kyottttttk.",
+    "..kottttok..",
+    "..kyottoyk..",
+    "...kyyyyk...",
+    "....kkkk....",
+  ],
+  // Gear: a sword and a chestplate; the tier picks the metal (see iconFor).
+  weapon: [
+    "..........k.",
+    ".........kwk",
+    "........kwmk",
+    ".......kwmk.",
+    "......kwmk..",
+    ".....kwmk...",
+    "..k.kwmk....",
+    "..kkwmk.....",
+    "..kymkk.....",
+    ".kykkyk.....",
+    "knk..kk.....",
+    "kk..........",
+  ],
+  armor: [
+    "..kk....kk..",
+    ".kmmkkkkmmk.",
+    "kmmmmwwmmmmk",
+    "kmkmmwwmmkmk",
+    "kkkmmmmmmkkk",
+    "..kmmwmmmk..",
+    "..kmmmmmmk..",
+    "..kmmwmmmk..",
+    "..kmmmmmmk..",
+    "..kmmmmmmk..",
+    "...kmmmmk...",
+    "....kkkk....",
+  ],
+};
+
+// The metal of each gear tier: the letter m in the gear grids.
+const METAL: Record<string, string> = { "1": "#9c7a4c", "2": "#b9c0c8", "3": "#ffd24a" };
+
+const cache = new Map<string, string>();
+
+// The icon for a skill (by class and slot), a potion or an item of gear (by id), as an image URL.
+// Null where there is no canvas (tests).
+export function iconFor(id: string): string | null {
+  if (typeof document === "undefined") return null;
+  const cached = cache.get(id);
+  if (cached) return cached;
+  const tier = /^(weapon|armor)_(\d)$/.exec(id);
+  const rows = ICONS[tier ? tier[1] : id];
+  if (!rows) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = ICON_SIZE;
+  canvas.height = ICON_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  rows.forEach((row, y) => {
+    [...row].forEach((ch, x) => {
+      const colour = ch === "m" ? METAL[tier?.[2] ?? "2"] : PALETTE[ch];
+      if (!colour) return;
+      ctx.fillStyle = colour;
+      ctx.fillRect(x, y, 1, 1);
+    });
+  });
+  const url = canvas.toDataURL();
+  cache.set(id, url);
+  return url;
+}
+
+export function skillIconId(playerClass: string, slot: number): string {
+  return `${playerClass}_${slot}`;
+}
+
+// For tests: every grid is square and uses only known letters.
+export function iconGrids(): Record<string, string[]> {
+  return ICONS;
+}
+
+export function knownIconLetters(): Set<string> {
+  return new Set([...Object.keys(PALETTE), "m", "."]);
+}
