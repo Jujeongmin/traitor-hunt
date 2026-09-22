@@ -33,6 +33,8 @@ const SHOT_HEIGHT = 0.9;
 // An attack or skill holds you in place this long (at most its clip); moving after that cuts the rest
 // of the clip short, so a hero never slides along the ground mid-swing.
 const ATTACK_COMMIT = 0.45;
+// A pause this long between swings starts a combo over.
+const COMBO_RESET_SECONDS = 1.4;
 const SKILL_COMMIT = 0.8;
 
 interface Animated {
@@ -84,6 +86,9 @@ export class PlayerActor {
   private swingLeft = 0;
   private commitLeft = 0;
   private nextAttack = 0;
+  // When the last swing began (seconds of play), so a pause starts the combo over.
+  private clock = 0;
+  private lastSwingAt = Number.NEGATIVE_INFINITY;
 
   constructor(readonly account: string, model: PlayerModel | null) {
     this.body = model?.object ?? placeholderBody();
@@ -132,6 +137,7 @@ export class PlayerActor {
   }
 
   sync(pose: Pose | null, status: PlayerStatus, dt: number): void {
+    this.clock += dt;
     if (!pose) {
       this.object.visible = false;
       return;
@@ -166,6 +172,10 @@ export class PlayerActor {
     // A higher swing count than last time means a new swing.
     const swing = pose.swing ?? 0;
     if (this.lastSwing !== null && swing > this.lastSwing && !this.dead) {
+      // Swings in quick succession run through the model's attack clips as a combo; after a pause
+      // it starts again from the first.
+      if (this.clock - this.lastSwingAt > COMBO_RESET_SECONDS) this.nextAttack = 0;
+      this.lastSwingAt = this.clock;
       const attack = a.attacks[this.nextAttack];
       this.nextAttack = (this.nextAttack + 1) % a.attacks.length;
       this.swingLeft = attack.getClip().duration;

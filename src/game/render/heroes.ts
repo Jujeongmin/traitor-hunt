@@ -44,7 +44,7 @@ function rig(c: PlayerClass, clips: Clips): HeroRig {
 const CLIPS: Record<PlayerClass, Clips> = {
   warrior: {
     model: "hero_warrior", idle: "Idle_Weapon", walk: "Walk", run: "Run_Weapon",
-    attacks: ["Sword_Attack"], guard: "Idle_Attacking", skill: "Sword_Attack2", death: "Death",
+    attacks: ["Sword_Attack", "Sword_Attack2", "Punch"], guard: "Idle_Attacking", skill: "Sword_Attack2", death: "Death",
     gear: ["ShoulderPadL", "ShoulderPadR"],
   },
   ranger: {
@@ -59,17 +59,17 @@ const CLIPS: Record<PlayerClass, Clips> = {
   },
   cleric: {
     model: "hero_cleric", idle: "Idle_Weapon", walk: "Walk", run: "Run",
-    attacks: ["Staff_Attack"], guard: "RecieveHit_Attacking", skill: "Spell1", death: "Death",
+    attacks: ["Staff_Attack", "Punch"], guard: "RecieveHit_Attacking", skill: "Spell1", death: "Death",
     gear: ["ShoulderPads"],
   },
   rogue: {
     model: "hero_rogue", idle: "Idle", walk: "Walk", run: "Run",
-    attacks: ["Dagger_Attack"], guard: "Attacking_Idle", skill: "Dagger_Attack2", death: "Death",
+    attacks: ["Dagger_Attack", "Dagger_Attack2", "Punch"], guard: "Attacking_Idle", skill: "Dagger_Attack2", death: "Death",
     gear: ["Guard", "Belt", "Pouch"],
   },
   monk: {
     model: "hero_monk", idle: "Idle", walk: "Walk", run: "Run",
-    attacks: ["Attack"], guard: "Idle_Attacking", skill: "Attack2", death: "Death",
+    attacks: ["Attack", "Attack2"], guard: "Idle_Attacking", skill: "Attack2", death: "Death",
     gear: [],
   },
 };

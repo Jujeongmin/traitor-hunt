@@ -1,4 +1,4 @@
-import { CLASSES, CLASS_BLURB, CLASS_LABEL, WEAPONS, type PlayerClass } from "../game/combat/classes";
+import { CLASSES, CLASS_BLURB, CLASS_LABEL, WEAPONS, isFreeClass, type PlayerClass } from "../game/combat/classes";
 import { SKILLS } from "../game/combat/skills";
 
 interface ClassPanelProps {
@@ -6,17 +6,27 @@ interface ClassPanelProps {
   onPick: (c: PlayerClass) => void;
   onConfirm: (c: PlayerClass) => void;
   onBack: () => void;
+  // Whether the full game is bought: without it only the free classes can be made.
+  owned: boolean;
+  // Opens the purchase, when it can be made from here.
+  onBuy: (() => void) | null;
 }
 
 // Picking a class for a new character: the six heroes stand in a row behind this panel; clicking
 // one (or its name here) shows what it does.
-export function ClassPanel({ picked, onPick, onConfirm, onBack }: ClassPanelProps) {
+export function ClassPanel({ picked, onPick, onConfirm, onBack, owned, onBuy }: ClassPanelProps) {
   const info = picked ? { weapon: WEAPONS[picked], skills: SKILLS[picked] } : null;
+  const locked = (c: PlayerClass) => !owned && !isFreeClass(c);
   return (
     <div className="class-screen">
       <div className="class-tabs">
         {CLASSES.map((c) => (
-          <button key={c} type="button" className={`class-tab${c === picked ? " picked" : ""}`} onClick={() => onPick(c)}>
+          <button
+            key={c} type="button"
+            className={`class-tab${c === picked ? " picked" : ""}${locked(c) ? " locked" : ""}`}
+            onClick={() => onPick(c)}
+          >
+            {locked(c) && <span className="class-lock" aria-label="정식판">🔒</span>}
             {CLASS_LABEL[c]}
           </button>
         ))}
@@ -44,7 +54,14 @@ export function ClassPanel({ picked, onPick, onConfirm, onBack }: ClassPanelProp
                 {skill.blurb}
               </p>
             ))}
-            <button type="button" className="brush-button wardrobe-start" onClick={() => onConfirm(picked)}>이 직업으로 정하기</button>
+            {locked(picked) ? (
+              <>
+                <p className="class-locked-note">정식판을 구매하면 이 직업으로 캐릭터를 만들 수 있어요. 무료로는 전사와 궁수를 고를 수 있어요.</p>
+                {onBuy && <button type="button" className="brush-button wardrobe-start" onClick={onBuy}>정식판 구매</button>}
+              </>
+            ) : (
+              <button type="button" className="brush-button wardrobe-start" onClick={() => onConfirm(picked)}>이 직업으로 정하기</button>
+            )}
             <p className="note">직업은 캐릭터를 만들 때 한 번 정해요.</p>
           </>
         ) : (

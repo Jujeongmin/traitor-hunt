@@ -10,7 +10,7 @@ import { QUESTS, QUEST_START, countKills, questDone } from "../../src/game/accou
 import { ADVANCE_LEVEL, JOBS, readJob } from "../../src/game/combat/jobs";
 import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/game/account/characters";
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
-import { readClass } from "../../src/game/combat/classes";
+import { isFreeClass, readClass } from "../../src/game/combat/classes";
 import { rankOf, type RankingView } from "../../src/game/account/ranking";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
 import { readWorld } from "../../src/game/account/worlds";
@@ -212,6 +212,7 @@ export class Server {
     const picked = readClass(playerClass);
     const look = costumeById(costume);
     if (!picked || !look) throw new RuleViolation("unavailable");
+    if (!isFreeClass(picked) && !(await ownsFullGame(account))) throw new RuleViolation("not_owned");
     const world = (await readAccountWorld(account)).id;
     await withProfileLock(account, async () => {
       const { characters } = await readProfile(account);

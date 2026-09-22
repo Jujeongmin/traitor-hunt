@@ -102,3 +102,29 @@ describe("characters", () => {
     expect((await server.getAccount()).characters).toHaveLength(3);
   });
 });
+
+describe("classes and the full game", () => {
+  // A real wallet account: it does not play for free like the test- accounts.
+  const PLAYER = "0x2222222222222222222222222222222222222222";
+
+  test("the warrior and the ranger are free; the other four come with the full game", async (server) => {
+    server.connect({ account: PLAYER });
+    await server.createCharacter("무료전사", "warrior", "0000");
+    await server.createCharacter("무료궁수", "ranger", "0000");
+    expect(await errorOf(server.createCharacter("유료법사", "wizard", "0000"))).toContain("not_owned");
+    await server.$onItemPurchased({ account: PLAYER, purchaseId: 91, productId: "full-game", quantity: 1 });
+    server.connect({ account: PLAYER });
+    expect((await server.createCharacter("유료법사", "wizard", "0000")).active.playerClass).toBe("wizard");
+  });
+
+  test("a character made before the rule keeps its class and still plays", async (server) => {
+    server.connect({ account: PLAYER });
+    await server.createCharacter("옛날도적", "warrior", "0000");
+    const state = await $global.getUserState(PLAYER);
+    const map = { ...state.characterMap };
+    map[state.active] = { ...map[state.active], playerClass: "rogue" };
+    await $global.updateUserState(PLAYER, { characterMap: map });
+    expect((await server.getAccount()).active.playerClass).toBe("rogue");
+    expect((await server.enterWorld()).zone).toBe("village");
+  });
+});
