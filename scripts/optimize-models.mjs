@@ -19,7 +19,13 @@ const outDir = join(root, "public/assets/models");
 
 // Models too dense for four players on the web: keep this share of their triangles.
 // error is how far (as a share of the model's size) the simplified surface may drift.
-const SIMPLIFY = {};
+const SIMPLIFY = {
+  // Stylized Nature: a field holds a few hundred trees and a few thousand plants.
+  sn_tree_1: { ratio: 0.35, error: 0.02 }, sn_tree_2: { ratio: 0.4, error: 0.02 }, sn_tree_3: { ratio: 0.5, error: 0.02 },
+  sn_tree_4: { ratio: 0.5, error: 0.02 }, sn_pine_1: { ratio: 0.5, error: 0.02 }, sn_pine_3: { ratio: 0.4, error: 0.02 },
+  sn_flowers: { ratio: 0.4, error: 0.03 }, sn_clover: { ratio: 0.5, error: 0.03 }, sn_mushroom: { ratio: 0.3, error: 0.03 },
+  sn_bush_flowers: { ratio: 0.5, error: 0.03 },
+};
 mkdirSync(outDir, { recursive: true });
 
 await MeshoptDecoder.ready;
@@ -48,8 +54,8 @@ for (const file of readdirSync(srcDir).filter((f) => f.endsWith(".glb"))) {
     dedup(),
     resample(),
     prune({ keepLeaves: skinned }),
-    // The village houses are big and seen from afar: their kit textures are cut down further.
-    textureCompress({ encoder: sharp, targetFormat: "webp", resize: name.startsWith("bld_") ? [512, 512] : [1024, 1024] }),
+    // The village houses and the Stylized Nature pieces share big kit textures: cut down further.
+    textureCompress({ encoder: sharp, targetFormat: "webp", resize: name.startsWith("bld_") || name.startsWith("sn_") ? [512, 512] : [1024, 1024] }),
   ];
   // Static kit pieces stay unquantized so their raw geometry can be instanced later.
   if (skinned) steps.push(quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12, quantizeWeight: 8 }));

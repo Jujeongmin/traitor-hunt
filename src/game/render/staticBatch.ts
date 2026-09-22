@@ -9,18 +9,25 @@ export interface ModelSource {
   get(name: string): { scene: THREE.Object3D };
 }
 
-// Draws every copy of a model with one instanced mesh per model part: a few dozen draw calls
-// for the whole forest instead of one per tree.
+// Pieces are drawn in square chunks this wide, so the camera skips the chunks behind it.
+const CHUNK = 72;
+
+// Draws every copy of a model with one instanced mesh per model part and chunk of ground: a few
+// hundred draw calls for the whole forest instead of one per tree, and only the chunks in view drawn.
 export function buildStaticBatch(library: ModelSource, pieces: StaticPiece[]): THREE.Group {
   const group = new THREE.Group();
   const byModel = new Map<string, StaticPiece[]>();
+  const at = new THREE.Vector3();
   for (const piece of pieces) {
-    const list = byModel.get(piece.model) ?? [];
+    at.setFromMatrixPosition(piece.matrix);
+    const key = `${piece.model}|${Math.floor(at.x / CHUNK)},${Math.floor(at.z / CHUNK)}`;
+    const list = byModel.get(key) ?? [];
     list.push(piece);
-    byModel.set(piece.model, list);
+    byModel.set(key, list);
   }
   const part = new THREE.Matrix4();
-  for (const [model, list] of byModel) {
+  for (const [key, list] of byModel) {
+    const model = key.slice(0, key.indexOf("|"));
     const template = library.get(model).scene;
     template.updateMatrixWorld(true);
     const rootInverse = template.matrixWorld.clone().invert();
@@ -29,7 +36,7 @@ export function buildStaticBatch(library: ModelSource, pieces: StaticPiece[]): T
       if (!mesh.isMesh || (mesh as THREE.SkinnedMesh).isSkinnedMesh) return;
       const relative = rootInverse.clone().multiply(mesh.matrixWorld);
       const instanced = new THREE.InstancedMesh(mesh.geometry, mesh.material, list.length);
-      instanced.name = `${model}:${mesh.name}`;
+      instanced.name = `${key}:${mesh.name}`;
       list.forEach((piece, slot) => instanced.setMatrixAt(slot, part.multiplyMatrices(piece.matrix, relative)));
       instanced.instanceMatrix.needsUpdate = true;
       instanced.computeBoundingSphere();

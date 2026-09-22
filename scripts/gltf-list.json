@@ -51,6 +51,70 @@
     {
       "name": "npc_merchant",
       "src": "art-src/ultimate-characters/x/glTF/OldClassy_Male.gltf"
+    },
+    {
+      "name": "sn_tree_1",
+      "src": "art-src/stylized-nature/glTF/CommonTree_1.gltf"
+    },
+    {
+      "name": "sn_tree_2",
+      "src": "art-src/stylized-nature/glTF/CommonTree_2.gltf"
+    },
+    {
+      "name": "sn_tree_3",
+      "src": "art-src/stylized-nature/glTF/CommonTree_3.gltf"
+    },
+    {
+      "name": "sn_tree_4",
+      "src": "art-src/stylized-nature/glTF/CommonTree_4.gltf"
+    },
+    {
+      "name": "sn_pine_1",
+      "src": "art-src/stylized-nature/glTF/Pine_1.gltf"
+    },
+    {
+      "name": "sn_pine_3",
+      "src": "art-src/stylized-nature/glTF/Pine_3.gltf"
+    },
+    {
+      "name": "sn_bush_flowers",
+      "src": "art-src/stylized-nature/glTF/Bush_Common_Flowers.gltf"
+    },
+    {
+      "name": "sn_grass",
+      "src": "art-src/stylized-nature/glTF/Grass_Common_Short.gltf"
+    },
+    {
+      "name": "sn_grass_wispy",
+      "src": "art-src/stylized-nature/glTF/Grass_Wispy_Short.gltf"
+    },
+    {
+      "name": "sn_flowers",
+      "src": "art-src/stylized-nature/glTF/Flower_3_Group.gltf"
+    },
+    {
+      "name": "sn_clover",
+      "src": "art-src/stylized-nature/glTF/Clover_1.gltf"
+    },
+    {
+      "name": "sn_fern",
+      "src": "art-src/stylized-nature/glTF/Fern_1.gltf"
+    },
+    {
+      "name": "sn_pebbles",
+      "src": "art-src/stylized-nature/glTF/Pebble_Round_2.gltf"
+    },
+    {
+      "name": "sn_stepping",
+      "src": "art-src/stylized-nature/glTF/RockPath_Round_Small_1.gltf"
+    },
+    {
+      "name": "sn_rock",
+      "src": "art-src/stylized-nature/glTF/Rock_Medium_1.gltf"
+    },
+    {
+      "name": "sn_mushroom",
+      "src": "art-src/stylized-nature/glTF/Mushroom_Common.gltf"
     }
   ]
 }

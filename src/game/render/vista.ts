@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { LevelLayout } from "../rules/levelLayout";
 import { cellNoise, forestFillers } from "../rules/nature";
+import { buildSpriteForest, buildWorldTreeSprite, type TreeSprites } from "./treeSprites";
 
 // The land beyond the playable map, so a zone sits in wide country instead of a walled box: rolling
 // hills that rise away from the forest edge, a dark forest running over them for hundreds of metres,
@@ -22,7 +23,7 @@ const RANGES = [
 ];
 
 // Smooth noise in [0, 1): stable values on a grid, blended between.
-function smoothNoise(x: number, z: number, salt: number): number {
+export function smoothNoise(x: number, z: number, salt: number): number {
   const x0 = Math.floor(x);
   const z0 = Math.floor(z);
   const fx = x - x0;
@@ -86,40 +87,9 @@ function buildLand(layout: LevelLayout, centre: THREE.Vector3): THREE.Mesh {
   return new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true }));
 }
 
-// Simple low-poly firs, as few draw calls as possible: two stacked cones for the crown on a short
-// trunk, one instanced mesh each. Used for the forest behind the map's drawn edge and on the hills.
-export function buildFirs(firs: readonly { x: number; y: number; z: number; height: number; shade: number }[]): THREE.Group {
-  const lower = new THREE.ConeGeometry(1, 0.62, 7);
-  lower.translate(0, 0.31 + 0.2, 0);
-  const upper = new THREE.ConeGeometry(0.72, 0.5, 7);
-  upper.translate(0, 0.5 + 0.25 + 0.2, 0);
-  const trunk = new THREE.CylinderGeometry(0.1, 0.14, 0.3, 5);
-  trunk.translate(0, 0.15, 0);
-  const material = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
-  const meshes = [lower, upper].map((g) => new THREE.InstancedMesh(g, material, Math.max(1, firs.length)));
-  const trunks = new THREE.InstancedMesh(trunk, new THREE.MeshLambertMaterial({ color: 0x4a3524 }), Math.max(1, firs.length));
-  const matrix = new THREE.Matrix4();
-  const colour = new THREE.Color();
-  const shades = [0x2f5a2c, 0x35632f, 0x2a4f2e, 0x3d6b34, 0x264a2a];
-  firs.forEach((f, i) => {
-    const width = f.height * 0.3;
-    matrix.compose(new THREE.Vector3(f.x, f.y, f.z), new THREE.Quaternion(), new THREE.Vector3(width, f.height, width));
-    colour.setHex(shades[Math.floor(f.shade * shades.length) % shades.length]);
-    for (const mesh of meshes) {
-      mesh.setMatrixAt(i, matrix);
-      mesh.setColorAt(i, colour);
-    }
-    trunks.setMatrixAt(i, matrix);
-  });
-  for (const mesh of [...meshes, trunks]) mesh.count = firs.length;
-  const group = new THREE.Group();
-  group.add(...meshes, trunks);
-  return group;
-}
-
 // The forest running on over the hills: thick near the map, thinning out toward the far side, with
 // open hillsides here and there.
-function farFirs(layout: LevelLayout) {
+function farTrees(layout: LevelLayout) {
   const w = layout.cols * layout.tileSize;
   const d = layout.rows * layout.tileSize;
   const out: { x: number; y: number; z: number; height: number; shade: number }[] = [];
@@ -189,47 +159,16 @@ function buildRange(centre: THREE.Vector3, range: (typeof RANGES)[number]): THRE
 // The world tree: a landmark far to the north, taller than the mountains, seen from every zone.
 const WORLD_TREE = { distance: 760, bearing: -Math.PI * 0.42, height: 380 };
 
-function buildWorldTree(centre: THREE.Vector3): THREE.Group {
-  const group = new THREE.Group();
-  const { height } = WORLD_TREE;
-  const bark = new THREE.MeshLambertMaterial({ color: 0x5b4331, flatShading: true });
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(height * 0.05, height * 0.11, height * 0.62, 9, 3), bark);
-  trunk.position.y = height * 0.31;
-  group.add(trunk);
-  // Roots spreading at the foot, and a few great boughs.
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 + cellNoise(i, 0, 600);
-    const root = new THREE.Mesh(new THREE.ConeGeometry(height * 0.035, height * 0.22, 6), bark);
-    root.position.set(Math.cos(a) * height * 0.1, height * 0.03, Math.sin(a) * height * 0.1);
-    root.rotation.set(Math.sin(a) * 1.2, 0, -Math.cos(a) * 1.2);
-    group.add(root);
-  }
-  const leaves = [0x3f7a36, 0x4d8a3b, 0x356b31, 0x5a9a44];
-  for (let i = 0; i < 16; i++) {
-    const a = cellNoise(i, 1, 600) * Math.PI * 2;
-    const out = cellNoise(i, 2, 600) * height * 0.32;
-    const size = height * (0.12 + cellNoise(i, 3, 600) * 0.1);
-    const blob = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(size, 1),
-      new THREE.MeshLambertMaterial({ color: leaves[i % leaves.length], flatShading: true }),
-    );
-    blob.position.set(Math.cos(a) * out, height * (0.62 + cellNoise(i, 4, 600) * 0.3), Math.sin(a) * out);
-    blob.scale.y = 0.7;
-    group.add(blob);
-  }
-  group.position.set(
-    centre.x + Math.cos(WORLD_TREE.bearing) * WORLD_TREE.distance, -6,
-    centre.z + Math.sin(WORLD_TREE.bearing) * WORLD_TREE.distance,
-  );
-  return group;
-}
-
-export function buildVista(layout: LevelLayout): THREE.Group {
+export function buildVista(layout: LevelLayout, sprites: TreeSprites): THREE.Group {
   const centre = new THREE.Vector3((layout.cols * layout.tileSize) / 2, 0, (layout.rows * layout.tileSize) / 2);
   const group = new THREE.Group();
   const fillers = forestFillers(layout).map((f) => ({ ...f, y: landHeight(layout, f.x, f.z) }));
-  group.add(buildLand(layout, centre), buildFirs([...fillers, ...farFirs(layout)]));
+  group.add(buildLand(layout, centre), buildSpriteForest(sprites, [...fillers, ...farTrees(layout)]));
   for (const range of RANGES) group.add(buildRange(centre, range));
-  group.add(buildWorldTree(centre));
+  group.add(buildWorldTreeSprite(
+    sprites,
+    centre.x + Math.cos(WORLD_TREE.bearing) * WORLD_TREE.distance, -6,
+    centre.z + Math.sin(WORLD_TREE.bearing) * WORLD_TREE.distance, WORLD_TREE.height,
+  ));
   return group;
 }

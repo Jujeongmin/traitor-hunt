@@ -363,6 +363,86 @@
       "url": "assets/models/pt_tree_stump.glb",
       "bytes": 21276,
       "animations": []
+    },
+    "sn_bush_flowers": {
+      "url": "assets/models/sn_bush_flowers.glb",
+      "bytes": 149696,
+      "animations": []
+    },
+    "sn_clover": {
+      "url": "assets/models/sn_clover.glb",
+      "bytes": 59460,
+      "animations": []
+    },
+    "sn_fern": {
+      "url": "assets/models/sn_fern.glb",
+      "bytes": 63428,
+      "animations": []
+    },
+    "sn_flowers": {
+      "url": "assets/models/sn_flowers.glb",
+      "bytes": 109572,
+      "animations": []
+    },
+    "sn_grass": {
+      "url": "assets/models/sn_grass.glb",
+      "bytes": 8960,
+      "animations": []
+    },
+    "sn_grass_wispy": {
+      "url": "assets/models/sn_grass_wispy.glb",
+      "bytes": 21528,
+      "animations": []
+    },
+    "sn_mushroom": {
+      "url": "assets/models/sn_mushroom.glb",
+      "bytes": 35992,
+      "animations": []
+    },
+    "sn_pebbles": {
+      "url": "assets/models/sn_pebbles.glb",
+      "bytes": 26432,
+      "animations": []
+    },
+    "sn_pine_1": {
+      "url": "assets/models/sn_pine_1.glb",
+      "bytes": 188996,
+      "animations": []
+    },
+    "sn_pine_3": {
+      "url": "assets/models/sn_pine_3.glb",
+      "bytes": 227500,
+      "animations": []
+    },
+    "sn_rock": {
+      "url": "assets/models/sn_rock.glb",
+      "bytes": 33676,
+      "animations": []
+    },
+    "sn_stepping": {
+      "url": "assets/models/sn_stepping.glb",
+      "bytes": 68480,
+      "animations": []
+    },
+    "sn_tree_1": {
+      "url": "assets/models/sn_tree_1.glb",
+      "bytes": 338668,
+      "animations": []
+    },
+    "sn_tree_2": {
+      "url": "assets/models/sn_tree_2.glb",
+      "bytes": 298908,
+      "animations": []
+    },
+    "sn_tree_3": {
+      "url": "assets/models/sn_tree_3.glb",
+      "bytes": 231040,
+      "animations": []
+    },
+    "sn_tree_4": {
+      "url": "assets/models/sn_tree_4.glb",
+      "bytes": 237036,
+      "animations": []
     }
   }
 }

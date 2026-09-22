@@ -105,7 +105,7 @@ export class MenuScene {
     const library = await ModelLibrary.load();
     await library.preload(MENU_MODELS, onProgress);
     if (this.disposed) return;
-    buildLevelScene(this.scene, library, parseLevel(MENU_MAP, TILE_SIZE));
+    buildLevelScene(this.scene, library, parseLevel(MENU_MAP, TILE_SIZE), this.renderer);
     this.library = library;
     this.buildLineup();
     this.placeParty();

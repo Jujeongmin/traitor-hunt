@@ -231,7 +231,7 @@ export class WorldView {
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
-    buildLevelScene(this.scene, library, this.layout);
+    buildLevelScene(this.scene, library, this.layout, this.renderer, this.doorways());
     this.addPortals();
     this.addHouses();
     // Your own name stays off: the camera is right behind you and it would only cover the view.
@@ -475,6 +475,16 @@ export class WorldView {
 
   // The village's people, each their own model, their name and role in gold overhead, standing
   // turned toward where you arrive.
+  // The ground just outside each house's door, where a path leads.
+  private doorways(): Point2[] {
+    const t = this.layout.tileSize;
+    return (ZONES[this.options.entry.zone].houses ?? []).map((h) => {
+      const yaw = HOUSE_YAW[h.face];
+      const out = t + 1;
+      return { x: (h.at[0] + 1) * t + Math.sin(yaw) * out, z: (h.at[1] + 1) * t + Math.cos(yaw) * out };
+    });
+  }
+
   // The zone's houses, each in the middle of its 2 by 2 block of cells, door the way it faces.
   private addHouses(): void {
     const t = this.layout.tileSize;
