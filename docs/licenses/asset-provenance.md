@@ -129,6 +129,18 @@ WAV는 모노 22.05 kHz로 줄이고 앞뒤 무음을 잘랐고, OGG는 그대�
 | `cloth.wav` (창 열기·닫기) | inventory/cloth.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
 | `enhance_ok.wav` | inventory/metal-ringing.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
 
+## 바닥 텍스처 (2026-09-22)
+
+모두 CC0. 사용자가 후보 페이지(art-src/ground/후보.html)에서 E안을 골랐다. 1K 원본은 `art-src/ground/`에 있고,
+게임에는 512px JPEG로 줄여 `public/assets/ground/`에 넣었다. 바닥 색은 그대로 두고 사진의 명암만 얹는다
+(`src/game/render/groundTextures.ts`).
+
+| 파일 | 원본 | 제작 | 출처 |
+|---|---|---|---|
+| `aerial_grass_rock.jpg` (풀밭) | Aerial Grass Rock | Poly Haven | https://polyhaven.com/a/aerial_grass_rock |
+| `forest_floor.jpg` (숲 바닥) | Ground048 | ambientCG | https://ambientcg.com/view?id=Ground048 |
+| `grass_path.jpg` (흙길) | Grass Path 2 | Poly Haven | https://polyhaven.com/a/grass_path_2 |
+
 ## 야외·치비 전환 (2026-09-21)
 
 게임은 이제 아래 에셋만 싣는다. 위 표의 다른 에셋(Decrepit Dungeon, Adventure Character, Zombie, AKM 등)은

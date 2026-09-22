@@ -9,6 +9,7 @@ import { buildStaticBatch, type StaticPiece } from "./staticBatch";
 import { HORIZON, skyTexture } from "./sky";
 import { CASTLE_MODELS, buildVista, smoothNoise } from "./vista";
 import { SPRITE_MODELS, bakeTreeSprites } from "./treeSprites";
+import { groundMaterial } from "./groundTextures";
 
 // The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
 // same as ever; solid cells are drawn as trees and rocks instead of stone walls.
@@ -18,7 +19,7 @@ export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, .
 export const SKY = HORIZON;
 // Where the sunlight comes from, relative to the middle of the map.
 const SUN_OFFSET = new THREE.Vector3(-35, 60, 25);
-// Clear for the length of a field, then the far forest and the mountains fade into the haze.
+// Clear for the length of a field, then the far forest fades into the haze.
 const FOG_NEAR = 90;
 const FOG_FAR = 1100;
 // How far a camera over this scene should see.
@@ -48,8 +49,8 @@ export function platformMatrix(platform: Platform, bounds: THREE.Box3): THREE.Ma
 }
 
 // A ground plane coloured per vertex: meadow where you can walk, in broad patches of lighter, deeper
-// and sun-dried grass; darker under the trees; worn to dirt along the paths. A little noise on top,
-// so it does not look painted on.
+// and sun-dried grass; darker under the trees; worn to dirt along the paths. Over the colours lie the
+// grain of real grass, forest floor and path pictures (see groundTextures.ts).
 function buildGround(layout: LevelLayout, paths: readonly Point2[][]): THREE.Mesh {
   const t = layout.tileSize;
   const width = (layout.cols + GROUND_BORDER * 2) * t;
@@ -59,6 +60,8 @@ function buildGround(layout: LevelLayout, paths: readonly Point2[][]): THREE.Mes
   geometry.translate((layout.cols * t) / 2, 0, (layout.rows * t) / 2);
   const positions = geometry.getAttribute("position");
   const colors = new Float32Array(positions.count * 3);
+  // How much of each ground picture shows at each point: grass, forest floor, path.
+  const splat = new Float32Array(positions.count * 3);
   const colour = new THREE.Color();
   const meadow = new THREE.Color();
   const openAt = (x: number, z: number) => {
@@ -79,14 +82,15 @@ function buildGround(layout: LevelLayout, paths: readonly Point2[][]): THREE.Mes
     colour.copy(FOREST_COLOR).lerp(meadow, open);
     // The path: bare dirt in the middle, fraying into the grass at its edges.
     const fromPath = pathDistance(paths, x, z) + (smoothNoise(x / 2, z / 2, 703) - 0.5) * 0.8;
-    if (fromPath < PATH_HALF_WIDTH + PATH_FRAY) {
-      colour.lerp(DIRT_COLOR, Math.min(1, (PATH_HALF_WIDTH + PATH_FRAY - fromPath) / PATH_FRAY));
-    }
+    const dirt = fromPath < PATH_HALF_WIDTH + PATH_FRAY ? Math.min(1, (PATH_HALF_WIDTH + PATH_FRAY - fromPath) / PATH_FRAY) : 0;
+    colour.lerp(DIRT_COLOR, dirt);
+    splat.set([open * (1 - dirt), (1 - open) * (1 - dirt), dirt], i * 3);
     const jitter = 0.9 + cellNoise(Math.round(x * 2), Math.round(z * 2), 5) * 0.2;
     colors.set([colour.r * jitter, colour.g * jitter, colour.b * jitter], i * 3);
   }
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  const ground = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  geometry.setAttribute("splat", new THREE.BufferAttribute(splat, 3));
+  const ground = new THREE.Mesh(geometry, groundMaterial());
   ground.receiveShadow = true;
   return ground;
 }
