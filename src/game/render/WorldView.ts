@@ -74,8 +74,7 @@ const HURT_FLASH_MS = 350;
 // How long a "+XP" note, and a note of gold or a drop, stays up.
 const GAIN_MS = 1500;
 const NOTE_MS = 3000;
-// Auto-battle drinks a potion below this share of health; potions go down no faster than this.
-const AUTO_POTION_BELOW = 0.35;
+// Potions go down no faster than this.
 const POTION_GAP_MS = 1000;
 
 // How far a house model is turned for its door to face each way (it is built facing +z, south).
@@ -346,7 +345,8 @@ export class WorldView {
     const rooted = this.me?.rooted === true;
     const potion = this.input.consumePress("KeyQ");
     if (this.input.consumePress("KeyE")) this.talk();
-    const autoPotion = this.auto && settings().autoPotion && !!state.me && state.me.hp < state.me.maxHp * AUTO_POTION_BELOW;
+    // The auto potion works whether or not auto-battle is on, at the threshold the player set.
+    const autoPotion = settings().autoPotion && !!state.me && state.me.hp <= state.me.maxHp * (settings().potionAt / 100);
     if (here && (potion || autoPotion)) this.drinkPotion();
     let facingYaw = this.yaw;
     if (here) {

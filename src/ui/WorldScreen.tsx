@@ -105,6 +105,9 @@ export function WorldScreen({ client, playerClass, costume, name, owned, onExit 
   );
 }
 
+// The panels over the world, one at a time.
+type Panel = "bag" | "shop" | "smith" | "skills" | "ranking" | "quest" | "quests";
+
 interface ZoneScreenProps extends Omit<WorldScreenProps, "onExit"> {
   entry: ZoneEntry;
   bag: BagView | null;
@@ -128,7 +131,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
   // Which of the bag and the shop is open.
-  const [panel, setPanel] = useState<"bag" | "shop" | "smith" | "skills" | "ranking" | "quest" | "quests" | null>(null);
+  const [panel, setPanel] = useState<Panel | null>(null);
   // The quest just finished, shown once as a panel in the middle of the screen.
   const [finished, setFinished] = useState<number | null>(null);
   const lastQuest = useRef<{ index: number; done: boolean } | null>(null);
@@ -181,15 +184,42 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     // One view per zone: the key on this component remounts it for a new entry.
   }, []);
 
-  // Escape opens the menu (the pointer lock lets go of the mouse first); I opens the bag.
+  // The menu buttons fold away behind one; each has its key. Escape closes whatever is open, else
+  // unfolds or folds the buttons.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const open = useRef({ panel, menu });
+  open.current = { panel, menu };
+  const toggle = (next: Panel) => {
+    document.exitPointerLock?.();
+    setPanel((p) => (p === next ? null : next));
+  };
+  const menuItems: readonly { id: string; label: string; key: string; code: string; act: () => void; on: boolean }[] = [
+    { id: "ranking", label: "랭킹", key: "O", code: "KeyO", act: () => toggle("ranking"), on: panel === "ranking" },
+    { id: "quests", label: "퀘스트", key: "L", code: "KeyL", act: () => toggle("quests"), on: panel === "quests" },
+    { id: "skills", label: "스킬", key: "K", code: "KeyK", act: () => toggle("skills"), on: panel === "skills" },
+    { id: "forge", label: "대장간", key: "U", code: "KeyU", act: () => toggle("smith"), on: panel === "smith" },
+    { id: "bag", label: "가방", key: "I", code: "KeyI", act: () => toggle("bag"), on: panel === "bag" },
+    {
+      id: "menu", label: "설정", key: "P", code: "KeyP",
+      act: () => {
+        document.exitPointerLock?.();
+        setMenu((m) => !m);
+      },
+      on: menu,
+    },
+  ];
+  const keys = useRef(menuItems);
+  keys.current = menuItems;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (typing(e)) return;
-      if (e.key === "Escape") setMenu((m) => !m);
-      if (e.code === "KeyI") {
-        document.exitPointerLock?.();
-        setPanel((p) => (p === "bag" ? null : "bag"));
+      if (e.key === "Escape") {
+        if (open.current.menu) setMenu(false);
+        else if (open.current.panel) setPanel(null);
+        else setMenuOpen((o) => !o);
+        return;
       }
+      keys.current.find((item) => item.code === e.code)?.act();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -219,20 +249,19 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
               <div className="hud-bar xp"><i style={{ width: `${Math.round((hud.xpInto / hud.xpNeed) * 100)}%` }} /></div>
             </div>
           </div>
-          <div className="hud-menu-buttons">
-            {([
-              ["ranking", "랭킹", () => setPanel("ranking")],
-              ["quests", "퀘스트", () => setPanel((p) => (p === "quests" ? null : "quests"))],
-              ["skills", "스킬", () => setPanel((p) => (p === "skills" ? null : "skills"))],
-              ["forge", "대장간", () => setPanel((p) => (p === "smith" ? null : "smith"))],
-              ["bag", "가방", () => setPanel("bag")],
-              ["menu", "메뉴", () => setMenu(true)],
-            ] as const).map(([id, label, open]) => (
-              <button key={id} type="button" className={`hud-icon-button${panel === id || (id === "forge" && panel === "smith") ? " on" : ""}`} onClick={open}>
-                <img src={iconFor(`ui_${id}`) ?? undefined} alt="" draggable={false} />
-                <span>{label}</span>
+          <div className={`hud-menu-buttons${menuOpen ? " open" : ""}`}>
+            {menuOpen && menuItems.map((item) => (
+              <button key={item.id} type="button" className={`hud-icon-button${item.on ? " on" : ""}`} onClick={item.act}>
+                <img src={iconFor(`ui_${item.id}`) ?? undefined} alt="" draggable={false} />
+                <span>{item.label}</span>
+                {!touch && <kbd className="hud-key">{item.key}</kbd>}
               </button>
             ))}
+            <button type="button" className={`hud-icon-button${menuOpen ? " on" : ""}`} onClick={() => setMenuOpen((o) => !o)}>
+              <img src={iconFor("ui_more") ?? undefined} alt="" draggable={false} />
+              <span>메뉴</span>
+              {!touch && <kbd className="hud-key">Esc</kbd>}
+            </button>
           </div>
           {hud.notes.length > 0 && (
             <div className="hud-notes">
@@ -290,7 +319,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · I 가방 · E 대화 · Enter 채팅 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · E 대화 · Enter 채팅 · Esc 메뉴 펼치기 · O 랭킹 · L 퀘스트 · K 스킬 창 · U 대장간 · I 가방 · P 설정 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>

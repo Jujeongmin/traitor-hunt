@@ -7,9 +7,18 @@ export interface Controls {
   hotbars: Record<string, (number | null)[]>;
   autoSkills: boolean[];
   autoPotion: boolean;
+  // With the auto potion on, one is drunk when health falls to this share of the most (percent).
+  potionAt: number;
 }
 
 export const HOTBAR_SLOTS = 3;
+// The auto potion's threshold: from, to and by how much it steps; and where it starts.
+export const POTION_AT = { min: 10, max: 90, step: 5, start: 35 } as const;
+
+export function readPotionAt(value: unknown): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? Math.round(value / POTION_AT.step) * POTION_AT.step : POTION_AT.start;
+  return Math.min(POTION_AT.max, Math.max(POTION_AT.min, n));
+}
 
 // Controls as sent or stored, or null when they are not well formed.
 export function readControls(value: unknown): Controls | null {
@@ -28,5 +37,6 @@ export function readControls(value: unknown): Controls | null {
     hotbars[playerClass] = bar as (number | null)[];
   }
   if (Object.keys(hotbars).length > CLASSES.length) return null;
-  return { hotbars, autoSkills: [...auto], autoPotion: v.autoPotion };
+  // Saves from before the threshold was kept have none: they get the starting one.
+  return { hotbars, autoSkills: [...auto], autoPotion: v.autoPotion, potionAt: readPotionAt(v.potionAt) };
 }

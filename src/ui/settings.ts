@@ -1,4 +1,4 @@
-import { HOTBAR_SLOTS, type Controls } from "../game/account/controls";
+import { HOTBAR_SLOTS, POTION_AT, type Controls } from "../game/account/controls";
 
 // Player settings, kept in this browser (the bar's set-up is also kept on the account; see
 // syncControls). Read live by the game view and the sound effects.
@@ -19,7 +19,7 @@ export interface Settings extends Controls {
 
 // The part of the settings kept on the account.
 export function controlsOf(s: Settings): Controls {
-  return { hotbars: s.hotbars, autoSkills: s.autoSkills, autoPotion: s.autoPotion };
+  return { hotbars: s.hotbars, autoSkills: s.autoSkills, autoPotion: s.autoPotion, potionAt: s.potionAt };
 }
 
 export { HOTBAR_SLOTS };
@@ -39,7 +39,7 @@ export function setHotbarSlot(playerClass: string, slot: number, skill: number |
 
 const STORAGE_KEY = "traitor-hunt:settings";
 export const DEFAULT_SETTINGS: Settings = {
-  sensitivity: 1, volume: 0.8, music: 0.5, brightness: 1, autoPotion: true, autoSkills: [true, false, false], hotbars: {},
+  sensitivity: 1, volume: 0.8, music: 0.5, brightness: 1, autoPotion: true, potionAt: POTION_AT.start, autoSkills: [true, false, false], hotbars: {},
 };
 
 function load(): Settings {

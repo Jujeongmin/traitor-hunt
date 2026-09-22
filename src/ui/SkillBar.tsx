@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PlayerClass } from "../game/combat/classes";
 import { iconFor, skillIconId } from "../game/render/icons";
 import type { WorldHud } from "../game/render/WorldView";
+import { POTION_AT } from "../game/account/controls";
 import { onSettings, settings, updateSettings } from "./settings";
 
 // Dragging a slot this far down (or up) flips whether auto-battle may use it.
@@ -83,12 +84,41 @@ function Cell({ slot, keyLabel, name, icon, corner, cooling, locked, isAuto, use
   );
 }
 
+// Left of the potion: at what health the auto potion drinks. Tapping it opens a slider above it.
+function PotionSetting({ on }: { on: boolean }) {
+  const [at, setAt] = useState(() => settings().potionAt);
+  const [open, setOpen] = useState(false);
+  useEffect(() => onSettings((s) => setAt(s.potionAt)), []);
+  return (
+    <div className="potion-setting">
+      <button type="button" className={`potion-setting-button${open ? " on" : ""}`} onClick={() => setOpen((o) => !o)} title="자동 물약 설정">
+        <span>HP</span>
+        <b>{at}%</b>
+      </button>
+      {open && (
+        <div className="potion-setting-pop solid-panel">
+          <b>자동 물약</b>
+          <span>HP가 {at}% 이하가 되면 물약을 마셔요{on ? "" : " (지금은 꺼져 있어요)"}</span>
+          <input
+            type="range" min={POTION_AT.min} max={POTION_AT.max} step={POTION_AT.step} value={at}
+            onChange={(e) => updateSettings({ potionAt: Number(e.target.value) })}
+          />
+          <button type="button" className="text-button" onClick={() => updateSettings({ autoPotion: !settings().autoPotion })}>
+            {on ? "자동 물약 끄기" : "자동 물약 켜기"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // The potion and the three skills, bottom centre, as a row of squares.
 export function SkillBar({ hud, playerClass, onSkill, onPotion }: SkillBarProps) {
   const [auto, setAuto] = useState(() => ({ potion: settings().autoPotion, skills: settings().autoSkills }));
   useEffect(() => onSettings((s) => setAuto({ potion: s.autoPotion, skills: s.autoSkills })), []);
   return (
     <div className="hud-skills">
+      <PotionSetting on={auto.potion} />
       <Cell
         slot={-1} keyLabel="Q" name="물약" icon={iconFor("potion_small")} corner={String(hud.potions)} cooling={null}
         locked={hud.potions === 0} isAuto={auto.potion} use={onPotion}
