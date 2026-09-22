@@ -14,7 +14,7 @@ import { TALK_RANGE, TALK_SLACK, npcSpot, type NpcId } from "../../src/game/worl
 import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/game/account/characters";
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
 import { isFreeClass, readClass } from "../../src/game/combat/classes";
-import { rankOf, type RankingView } from "../../src/game/account/ranking";
+import { rankOf, type RankDetail, type RankingView } from "../../src/game/account/ranking";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
 import { readWorld } from "../../src/game/account/worlds";
 import {
@@ -31,7 +31,8 @@ import {
   returnSpot, saveProfile, saveSpot, token, updateActive, withFriendsLock, withNicknameLock, withPartyLock, withProfileLock,
   writeFriendSide, writeParty, writePartyInvites, writeRanking, writeZonePose, zoneLook,
 } from "./store";
-import { fightStats, hasMonsters, strike, tickRoom, useSkill, withRoomLock, type HitResult } from "./hunt";
+import { hasMonsters, strike, tickRoom, useSkill, withRoomLock, type HitResult } from "./hunt";
+import { combatPower, fightStats } from "../../src/game/combat/power";
 
 // How often a walking character's spot is saved to the account (the room keeps the live pose).
 const SAVE_SPOT_MS = 5_000;
@@ -300,13 +301,36 @@ export class Server {
     return accountView(account);
   }
 
-  // Your character's level, where it sits on the board, and the board itself.
+  // Your character's level and 전투력, where it sits on the board, and the board itself (each line
+  // with its class; lines from before classes were kept on the board get theirs from the character).
   async getRanking(): Promise<RankingView> {
     const account = $sender.account;
     const { active } = await readProfile(account);
     const xp = active?.xp ?? 0;
+    const board = await Promise.all((await readRanking()).map(async (row) => {
+      if (row.playerClass) return row;
+      const character = (await readProfile(row.account)).characters.find((c) => c.id === row.id);
+      return character ? { ...row, playerClass: character.playerClass, job: character.job } : row;
+    }));
+    return {
+      xp, level: levelOf(xp), rank: active ? rankOf(board, active.id) : null, board, power: active ? combatPower(active) : 0,
+    };
+  }
+
+  // One character on the board in full: class, 전투력, gear and server. Only characters that are on
+  // the board can be looked up.
+  async getRankDetail(rawId: unknown): Promise<RankDetail> {
+    const id = requireText(rawId);
     const board = await readRanking();
-    return { xp, level: levelOf(xp), rank: active ? rankOf(board, active.id) : null, board };
+    const row = board.find((r) => r.id === id);
+    if (!row) throw new RuleViolation("unavailable");
+    const character = (await readProfile(row.account)).characters.find((c) => c.id === id);
+    if (!character) throw new RuleViolation("unavailable");
+    return {
+      id, nickname: character.name, level: levelOf(character.xp).level, xp: character.xp,
+      playerClass: character.playerClass, job: character.job, power: combatPower(character), gear: character.gear,
+      world: readWorld(character.world)?.name ?? character.world, rank: rankOf(board, id),
+    };
   }
 
   // Marks you online (the menu calls it every HEARTBEAT_MS) and returns your lists with names and presence.
@@ -563,6 +587,7 @@ export class Server {
       if (levelOf(c.xp).level < ADVANCE_LEVEL) throw new RuleViolation("too_low");
       return { ...c, job };
     });
+    await writeRanking(account, next);
     await refreshFighter(next);
     return bagView(next);
   }

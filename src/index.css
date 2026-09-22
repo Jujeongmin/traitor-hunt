@@ -492,7 +492,16 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .stats-level { font: 800 18px var(--font-logo); color: var(--ember); }
 
 .stats-board { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
-.stats-board li { display: grid; grid-template-columns: 24px 1fr auto; align-items: baseline; gap: 10px; padding: 4px 8px; border-radius: 4px; }
+.stats-board li { display: grid; grid-template-columns: 24px 1fr 88px 48px; align-items: baseline; gap: 10px; padding: 4px 8px; border-radius: 4px; }
+.stats-board li.head { font: 600 12px var(--font-head); color: var(--ink-dim); }
+.stats-board li.pick { cursor: pointer; }
+.stats-board li.pick:hover { background: rgba(255, 255, 255, 0.07); }
+.stats-board li .note { margin: 0; }
+.rank-detail h3 { font: 700 18px var(--font-head); margin: 0 0 10px; }
+.rank-detail dl { display: grid; grid-template-columns: 72px 1fr; gap: 6px 12px; margin: 0 0 14px; font-size: 14px; }
+.rank-detail dt { color: var(--ink-dim); }
+.rank-detail dd { margin: 0; }
+.rank-detail dd.power { color: var(--ember); font-weight: 700; }
 .stats-board li.me { background: rgba(255, 179, 90, 0.14); }
 .stats-board .rank { font: 700 13px var(--font-head); color: var(--ink-dim); text-align: right; }
 .stats-board .who { font: 700 14px var(--font-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -668,3 +677,5 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .chat-close { padding: 6px 10px; border-radius: 6px; border: 0; background: rgba(255, 255, 255, 0.15); color: var(--ink); font: 600 13px var(--font-body); }
 .chat-problem { width: 100%; color: var(--blood); font: 600 13px var(--font-body); }
 .chat-open { align-self: flex-start; pointer-events: auto; font: 600 14px var(--font-body); border: 0; background: none; color: var(--ink); cursor: pointer; }
+
+.bag-power { margin-left: 14px; color: var(--ember); font-weight: 700; }

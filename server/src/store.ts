@@ -30,11 +30,14 @@ const RANKING_COLLECTION = "ranking";
 // Read a few more rows than the board shows, so a row that has slipped down still lands in order.
 const RANKING_READ = RANKING_SIZE * 5;
 
-// Writes a character's line on the board. Called whenever its XP or its name changes; a character
+// Writes a character's line on the board. Called whenever its XP, its name or its advanced class changes; a character
 // with no XP yet leaves no row behind.
 export async function writeRanking(account: string, character: Character): Promise<void> {
   if (character.xp <= 0) return;
-  const row: RankRow = { id: character.id, account, nickname: character.name, xp: character.xp, level: levelOf(character.xp).level };
+  const row: RankRow = {
+    id: character.id, account, nickname: character.name, xp: character.xp, level: levelOf(character.xp).level,
+    playerClass: character.playerClass, job: character.job,
+  };
   const [stored] = await $global.getCollectionItems(RANKING_COLLECTION, {
     filters: [{ field: "id", operator: "==", value: character.id }],
     limit: 1,

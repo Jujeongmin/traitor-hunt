@@ -317,7 +317,9 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
       {panel === "quest" && (
         <QuestPanel client={client} bag={bag} onSeek={(types) => view.current?.seekQuest(types)} onClose={() => setPanel(null)} />
       )}
-      {panel === "ranking" && <RankingPanel account={client.account} load={() => client.ranking()} onClose={() => setPanel(null)} />}
+      {panel === "ranking" && <RankingPanel
+        account={client.account} load={() => client.ranking()} loadDetail={(id) => client.rankDetail(id)} onClose={() => setPanel(null)}
+      />}
       </div>
     </div>
   );

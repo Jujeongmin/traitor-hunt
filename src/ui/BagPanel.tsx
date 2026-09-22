@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ITEMS, ITEM_IDS, SHOP_ITEMS, sellPrice, type BagView, type ItemId, type Slot } from "../game/account/items";
 import { ADVANCE_LEVEL, JOBS, jobsOf } from "../game/combat/jobs";
 import type { PlayerClass } from "../game/combat/classes";
+import { combatPowerAt } from "../game/combat/power";
 import { iconFor } from "../game/render/icons";
 import type { WorldClient } from "../net/worldClient";
 
@@ -43,7 +44,10 @@ export function BagPanel({ client, bag, onClose, inVillage, playerClass, level }
     <div className="menu-modal" onClick={onClose}>
       <div className="solid-panel bag-panel" onClick={(e) => e.stopPropagation()}>
         <h2>가방</h2>
-        <p className="bag-gold">{bag ? `${bag.gold.toLocaleString()} 골드` : "불러오는 중…"}</p>
+        <p className="bag-gold">
+          {bag ? `${bag.gold.toLocaleString()} 골드` : "불러오는 중…"}
+          {bag && <span className="bag-power">전투력 {combatPowerAt(level, playerClass, bag.gear, bag.job).toLocaleString()}</span>}
+        </p>
         <div className="bag-job">
           {job ? (
             <span>전직 · <b>{JOBS[job].name}</b> ({JOBS[job].blurb})</span>

@@ -1,5 +1,5 @@
 import type { AccountView } from "../game/account/nickname";
-import type { RankingView } from "../game/account/ranking";
+import type { RankDetail, RankingView } from "../game/account/ranking";
 import { errorCode } from "./errors";
 import type { MatchTransport } from "./transport";
 
@@ -37,4 +37,8 @@ export function nicknameProblem(error: unknown): string {
 
 export function loadRanking(transport: MatchTransport): Promise<RankingView> {
   return transport.call<RankingView>("getRanking");
+}
+
+export function loadRankDetail(transport: MatchTransport, id: string): Promise<RankDetail> {
+  return transport.call<RankDetail>("getRankDetail", [id]);
 }

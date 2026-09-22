@@ -1,9 +1,7 @@
-import { gearStats, type Gear } from "../../src/game/account/items";
-import { JOBS, type JobId } from "../../src/game/combat/jobs";
-import { levelOf } from "../../src/game/account/level";
 import { WEAPONS, readClass, type PlayerClass } from "../../src/game/combat/classes";
 import { BLOCK_ARC, facing, inStrikeReach } from "../../src/game/combat/melee";
 import { SKILLS, readSlot, skillTargets } from "../../src/game/combat/skills";
+import type { FightBonus } from "../../src/game/combat/power";
 import { stepMonsters, type Prey } from "../../src/game/world/monsterAi";
 import {
   MONSTERS, ZONE_BOSS, ZONE_MONSTERS, damageAt, maxHpAt, readMonsterType, spawnMonsters, type MonsterState,
@@ -45,9 +43,6 @@ interface Fighter {
   gear: FightBonus;
 }
 
-// What gear and an advanced class add to a fight: a share more damage, more health, a share of
-// every blow stopped, and a share more healing.
-export interface FightBonus { power: number; hp: number; guard: number; heal: number }
 
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
@@ -92,17 +87,6 @@ function tidy(monsters: Record<string, MonsterState>): Record<string, MonsterSta
 
 async function writeMonsters(monsters: Record<string, MonsterState>): Promise<void> {
   await $room.updateRoomState({ monsters: tidy(monsters) }, { returnState: false });
-}
-
-// The stats a character fights with at its level, in its gear and advanced class, for the room user
-// state on arrival, level up, a change of gear or advancement.
-export function fightStats(c: { xp: number; gear: Gear; job: JobId | null }): { maxHp: number; gear: FightBonus } {
-  const worn = gearStats(c.gear);
-  const job = c.job ? JOBS[c.job] : null;
-  const bonus = {
-    power: worn.power + (job?.power ?? 0), hp: worn.hp + (job?.hp ?? 0), guard: worn.guard + (job?.guard ?? 0), heal: job?.heal ?? 0,
-  };
-  return { maxHp: maxHpAt(levelOf(c.xp).level) + bonus.hp, gear: bonus };
 }
 
 // One room tick: monsters move and swing, blows land on players (a raised guard facing the monster

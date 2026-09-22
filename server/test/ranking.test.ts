@@ -1,5 +1,6 @@
 import { levelOf } from "../../src/game/account/level";
-import { giveXp, makeCharacter } from "./helpers";
+import { combatPower } from "../../src/game/combat/power";
+import { errorOf, giveXp, makeCharacter } from "./helpers";
 
 // The board is written when a character's XP changes; hunting will do that (phase 2). Here the
 // store writes it directly.
@@ -25,5 +26,25 @@ describe("ranking", () => {
     const view = await server.getRanking();
     expect(view.board.map((r: any) => r.nickname)).toEqual(["앞선자", "뒤선자"]);
     expect(view.rank).toBe(2);
+  });
+
+  test("each line carries the class, and a line opens the character in full", async (server) => {
+    await makeCharacter(server, "test-a", "궁수왕", "ranger");
+    await giveXp("test-a", 900);
+    await writeRanking("test-a", (await readProfile("test-a")).active!);
+    await makeCharacter(server, "test-b", "구경꾼");
+    server.connect({ account: "test-b" });
+    const view = await server.getRanking();
+    expect(view.board[0]).toMatchObject({ nickname: "궁수왕", playerClass: "ranger", job: null });
+    expect(view.power).toBeGreaterThan(0);
+
+    const detail = await server.getRankDetail(view.board[0].id);
+    const active = (await readProfile("test-a")).active!;
+    expect(detail).toMatchObject({
+      nickname: "궁수왕", playerClass: "ranger", level: levelOf(900).level, xp: 900, rank: 1, power: combatPower(active),
+      gear: active.gear,
+    });
+    expect(detail.world).toContain("초록숲");
+    expect(await errorOf(server.getRankDetail("nobody"))).toContain("unavailable");
   });
 });

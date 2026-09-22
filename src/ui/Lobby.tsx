@@ -3,7 +3,7 @@ import { CHARACTERS_PER_WORLD } from "../game/account/characters";
 import type { FriendsView } from "../game/account/friends";
 import type { AccountView } from "../game/account/nickname";
 import type { PartyView } from "../game/account/party";
-import type { RankingView } from "../game/account/ranking";
+import type { RankDetail, RankingView } from "../game/account/ranking";
 import { readWorld } from "../game/account/worlds";
 import { playMusic } from "../game/audio/music";
 import { CLASS_LABEL, readClass, type PlayerClass } from "../game/combat/classes";
@@ -34,6 +34,7 @@ interface LobbyProps {
   onCreate: (name: string, playerClass: string, costume: string) => Promise<void>;
   onSelect: (id: string) => Promise<void>;
   loadRanking: (() => Promise<RankingView>) | null;
+  loadRankDetail: ((id: string) => Promise<RankDetail>) | null;
   // Opens Verse8's purchase dialog; null when there is no shop.
   onBuy: (() => void) | null;
   purchase: "idle" | "confirming" | "late";
@@ -54,7 +55,7 @@ type Step = "title" | "world" | "characters" | "class" | "name" | "look";
 type Sheet = "none" | "settings" | "ranking";
 
 export function Lobby({
-  account, view, accountFailed, online, onPickWorld, checkName, onCreate, onSelect, loadRanking, onBuy, purchase, price,
+  account, view, accountFailed, online, onPickWorld, checkName, onCreate, onSelect, loadRanking, loadRankDetail, onBuy, purchase, price,
   friends, friendsView, party, partyView, onStart, returning,
 }: LobbyProps) {
   const stage = useRef<HTMLDivElement>(null);
@@ -316,7 +317,7 @@ export function Lobby({
           />
         )}
         {sheet === "settings" && <SettingsPanel onClose={() => setSheet("none")} />}
-        {sheet === "ranking" && <RankingPanel account={account} load={loadRanking} onClose={() => setSheet("none")} />}
+        {sheet === "ranking" && <RankingPanel account={account} load={loadRanking} loadDetail={loadRankDetail} onClose={() => setSheet("none")} />}
       </div>
     </div>
   );

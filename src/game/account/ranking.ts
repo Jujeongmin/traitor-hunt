@@ -1,3 +1,6 @@
+import { readClass, type PlayerClass } from "../combat/classes";
+import { readJob, type JobId } from "../combat/jobs";
+import type { Gear } from "./items";
 import type { LevelView } from "./level";
 
 // One line of the board. The server keeps one per character, refreshed when its XP or its name
@@ -9,6 +12,9 @@ export interface RankRow {
   nickname: string | null;
   xp: number;
   level: number;
+  // Its class and advanced class; missing on lines written before they were kept.
+  playerClass?: PlayerClass;
+  job?: JobId | null;
 }
 
 // How many lines the board shows.
@@ -24,7 +30,9 @@ function isRow(value: unknown): value is RankRow {
 export function rankRows(rows: readonly RankRow[]): RankRow[] {
   return rows
     .filter((row) => isRow(row) && row.xp > 0)
-    .map(({ id, account, nickname, xp, level }) => ({ id, account, nickname, xp, level }))
+    .map(({ id, account, nickname, xp, level, playerClass, job }) => ({
+      id, account, nickname, xp, level, playerClass: readClass(playerClass) ?? undefined, job: readJob(job),
+    }))
     .sort((a, b) => b.xp - a.xp || a.id.localeCompare(b.id))
     .slice(0, RANKING_SIZE);
 }
@@ -42,4 +50,21 @@ export interface RankingView {
   // Where you sit on the board, or null while you are not on it.
   rank: number | null;
   board: RankRow[];
+  // Your character's 전투력 (0 without one).
+  power: number;
+}
+
+// What tapping a line of the board shows: the character in full.
+export interface RankDetail {
+  id: string;
+  nickname: string;
+  level: number;
+  xp: number;
+  playerClass: PlayerClass;
+  job: JobId | null;
+  power: number;
+  gear: Gear;
+  // Its game server's name.
+  world: string;
+  rank: number | null;
 }

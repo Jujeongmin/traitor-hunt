@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useGameServer } from "@agent8/gameserver";
 import { readClass } from "./game/combat/classes";
 import { COSTUMES, costumeById } from "./game/render/costumes";
-import { loadRanking } from "./net/account";
+import { loadRankDetail, loadRanking } from "./net/account";
 import { Verse8Transport } from "./net/verse8Transport";
 import { devLocalTransport } from "./net/devLocal";
 import { syncControls } from "./net/controlsSync";
@@ -77,6 +77,7 @@ export default function App() {
         onCreate={create}
         onSelect={select}
         loadRanking={transport ? () => loadRanking(transport) : null}
+        loadRankDetail={transport ? (id) => loadRankDetail(transport, id) : null}
         onBuy={purchase.buy}
         purchase={purchase.state}
         price={purchase.price}
