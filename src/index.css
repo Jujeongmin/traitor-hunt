@@ -643,3 +643,28 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .character-card.new { align-items: center; font: 700 15px var(--font-head); color: var(--ember); border-style: dashed; }
 .wardrobe-panel { align-self: flex-start; max-height: calc(100% - 28px); }
 .character-select .guest-note { color: #ffcf8a; max-width: 280px; line-height: 1.5; }
+
+/* The channel chat, at the left: above the joystick on a touch screen, above the skill bar's height
+   on a keyboard (a narrow window would otherwise run it into the bar). */
+.chat {
+  position: absolute; left: 16px; bottom: 110px; width: 340px; max-width: calc(100vw - 32px);
+  display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+}
+.chat.touch { bottom: 268px; width: 280px; }
+.chat-log {
+  max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
+  font: 500 14px var(--font-body); text-shadow: 0 1px 2px #000, 0 0 4px #000;
+}
+.chat.open .chat-log { max-height: 220px; background: rgba(14, 11, 9, 0.55); border-radius: 6px; padding: 6px 8px; pointer-events: auto; }
+.chat-log p { margin: 0; overflow-wrap: anywhere; }
+.chat-log b { color: #d9c7a4; font-weight: 700; margin-right: 4px; }
+.chat-log p.mine b { color: #ffd36a; }
+.chat-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: auto; }
+.chat-form input {
+  flex: 1; min-width: 0; padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(14, 11, 9, 0.8); color: var(--ink); font: 500 15px var(--font-body); outline: none;
+}
+.chat-form input:focus { border-color: #ffd36a; }
+.chat-close { padding: 6px 10px; border-radius: 6px; border: 0; background: rgba(255, 255, 255, 0.15); color: var(--ink); font: 600 13px var(--font-body); }
+.chat-problem { width: 100%; color: var(--blood); font: 600 13px var(--font-body); }
+.chat-open { align-self: flex-start; pointer-events: auto; font: 600 14px var(--font-body); border: 0; background: none; color: var(--ink); cursor: pointer; }

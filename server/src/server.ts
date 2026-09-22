@@ -5,6 +5,7 @@ import { levelOf } from "../../src/game/account/level";
 import {
   GOLD, ITEMS, MAX_STACK, NO_GEAR, addItem, equip, readItemId, sellPrice, unequip, type BagView, type ItemId, type Slot,
 } from "../../src/game/account/items";
+import { CHAT_WINDOW_MS, chatAllowed, readChat, type ChatMessage } from "../../src/game/world/chat";
 import { rankHitters, rollLoot, xpFor, type MonsterType } from "../../src/game/world/monsters";
 import { QUESTS, QUEST_START, countKills, questDone } from "../../src/game/account/quests";
 import { ADVANCE_LEVEL, JOBS, readJob } from "../../src/game/combat/jobs";
@@ -434,6 +435,23 @@ export class Server {
       await saveSpot($sender.account, { zone, x: saved.x, z: saved.z });
       await $room.updateMyState({ savedAt: now }, { returnState: false });
     }
+  }
+
+  // A line said in your channel: tidied, held to the chat's pace, and sent to everyone in the room
+  // (you too) with the name the room shows for you. Answers with the line as it went out.
+  async say(raw: unknown): Promise<ChatMessage> {
+    const text = readChat(raw);
+    if (text === null) throw new RuleViolation("unavailable");
+    currentChannel();
+    const now = Date.now();
+    const mine = await $room.getMyState();
+    const said: number[] = Array.isArray(mine.chatAt) ? mine.chatAt.filter((t: unknown): t is number => typeof t === "number") : [];
+    if (!chatAllowed(said, now)) throw new RuleViolation("too_fast");
+    await $room.updateMyState({ chatAt: [...said.filter((t) => now - t < CHAT_WINDOW_MS), now] }, { returnState: false });
+    const name = typeof mine.look?.name === "string" ? mine.look.name : "";
+    const message: ChatMessage = { account: $sender.account, name, text, at: now };
+    await $room.broadcastToRoom("chat", message);
+    return message;
   }
 
   // Your attack on a monster, facing yaw; the server checks reach, facing and your weapon's pace.

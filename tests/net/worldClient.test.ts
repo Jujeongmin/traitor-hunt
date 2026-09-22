@@ -75,6 +75,20 @@ describe("WorldClient", () => {
   });
 });
 
+describe("WorldClient chat", () => {
+  it("hears what is said in the channel, its own lines marked", async () => {
+    const { world, list: [a, b] } = await clients("test-a", "test-b");
+    await a.enter();
+    await b.enter();
+    expect(await a.say("  안녕!  ")).toBeNull();
+    await world.idle();
+    expect(b.state.chat).toEqual([expect.objectContaining({ account: "test-a", name: "testa", text: "안녕!", mine: false })]);
+    expect(a.state.chat[0]).toMatchObject({ text: "안녕!", mine: true });
+    expect(await a.say("또")).toBe("too_fast");
+    expect(await a.say("   ")).toBe("unavailable");
+  });
+});
+
 describe("WorldClient payouts", () => {
   // A server that can also write a payout into the caller's room user state, as a kill does.
   class PayingServer extends Server {

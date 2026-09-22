@@ -35,6 +35,11 @@ const SHOT_HEIGHT = 0.9;
 const ATTACK_COMMIT = 0.45;
 const LABEL_NEAR = 10;
 const LABEL_FAR = 28;
+// A chat line stays over the head this long, fading out over the last BUBBLE_FADE seconds, and
+// shows at most BUBBLE_CHARS characters.
+const BUBBLE_SECONDS = 6;
+const BUBBLE_FADE = 1;
+const BUBBLE_CHARS = 24;
 // A pause this long between swings starts a combo over.
 const COMBO_RESET_SECONDS = 1.4;
 const SKILL_COMMIT = 0.8;
@@ -77,6 +82,9 @@ export class PlayerActor {
   private readonly animated: Animated | null;
   private readonly tag = createLabel(1.3);
   private tagText = "";
+  // What it last said, over the name, for BUBBLE_SECONDS.
+  private readonly bubble = createLabel(1.3);
+  private bubbleLeft = 0;
   private placed = false;
   private dead = false;
   private lastSwing: number | null = null;
@@ -96,7 +104,7 @@ export class PlayerActor {
     this.body = model?.object ?? placeholderBody();
     this.object = new THREE.Group();
     this.tag.position.y = PLAYER_HEIGHT + 0.3;
-    this.object.add(this.body, this.tag);
+    this.object.add(this.body, this.tag, this.bubble);
     this.animated = model ? PlayerActor.animate(model) : null;
     this.rig = model?.rig ?? null;
     this.effects = model?.effects ?? null;
@@ -117,6 +125,16 @@ export class PlayerActor {
     const shown = this.tagText.length > 0 && distance < LABEL_FAR;
     this.tag.visible = shown;
     if (shown) material.opacity = distance <= LABEL_NEAR ? 1 : 1 - (distance - LABEL_NEAR) / (LABEL_FAR - LABEL_NEAR);
+    this.bubble.visible = this.bubbleLeft > 0 && distance < LABEL_FAR;
+  }
+
+  // A chat line over the head for a while (cut short if long; the chat box has it whole).
+  say(text: string): void {
+    const shown = [...text].length > BUBBLE_CHARS ? `${[...text].slice(0, BUBBLE_CHARS - 1).join("")}…` : text;
+    setLabel(this.bubble, shown, "#ffffff");
+    // Over the name, or where the name would be when there is none (your own hero).
+    this.bubble.position.y = PLAYER_HEIGHT + (this.tagText ? 0.68 : 0.3);
+    this.bubbleLeft = BUBBLE_SECONDS;
   }
 
   // The name over the head; empty hides it.
@@ -148,6 +166,11 @@ export class PlayerActor {
 
   sync(pose: Pose | null, status: PlayerStatus, dt: number): void {
     this.clock += dt;
+    if (this.bubbleLeft > 0) {
+      this.bubbleLeft -= dt;
+      this.bubble.visible = this.bubbleLeft > 0;
+      this.bubble.material.opacity = Math.min(1, this.bubbleLeft / BUBBLE_FADE);
+    }
     if (!pose) {
       this.object.visible = false;
       return;

@@ -7,6 +7,7 @@ import type { RankingView } from "../game/account/ranking";
 import { readMonsterType, type MonsterState } from "../game/world/monsters";
 import type { ZoneEntry, ZoneId, ZoneLook } from "../game/world/zones";
 import { errorCode } from "./errors";
+import { readChat, type ChatMessage } from "../game/world/chat";
 import type { MatchTransport } from "./transport";
 
 export type WorldPhase = "idle" | "entering" | "in" | "travelling" | "error";
@@ -36,6 +37,25 @@ export interface WorldState {
   // Your gold, bag and gear; null until the server has said.
   bag: BagView | null;
   error: string | null;
+  // The lines said in the channels you have been in this session, oldest first (at most CHAT_KEEP).
+  chat: ChatLine[];
+}
+
+// A chat line as the client keeps it: numbered in the order it came, when it came (by this
+// client's clock), and whether it is yours.
+export interface ChatLine extends ChatMessage {
+  id: number;
+  heardAt: number;
+  mine: boolean;
+}
+
+const CHAT_KEEP = 50;
+
+function readChatMessage(raw: unknown): ChatMessage | null {
+  const m = raw as Record<string, unknown> | null;
+  if (!m || typeof m !== "object" || typeof m.account !== "string" || typeof m.name !== "string") return null;
+  const text = readChat(m.text);
+  return text === null ? null : { account: m.account, name: m.name, text, at: num(m.at) };
 }
 
 // What an attack or skill did, as the server answers it: what it hit and felled, and what that paid.
@@ -99,7 +119,7 @@ function readVitals(user: Record<string, unknown>): Vitals | null {
 // Your place in the open world: which zone and channel you are in, who else is there and where,
 // and your own pose going out to them.
 export class WorldClient {
-  private current: WorldState = { phase: "idle", entry: null, others: [], monsters: {}, me: null, bag: null, error: null };
+  private current: WorldState = { phase: "idle", entry: null, others: [], monsters: {}, me: null, bag: null, error: null, chat: [] };
   private readonly listeners = new Set<(s: WorldState) => void>();
   private unsubscribers: (() => void)[] = [];
   private members: string[] = [];
@@ -109,6 +129,7 @@ export class WorldClient {
   // the ones not yet taken by the view.
   private payoutSeen: string | null | undefined = undefined;
   private payouts: Payout[] = [];
+  private chatCount = 0;
 
   constructor(
     private readonly transport: MatchTransport,
@@ -163,6 +184,27 @@ export class WorldClient {
     // Keeps your spot from inside the room, then leaves it.
     await this.transport.call("leaveWorld").catch(() => undefined);
     this.transport.leaveRoom();
+  }
+
+  // Says a line in your channel. Answers null once it went out, or why it was refused.
+  async say(text: string): Promise<string | null> {
+    if (this.current.phase !== "in") return "unavailable";
+    const line = readChat(text);
+    if (line === null) return "unavailable";
+    try {
+      await this.transport.call("say", [line]);
+      return null;
+    } catch (error) {
+      return errorCode(error);
+    }
+  }
+
+  private heard(raw: unknown): void {
+    const message = readChatMessage(raw);
+    if (!message) return;
+    this.chatCount += 1;
+    const line: ChatLine = { ...message, id: this.chatCount, heardAt: this.now(), mine: message.account === this.account };
+    this.set({ chat: [...this.current.chat, line].slice(-CHAT_KEEP) });
   }
 
   // Every POSE_THROTTLE_MS while moving, every IDLE_POSE_MS while standing still; a guard, an attack
@@ -316,6 +358,7 @@ export class WorldClient {
         if (monsters !== undefined) this.set({ monsters: readMonsters(monsters) });
         this.refreshOthers();
       }),
+      this.transport.onRoomMessage(entry.roomId, "chat", (message) => this.heard(message)),
       this.transport.subscribeRoomUsers(entry.roomId, (users) => {
         this.users = users as unknown as Record<string, unknown>[];
         this.refreshOthers();

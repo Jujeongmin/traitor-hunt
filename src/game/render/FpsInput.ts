@@ -1,5 +1,11 @@
 import type { MoveInput } from "../rules/movement";
 
+// Keys typed into a text box (the chat) are words, not moves.
+export function typing(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  return !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+}
+
 export class FpsInput {
   // Left button held: swing. Right button held: raise the shield.
   firing = false;
@@ -111,9 +117,11 @@ export class FpsInput {
     e.preventDefault();
   };
   private onKeyDown = (e: KeyboardEvent) => {
+    if (typing(e)) return;
     this.keys.add(e.code);
     if (!e.repeat) this.pressed.add(e.code);
   };
+  // Let go even while typing, so a key held when the chat opened does not stay down.
   private onKeyUp = (e: KeyboardEvent) => {
     this.keys.delete(e.code);
   };

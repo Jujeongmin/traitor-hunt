@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { typing } from "../game/render/FpsInput";
+import { ChatBox } from "./ChatBox";
 import { playMusic } from "../game/audio/music";
 import { trackFor } from "../game/audio/musicTrack";
 import type { PlayerClass } from "../game/combat/classes";
@@ -181,6 +183,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   // Escape opens the menu (the pointer lock lets go of the mouse first); I opens the bag.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (typing(e)) return;
       if (e.key === "Escape") setMenu((m) => !m);
       if (e.code === "KeyI") {
         document.exitPointerLock?.();
@@ -266,6 +269,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
               onSeek={(types) => view.current?.seekQuest(types)} onReport={() => view.current?.walkToNpc("elder")}
             />
           )}
+          <ChatBox client={client} touch={touch} />
           {!touch && <div className="crosshair" />}
           {hud.hurt > 0 && <div className="hud-hurt" style={{ opacity: hud.hurt }} />}
           {hud.dead && (
@@ -284,7 +288,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · I 가방 · E 대화 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · I 가방 · E 대화 · Enter 채팅 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>
