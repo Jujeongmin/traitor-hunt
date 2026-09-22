@@ -115,7 +115,7 @@ npm 패키지(@fontsource)로 넣었고 모두 SIL Open Font License 1.1이다(�
 | Mini Legion Grunt PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 일반 몬스터(grunt) |
 | Mini Legion Footman PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 일반 몬스터(footman) |
 | Mini Legion Rock Golem PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 보스(golem) |
-| Low Poly Environment - Nature Free | Polytope Studio | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 나무·바위·풀·꽃·버섯·통나무·그루터기·선돌·광석·나무 문·다리 |
+| Low Poly Environment - Nature Free | Polytope Studio | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 발판용 통나무(pt_logs)·바위(pt_rock)·그루터기(pt_tree_stump)만 (나무·풀·꽃은 2026-09-22에 Stylized Nature로 바꿈) |
 | Treasure Chest - PBR | Thomas K. Kerff | Standard Unity Asset Store EULA / Extension Asset | 무료 | — | 올라서는 상자(chest_closed) |
 
 패키지 5개를 모두 풀어 readme·license 파일이 없는 것을 확인했다. 약관 원문(2.2.1)은 "electronic application or

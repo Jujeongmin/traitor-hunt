@@ -6,26 +6,6 @@
       "asset": "Assets/Resources/Treasure chest closed/treasure_chest_closed.prefab"
     },
     {
-      "name": "pt_pine",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Pine_Tree_03_green.prefab"
-    },
-    {
-      "name": "pt_pine_dead",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Pine_Tree_03_dead.prefab"
-    },
-    {
-      "name": "pt_fruit_tree",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Fruit_Tree_01_green.prefab"
-    },
-    {
-      "name": "pt_apple_tree",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Fruit_Tree_01_apples.prefab"
-    },
-    {
       "name": "pt_tree_stump",
       "kind": "prefab",
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/PT_Pine_Tree_03_stump.prefab"
@@ -39,31 +19,6 @@
       "name": "pt_rock",
       "kind": "prefab",
       "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_Generic_Rock_01.prefab"
-    },
-    {
-      "name": "pt_shrub",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Shrubs/PT_Generic_Shrub_01_green.prefab"
-    },
-    {
-      "name": "pt_shrub_dead",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Shrubs/PT_Generic_Shrub_01_dead.prefab"
-    },
-    {
-      "name": "pt_grass",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Plants/PT_Grass_02.prefab"
-    },
-    {
-      "name": "pt_poppy",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Flowers/PT_Poppy_02.prefab"
-    },
-    {
-      "name": "pt_mushroom",
-      "kind": "prefab",
-      "asset": "Assets/Resources/Polytope Studio/Lowpoly_Environments/Prefabs/Mushrooms/PT_Caesars_Mushroom_01.prefab"
     },
     {
       "name": "mon_rat",

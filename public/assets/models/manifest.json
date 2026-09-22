@@ -309,59 +309,14 @@
         "Walk_Carry"
       ]
     },
-    "pt_apple_tree": {
-      "url": "assets/models/pt_apple_tree.glb",
-      "bytes": 337760,
-      "animations": []
-    },
-    "pt_fruit_tree": {
-      "url": "assets/models/pt_fruit_tree.glb",
-      "bytes": 320120,
-      "animations": []
-    },
-    "pt_grass": {
-      "url": "assets/models/pt_grass.glb",
-      "bytes": 33592,
-      "animations": []
-    },
     "pt_logs": {
       "url": "assets/models/pt_logs.glb",
       "bytes": 53504,
       "animations": []
     },
-    "pt_mushroom": {
-      "url": "assets/models/pt_mushroom.glb",
-      "bytes": 14396,
-      "animations": []
-    },
-    "pt_pine": {
-      "url": "assets/models/pt_pine.glb",
-      "bytes": 159372,
-      "animations": []
-    },
-    "pt_pine_dead": {
-      "url": "assets/models/pt_pine_dead.glb",
-      "bytes": 148508,
-      "animations": []
-    },
-    "pt_poppy": {
-      "url": "assets/models/pt_poppy.glb",
-      "bytes": 45876,
-      "animations": []
-    },
     "pt_rock": {
       "url": "assets/models/pt_rock.glb",
       "bytes": 16524,
-      "animations": []
-    },
-    "pt_shrub": {
-      "url": "assets/models/pt_shrub.glb",
-      "bytes": 161728,
-      "animations": []
-    },
-    "pt_shrub_dead": {
-      "url": "assets/models/pt_shrub_dead.glb",
-      "bytes": 42532,
       "animations": []
     },
     "pt_tree_stump": {
