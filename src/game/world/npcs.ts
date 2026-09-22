@@ -33,7 +33,7 @@ export const NPCS: readonly Npc[] = [
   {
     id: "elder", name: "촌장 마르타", role: "퀘스트", model: "npc_elder", height: 1.6, idle: "Idle", greet: "Victory",
     colors: { Skin: 0xf0c9a4, Shirt: 0x7d5a9e, Pants: 0x4e3d63, Hair: 0xd9d4cc, Hat: 0x3b2a4a },
-    house: [15, 6],
+    house: [24, 15],
   },
 ];
 

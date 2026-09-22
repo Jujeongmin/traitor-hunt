@@ -6,13 +6,13 @@ import { NATURE_MODELS, cellNoise, natureLayout } from "../rules/nature";
 import type { Platform } from "../rules/platforms";
 import { buildStaticBatch, type StaticPiece } from "./staticBatch";
 import { HORIZON, skyTexture } from "./sky";
-import { buildVista, smoothNoise } from "./vista";
+import { ISLAND_MODELS, buildVista, smoothNoise } from "./vista";
 import { SPRITE_MODELS, bakeTreeSprites } from "./treeSprites";
 
 // The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
 // same as ever; solid cells are drawn as trees and rocks instead of stone walls.
 const PLATFORM_MODELS = ["pt_logs", "pt_rock", "pt_tree_stump", "chest_closed"];
-export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, ...SPRITE_MODELS])];
+export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, ...SPRITE_MODELS, ...ISLAND_MODELS])];
 
 export const SKY = HORIZON;
 // Where the sunlight comes from, relative to the middle of the map.
@@ -105,7 +105,7 @@ export function buildLevelScene(
   sun.target.position.copy(centre);
   scene.add(sun, sun.target);
   const paths = groundPaths(layout, destinations);
-  scene.add(buildGround(layout, paths), buildVista(layout, bakeTreeSprites(renderer, library)));
+  scene.add(buildGround(layout, paths), buildVista(layout, bakeTreeSprites(renderer, library), library));
 
   const pieces: StaticPiece[] = natureLayout(layout, paths).map((p) => ({
     model: p.model,

@@ -22,10 +22,8 @@ export interface Zone {
   houses?: House[];
 }
 
-// The village's houses, round the square, and its watchtower seen from everywhere in it (see
-// scripts/build-houses.mjs for the models).
+// The village's houses, round the square (see scripts/build-houses.mjs for the models).
 const VILLAGE_HOUSES: House[] = [
-  { model: "bld_tower", at: [15, 6], face: "S" },
   { model: "bld_house_tall", at: [10, 5], face: "S" },
   { model: "bld_house_long", at: [20, 3], face: "S" },
   { model: "bld_house_small", at: [24, 15], face: "N" },

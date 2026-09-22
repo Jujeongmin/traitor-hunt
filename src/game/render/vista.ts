@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { LevelLayout } from "../rules/levelLayout";
 import { cellNoise, forestFillers } from "../rules/nature";
 import { buildSpriteForest, buildWorldTreeSprite, type TreeSprites } from "./treeSprites";
+import type { ModelSource } from "./staticBatch";
 
 // The land beyond the playable map, so a zone sits in wide country instead of a walled box: rolling
 // hills that rise away from the forest edge, a dark forest running over them for hundreds of metres,
@@ -159,12 +160,43 @@ function buildRange(centre: THREE.Vector3, range: (typeof RANGES)[number]): THRE
 // The world tree: a landmark far to the north, taller than the mountains, seen from every zone.
 const WORLD_TREE = { distance: 760, bearing: -Math.PI * 0.42, height: 380 };
 
-export function buildVista(layout: LevelLayout, sprites: TreeSprites): THREE.Group {
+// A floating island far out over the forest, where nobody can go: a boulder model (Stylized Nature)
+// hugely enlarged and turned over for its rocky underside, with a castle of watchtowers on its flat
+// top (the village tower model, see scripts/build-houses.mjs, several times its size).
+export const ISLAND_MODELS = ["sn_rock", "bld_tower"];
+const ISLAND = { beyond: 380, bearing: Math.PI * 0.2, altitude: 170, rock: 42 };
+// Each tower: [metres across the island, metres along it, scale].
+const ISLAND_TOWERS = [[0, 0, 1.8], [-34, 10, 1.4], [30, 12, 1.3], [-8, -30, 1.1]] as const;
+
+function buildIsland(layout: LevelLayout, library: ModelSource, centre: THREE.Vector3): THREE.Group {
+  const island = new THREE.Group();
+  const reach = Math.max(layout.cols, layout.rows) * layout.tileSize * 0.5 + ISLAND.beyond;
+  island.position.set(
+    centre.x + Math.cos(ISLAND.bearing) * reach, ISLAND.altitude, centre.z + Math.sin(ISLAND.bearing) * reach,
+  );
+  // Facing the map, so the castle shows its front.
+  island.rotation.y = Math.atan2(centre.x - island.position.x, centre.z - island.position.z);
+  const rock = library.get("sn_rock").scene.clone(true);
+  rock.scale.setScalar(ISLAND.rock);
+  rock.rotation.x = Math.PI;
+  island.add(rock);
+  for (const [across, along, scale] of ISLAND_TOWERS) {
+    const tower = library.get("bld_tower").scene.clone(true);
+    tower.scale.setScalar(scale);
+    // Its foot sunk into the rock's top.
+    tower.position.set(across, 4, along);
+    island.add(tower);
+  }
+  return island;
+}
+
+export function buildVista(layout: LevelLayout, sprites: TreeSprites, library: ModelSource): THREE.Group {
   const centre = new THREE.Vector3((layout.cols * layout.tileSize) / 2, 0, (layout.rows * layout.tileSize) / 2);
   const group = new THREE.Group();
   const fillers = forestFillers(layout).map((f) => ({ ...f, y: landHeight(layout, f.x, f.z) }));
   group.add(buildLand(layout, centre), buildSpriteForest(sprites, [...fillers, ...farTrees(layout)]));
   for (const range of RANGES) group.add(buildRange(centre, range));
+  group.add(buildIsland(layout, library, centre));
   group.add(buildWorldTreeSprite(
     sprites,
     centre.x + Math.cos(WORLD_TREE.bearing) * WORLD_TREE.distance, -6,
