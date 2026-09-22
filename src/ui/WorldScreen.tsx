@@ -190,9 +190,8 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     // One view per zone: the key on this component remounts it for a new entry.
   }, []);
 
-  // The menu buttons fold away behind one (M); each has its key. Escape closes whatever is open, else
-  // folds or unfolds the buttons too (while the mouse is captured the browser keeps the first Escape
-  // to let it go, so M is the menu's key).
+  // The menu buttons fold away behind one (M); each has its key. Escape only closes what is open,
+  // never opens the menu.
   const [menuOpen, setMenuOpen] = useState(false);
   // Power saving (절전): a dark summary over the world, which goes on undrawn.
   const [saving, setSaving] = useState(false);
@@ -243,11 +242,8 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   // The cursor shows whenever something on screen wants the mouse (a panel, the settings, the
   // unfolded menu, the fallen panel, power saving) and hides again, capturing the mouse for looking
   // about, once all of it is closed. Losing the capture otherwise (Escape, which the browser keeps)
-  // unfolds the menu, so the cursor has something to point at; clicking back into the world closes
-  // what was open.
+  // just frees the cursor; clicking back into the world captures it again and closes what was open.
   const uiOpen = panel !== null || menu || saving || menuOpen || hud?.dead === true;
-  const uiOpenNow = useRef(uiOpen);
-  uiOpenNow.current = uiOpen;
   useEffect(() => {
     if (touch) return;
     if (uiOpen) document.exitPointerLock?.();
@@ -255,15 +251,8 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   }, [uiOpen, touch]);
   useEffect(() => {
     if (touch) return;
-    // Only a capture that was really held and then lost unfolds the menu.
-    let held = !!document.pointerLockElement;
     const onChange = () => {
-      if (!document.pointerLockElement) {
-        if (held && !uiOpenNow.current) setMenuOpen(true);
-        held = false;
-        return;
-      }
-      held = true;
+      if (!document.pointerLockElement) return;
       // Clicked back into the world (past a side panel): what was open steps aside.
       setMenuOpen(false);
       setPanel(null);
@@ -287,7 +276,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
       if (e.key === "Escape") {
         if (open.current.menu) setMenu(false);
         else if (open.current.panel) setPanel(null);
-        else setMenuOpen((o) => !o);
+        else setMenuOpen(false);
         return;
       }
       if (e.code === "KeyM") {
