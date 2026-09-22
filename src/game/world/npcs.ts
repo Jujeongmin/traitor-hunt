@@ -1,4 +1,3 @@
-import type { PlayerClass } from "../combat/classes";
 import type { Point2 } from "../rules/levelLayout";
 import { START_ZONE, zoneLayout } from "./zones";
 
@@ -11,20 +10,31 @@ export interface Npc {
   name: string;
   // What they do, under their name.
   role: string;
-  // Which hero model and costume they wear (see render/heroes.ts, render/costumes.ts).
-  playerClass: PlayerClass;
-  costume: string;
+  // Their own model (not a player class's hero), how tall it stands, and its clips (see NpcActor).
+  model: string;
+  height: number;
+  idle: string;
+  greet: string;
   // Where they stand, in cells from the village spawn (the nearest open cell to it is used).
   offset: [number, number];
 }
 
 export const NPCS: readonly Npc[] = [
-  { id: "merchant", name: "상인 한스", role: "상점", playerClass: "rogue", costume: "1413", offset: [2, -2] },
-  { id: "elder", name: "촌장 마르타", role: "퀘스트", playerClass: "cleric", costume: "0602", offset: [-2, -2] },
+  // A rabbit shopkeeper (Quaternius Ultimate Monsters, Big/Bunny) and a blob wizard for the elder
+  // (Blob/Wizard), CC0: nobody can play them, so they never look like another player.
+  {
+    id: "merchant", name: "상인 한스", role: "상점", model: "npc_merchant", height: 1.6, idle: "Idle", greet: "Wave",
+    offset: [2, -2],
+  },
+  {
+    id: "elder", name: "촌장 마르타", role: "퀘스트", model: "npc_elder", height: 1.3, idle: "Idle", greet: "Yes",
+    offset: [-2, -2],
+  },
 ];
 
 // Standing this close to someone lets you talk to them (the server allows a little more for lag).
 export const TALK_RANGE = 3.5;
+export const NPC_MODELS = NPCS.map((n) => n.model);
 export const TALK_SLACK = 2.5;
 
 const spots = new Map<NpcId, Point2>();

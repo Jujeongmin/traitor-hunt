@@ -16,7 +16,8 @@ import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
 import { BOSS_MOVES, MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
 import type { Point2 } from "../rules/levelLayout";
-import { NPCS, npcNear, npcSpot, type NpcId } from "../world/npcs";
+import { NPCS, NPC_MODELS, npcNear, npcSpot, type NpcId } from "../world/npcs";
+import { NpcActor } from "./NpcActor";
 import type { Pose } from "../world/types";
 import { PORTAL_RADIUS, START_ZONE, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
 import { playShot, playSkill, playSwing } from "../audio/sfx";
@@ -143,7 +144,7 @@ export class WorldView {
   private readonly effects = new Effects(this.scene);
   private readonly others = new Map<string, { actor: PlayerActor; key: string }>();
   private readonly monsters = new Map<string, MonsterActor>();
-  private readonly npcs: { id: NpcId; actor: PlayerActor; at: Point2; yaw: number }[] = [];
+  private readonly npcs: { id: NpcId; actor: NpcActor; at: Point2 }[] = [];
   // Where you were sent to walk (to an NPC), and whom to talk to on arrival.
   private walkGoal: { to: Point2; talk: NpcId | null } | null = null;
   private readonly hudListeners = new Set<(hud: WorldHud) => void>();
@@ -216,7 +217,8 @@ export class WorldView {
 
   async start(): Promise<void> {
     const library = await ModelLibrary.load();
-    await library.preload([...WORLD_MODELS, ...zoneMonsterModels(this.options.entry.zone)], this.options.onProgress);
+    const npcModels = this.options.entry.zone === START_ZONE ? NPC_MODELS : [];
+    await library.preload([...WORLD_MODELS, ...zoneMonsterModels(this.options.entry.zone), ...npcModels], this.options.onProgress);
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
@@ -461,15 +463,19 @@ export class WorldView {
     return { yaw: this.yawTo(points[0]), walk: true };
   }
 
-  // The village's people: each a hero in their own costume, their name and role in gold overhead,
-  // standing still and turned toward where you arrive.
+  // The village's people, each their own model, their name and role in gold overhead, standing
+  // turned toward where you arrive.
   private addNpcs(): void {
+    const library = this.library!;
     const spawn = this.layout.playerSpawn;
     for (const npc of NPCS) {
       const at = npcSpot(npc.id);
-      const actor = this.hero(npc.playerClass, costumeById(npc.costume) ?? this.options.costume);
-      actor.label(`${npc.name} · ${npc.role}`, "#ffd36a");
-      this.npcs.push({ id: npc.id, actor, at, yaw: Math.atan2(-(spawn.x - at.x), -(spawn.z - at.z)) });
+      const yaw = Math.atan2(-(spawn.x - at.x), -(spawn.z - at.z));
+      const actor = new NpcActor(
+        library.instance(npc.model), library.get(npc.model).animations, npc, `${npc.name} · ${npc.role}`, at.x, at.z, yaw,
+      );
+      this.scene.add(actor.object);
+      this.npcs.push({ id: npc.id, actor, at });
     }
   }
 
@@ -638,8 +644,7 @@ export class WorldView {
     // The camera sits behind you, so your own body is drawn from your local pose.
     this.me?.sync(this.pose, dead ? "dead" : "active", dt);
     for (const npc of this.npcs) {
-      npc.actor.sync({ x: npc.at.x, z: npc.at.z, yaw: npc.yaw }, "active", dt);
-      npc.actor.fadeLabel(this.camera.position.distanceTo(npc.actor.object.position));
+      npc.actor.sync(dt, this.distanceTo(npc.at), this.camera.position.distanceTo(npc.actor.object.position));
     }
     const seen = new Set<string>();
     for (const other of others) {

@@ -243,6 +243,41 @@
         "Flying"
       ]
     },
+    "npc_elder": {
+      "url": "assets/models/npc_elder.glb",
+      "bytes": 47652,
+      "animations": [
+        "Bite_Front",
+        "Dance",
+        "Death",
+        "HitRecieve",
+        "Idle",
+        "Jump",
+        "No",
+        "Walk",
+        "Yes"
+      ]
+    },
+    "npc_merchant": {
+      "url": "assets/models/npc_merchant.glb",
+      "bytes": 429988,
+      "animations": [
+        "Death",
+        "Duck",
+        "HitReact",
+        "Idle",
+        "Jump",
+        "Jump_Idle",
+        "Jump_Land",
+        "No",
+        "Punch",
+        "Run",
+        "Walk",
+        "Wave",
+        "Weapon",
+        "Yes"
+      ]
+    },
     "pt_apple_tree": {
       "url": "assets/models/pt_apple_tree.glb",
       "bytes": 337760,

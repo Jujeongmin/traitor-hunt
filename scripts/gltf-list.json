@@ -43,6 +43,14 @@
     {
       "name": "mon_goleling",
       "src": "art-src/ultimate-monsters/x/Flying/glTF/Goleling.gltf"
+    },
+    {
+      "name": "npc_elder",
+      "src": "art-src/ultimate-monsters/x/Blob/glTF/Wizard.gltf"
+    },
+    {
+      "name": "npc_merchant",
+      "src": "art-src/ultimate-monsters/x/Big/glTF/Bunny.gltf"
     }
   ]
 }
