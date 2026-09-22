@@ -11,7 +11,7 @@ import { solidWith, type LevelLayout } from "../rules/levelLayout";
 import {
   GROUNDED, PLAYER_RADIUS, WALK_SPEED, applyLook, stepAround, stepJump, stepPlayer, type Airborne, type SolidTest,
 } from "../rules/movement";
-import { gridRoute } from "../rules/pathing";
+import { gridRoute, lineClear } from "../rules/pathing";
 import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
 import { BOSS_MOVES, MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
@@ -49,6 +49,12 @@ const AUTO_CLOSE = 0.8;
 const AUTO_CAMERA_RATE = 2.5;
 // Heading for a quest's monsters, the route is worked out again this often.
 const ROUTE_MS = 1500;
+// Auto-battle that has moved less than STUCK_DISTANCE for this long takes a new route; for longer,
+// it gives up on that monster for UNREACHABLE_MS.
+const STUCK_DISTANCE = 0.6;
+const STUCK_REROUTE_MS = 1200;
+const STUCK_GIVE_UP_MS = 4000;
+const UNREACHABLE_MS = 10_000;
 // A route's corner counts as reached this close.
 const WAYPOINT_REACH = 1.2;
 // A heal is used on its own once health falls below this share.
@@ -158,6 +164,9 @@ export class WorldView {
   // Hunting for a quest: the kinds it asks for, and the route to the nearest one.
   private questSeek: MonsterType[] | null = null;
   private route: { points: Point2[]; at: number } | null = null;
+  // Where auto-battle last made headway, and the monsters it gave up on (until when).
+  private stuckSince: { x: number; z: number; at: number } | null = null;
+  private readonly unreachable = new Map<string, number>();
   private gain: { xp: number; at: number } | null = null;
   private notes: { text: string; at: number }[] = [];
   private lastPotionAt = Number.NEGATIVE_INFINITY;
@@ -350,14 +359,23 @@ export class WorldView {
   // nothing to fight.
   private autoChase(monsters: Record<string, MonsterState>): { yaw: number; walk: boolean } | null {
     const current = this.target ? monsters[this.target] : undefined;
-    const wanted = (m: MonsterState) => m.alive && (!this.questSeek || this.questSeek.includes(m.type));
-    if (!current || !wanted(current) || (!this.questSeek && this.distanceTo(current) > AUTO_DROP)) {
+    const now = performance.now();
+    // A monster it could not get to is left alone for a while.
+    for (const [id, until] of this.unreachable) if (until <= now) this.unreachable.delete(id);
+    if (this.target && this.stuckFor(now) > STUCK_GIVE_UP_MS) {
+      this.unreachable.set(this.target, now + UNREACHABLE_MS);
+      this.target = null;
+      this.route = null;
+    }
+    const wanted = (m: MonsterState, id: string) =>
+      m.alive && !this.unreachable.has(id) && (!this.questSeek || this.questSeek.includes(m.type));
+    if (!current || !wanted(current, this.target!) || (!this.questSeek && this.distanceTo(current) > AUTO_DROP)) {
       this.target = null;
       this.route = null;
       let best = this.questSeek ? Infinity : AUTO_SEEK;
       for (const [id, m] of Object.entries(monsters)) {
         const d = this.distanceTo(m);
-        if (wanted(m) && d < best) {
+        if (wanted(m, id) && d < best) {
           best = d;
           this.target = id;
         }
@@ -367,11 +385,18 @@ export class WorldView {
     if (!m) return null;
     const reach = WEAPONS[this.options.playerClass].reach;
     const d = this.distanceTo(m);
-    if (d <= reach * AUTO_CLOSE) return { yaw: this.yawTo(m), walk: false };
-    // Close by, straight at it; further off, by the route (walked corner to corner).
-    if (d <= AUTO_SEEK / 2) return { yaw: this.yawTo(m), walk: true };
-    const now = performance.now();
-    if (!this.route || now - this.route.at > ROUTE_MS) {
+    if (d <= reach * AUTO_CLOSE) {
+      this.stuckSince = null;
+      return { yaw: this.yawTo(m), walk: false };
+    }
+    // Straight at it when nothing stands between; otherwise by the route round the groves (walked
+    // corner to corner), worked out again every so often and at once when it gets stuck.
+    if (lineClear(this.layout, this.pose, m, PLAYER_RADIUS + 0.1)) {
+      this.route = null;
+      return { yaw: this.yawTo(m), walk: true };
+    }
+    const stuck = this.stuckFor(now) > STUCK_REROUTE_MS;
+    if (!this.route || now - this.route.at > ROUTE_MS || stuck) {
       const points = gridRoute(this.layout, this.pose, m);
       this.route = points ? { points, at: now } : null;
     }
@@ -379,6 +404,16 @@ export class WorldView {
     if (!points || points.length === 0) return { yaw: this.yawTo(m), walk: true };
     while (points.length > 1 && this.distanceTo(points[0]) < WAYPOINT_REACH) points.shift();
     return { yaw: this.yawTo(points[0]), walk: true };
+  }
+
+  // How long auto-battle has been walking without getting anywhere, in ms.
+  private stuckFor(now: number): number {
+    const at = { x: this.pose.x, z: this.pose.z };
+    if (!this.stuckSince || Math.hypot(at.x - this.stuckSince.x, at.z - this.stuckSince.z) > STUCK_DISTANCE) {
+      this.stuckSince = { ...at, at: now };
+      return 0;
+    }
+    return now - this.stuckSince.at;
   }
 
   private distanceTo(p: { x: number; z: number }): number {

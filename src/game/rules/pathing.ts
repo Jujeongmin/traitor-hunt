@@ -1,4 +1,21 @@
-import type { LevelLayout, Point2 } from "./levelLayout";
+import { solidAt, type LevelLayout, type Point2 } from "./levelLayout";
+
+// Whether a body of `radius` can walk the straight line between two spots without touching the
+// forest (sampled every half metre, at the body's edge on either side).
+export function lineClear(layout: LevelLayout, from: Point2, to: Point2, radius = 0.4): boolean {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  const length = Math.hypot(dx, dz);
+  if (length < 1e-6) return true;
+  const sx = (-dz / length) * radius;
+  const sz = (dx / length) * radius;
+  for (let d = 0; d <= length; d += 0.5) {
+    const x = from.x + (dx * d) / length;
+    const z = from.z + (dz * d) / length;
+    if (solidAt(layout, x, z) || solidAt(layout, x + sx, z + sz) || solidAt(layout, x - sx, z - sz)) return false;
+  }
+  return true;
+}
 
 // A walkable route across a zone's grid, for auto-battle heading to a monster it cannot see yet:
 // the shortest chain of open cells from one spot to another, as the centres of the cells where the
