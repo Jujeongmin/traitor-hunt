@@ -1,3 +1,4 @@
+import { levelCost } from "../../src/game/account/level";
 import { QUESTS } from "../../src/game/account/quests";
 import { JOBS } from "../../src/game/combat/jobs";
 import { SKILLS } from "../../src/game/combat/skills";
@@ -9,7 +10,7 @@ import { enterAs, errorOf, giveXp, join, makeCharacter, walkTo } from "./helpers
 // XP that puts a character at the start of a level (see account/level.ts).
 function xpFor(level: number): number {
   let xp = 0;
-  for (let l = 1, need = 60; l < level; l++, need += 30) xp += need;
+  for (let l = 1; l < level; l++) xp += levelCost(l);
   return xp;
 }
 
@@ -46,8 +47,8 @@ describe("skills", () => {
     expect(await errorOf(server.useSkill(7))).toContain("unavailable");
   });
 
-  test("at level 10 all three go off one after another", async (server) => {
-    await hunter(server, "test-a", 10);
+  test("at level 20 all three go off one after another", async (server) => {
+    await hunter(server, "test-a", 20);
     await ring("frog", 3, 500);
     await server.useSkill(0);
     await server.useSkill(1);
@@ -60,25 +61,25 @@ describe("skills", () => {
 
 describe("advancement", () => {
   test("waits for its level, then takes one path of your own class for good", async (server) => {
-    await hunter(server, "test-a", 14);
+    await hunter(server, "test-a", 29);
     expect(await errorOf(server.advance("berserker"))).toContain("too_low");
-    await giveXp("test-a", xpFor(15));
+    await giveXp("test-a", xpFor(30));
     expect(await errorOf(server.advance("sniper"))).toContain("unavailable");
     const view = await server.advance("guardian");
     expect(view.job).toBe("guardian");
     const mine = await $room.getMyState();
     expect(mine.look.job).toBe(JOBS.guardian.name);
-    expect(mine.maxHp).toBe(maxHpAt(15) + JOBS.guardian.hp);
+    expect(mine.maxHp).toBe(maxHpAt(30) + JOBS.guardian.hp);
     expect(await errorOf(server.advance("berserker"))).toContain("unavailable");
   });
 
   test("a damage path hits harder", async (server) => {
-    await hunter(server, "test-a", 15);
+    await hunter(server, "test-a", 30);
     await server.advance("berserker");
     await ring("frog", 1, 500);
     await $room.updateMyState({ strikeReadyAt: 0 });
     await server.strike("m0");
-    const base = WEAPONS.warrior.damage * (1 + 14 * 0.06);
+    const base = WEAPONS.warrior.damage * (1 + 29 * 0.06);
     expect((await $room.getRoomState()).monsters.m0.hp).toBe(500 - Math.round(base * (1 + JOBS.berserker.power)));
   });
 });

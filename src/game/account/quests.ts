@@ -17,13 +17,13 @@ export interface Quest {
 }
 
 export const QUESTS: readonly Quest[] = [
-  { name: "슬라임 퇴치", goal: "숲 필드 1의 초록 슬라임 8마리", targets: ["green_blob"], count: 8, xp: 60, gold: 30, items: [{ id: "potion_small", n: 3 }] },
-  { name: "버섯돌이 소탕", goal: "숲 필드 1의 버섯돌이 8마리", targets: ["mushnub"], count: 8, xp: 80, gold: 40, items: [] },
-  { name: "들판의 골칫거리", goal: "들쥐나 개구리 12마리", targets: ["rat", "frog"], count: 12, xp: 140, gold: 60, items: [{ id: "armor_1", n: 1 }] },
-  { name: "깊은 숲 정찰", goal: "숲 필드 2의 숲거미나 독사 10마리", targets: ["spider", "snake"], count: 10, xp: 260, gold: 120, items: [{ id: "potion_big", n: 3 }] },
-  { name: "하늘의 사냥", goal: "말벌이나 박쥐 12마리", targets: ["wasp", "bat"], count: 12, xp: 320, gold: 150, items: [] },
-  { name: "돌의 정령", goal: "골렘링 10마리", targets: ["goleling"], count: 10, xp: 400, gold: 200, items: [{ id: "weapon_2", n: 1 }] },
-  { name: "버섯왕 토벌", goal: "버섯왕의 공터의 버섯왕", targets: ["mushroom_king"], count: 1, xp: 1200, gold: 600, items: [] },
+  { name: "슬라임 퇴치", goal: "숲 필드 1의 초록 슬라임 15마리", targets: ["green_blob"], count: 15, xp: 250, gold: 40, items: [{ id: "potion_small", n: 5 }] },
+  { name: "버섯돌이 소탕", goal: "숲 필드 1의 버섯돌이 20마리", targets: ["mushnub"], count: 20, xp: 700, gold: 80, items: [] },
+  { name: "들판의 골칫거리", goal: "들쥐나 개구리 40마리", targets: ["rat", "frog"], count: 40, xp: 2500, gold: 200, items: [{ id: "armor_1", n: 1 }] },
+  { name: "깊은 숲 정찰", goal: "숲 필드 2의 숲거미나 독사 50마리", targets: ["spider", "snake"], count: 50, xp: 9000, gold: 600, items: [{ id: "potion_big", n: 5 }] },
+  { name: "하늘의 사냥", goal: "말벌이나 박쥐 60마리", targets: ["wasp", "bat"], count: 60, xp: 18000, gold: 1000, items: [] },
+  { name: "돌의 정령", goal: "골렘링 60마리", targets: ["goleling"], count: 60, xp: 30000, gold: 1500, items: [{ id: "weapon_2", n: 1 }] },
+  { name: "버섯왕 토벌", goal: "버섯왕의 공터의 버섯왕", targets: ["mushroom_king"], count: 1, xp: 40000, gold: 3000, items: [] },
 ];
 
 // Where a character is in the chain: the quest it is on (QUESTS.length when all are done) and how

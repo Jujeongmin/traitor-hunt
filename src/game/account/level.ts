@@ -1,9 +1,16 @@
 // A character's experience and the level it adds up to. XP is saved on the account as one number;
 // hunting (phase 2) and quests add to it.
 
-// Level 1 ends at this much XP, and every level after asks for one step more than the last.
-export const FIRST_LEVEL_XP = 60;
-export const LEVEL_STEP_XP = 30;
+// What a whole level costs: it grows with the square of the level, so each one asks noticeably more
+// than the last. Hunting at a steady pace, level 10 takes about two hours, 20 about nine and 30
+// (advancement) about thirty.
+const LEVEL_XP_SCALE = 50;
+
+export function levelCost(level: number): number {
+  return LEVEL_XP_SCALE * level * level + LEVEL_XP_SCALE;
+}
+
+export const FIRST_LEVEL_XP = levelCost(1);
 
 // Saved XP, trusted only as a whole, non-negative number.
 export function readXp(raw: unknown): number {
@@ -20,11 +27,11 @@ export interface LevelView {
 export function levelOf(xp: number): LevelView {
   let left = Number.isFinite(xp) && xp > 0 ? Math.floor(xp) : 0;
   let level = 1;
-  let need = FIRST_LEVEL_XP;
+  let need = levelCost(1);
   while (left >= need) {
     left -= need;
     level += 1;
-    need += LEVEL_STEP_XP;
+    need = levelCost(level);
   }
   return { level, into: left, need };
 }

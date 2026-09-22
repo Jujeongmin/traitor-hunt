@@ -544,7 +544,7 @@ export class WorldView {
       xpNeed: level.need,
       gain: this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : null,
       auto: this.auto,
-      target: fighting?.alive ? { name: MONSTERS[fighting.type].name, hp: fighting.hp, maxHp: MONSTERS[fighting.type].hp } : null,
+      target: fighting?.alive ? { name: `Lv${MONSTERS[fighting.type].level} ${MONSTERS[fighting.type].name}`, hp: fighting.hp, maxHp: MONSTERS[fighting.type].hp } : null,
       potions: (this.client.state.bag?.bag.potion_small ?? 0) + (this.client.state.bag?.bag.potion_big ?? 0),
       notes: this.notes.map((n) => n.text),
     };

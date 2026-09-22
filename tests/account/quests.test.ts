@@ -3,6 +3,7 @@ import { QUESTS, countKills, questDone, readQuest } from "../../src/game/account
 import { CLASSES } from "../../src/game/combat/classes";
 import { JOBS, jobsOf } from "../../src/game/combat/jobs";
 import { SKILLS } from "../../src/game/combat/skills";
+import { MONSTERS, XP_GRACE, xpFor } from "../../src/game/world/monsters";
 
 describe("quests", () => {
   it("count only the asked kinds, up to the goal", () => {
@@ -25,9 +26,19 @@ describe("quests", () => {
 describe("growth tables", () => {
   it("every class has three skills opening in order, and two paths to advance", () => {
     for (const c of CLASSES) {
-      expect(SKILLS[c].map((s) => s.level)).toEqual([1, 5, 10]);
+      expect(SKILLS[c].map((s) => s.level)).toEqual([1, 10, 20]);
       expect(jobsOf(c)).toHaveLength(2);
       for (const id of jobsOf(c)) expect(JOBS[id].playerClass).toBe(c);
     }
+  });
+});
+
+describe("monster XP", () => {
+  it("pays in full near the monster's level and less and less far above it", () => {
+    const rat = MONSTERS.rat;
+    expect(xpFor("rat", 1)).toBe(rat.xp);
+    expect(xpFor("rat", rat.level + XP_GRACE)).toBe(rat.xp);
+    expect(xpFor("rat", rat.level + XP_GRACE + 3)).toBe(Math.round(rat.xp * 0.7));
+    expect(xpFor("rat", 99)).toBe(Math.round(rat.xp * 0.1));
   });
 });

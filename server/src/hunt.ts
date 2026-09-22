@@ -6,7 +6,7 @@ import { BLOCK_ARC, facing, inStrikeReach } from "../../src/game/combat/melee";
 import { SKILLS, readSlot, skillTargets } from "../../src/game/combat/skills";
 import { stepMonsters, type Prey } from "../../src/game/world/monsterAi";
 import {
-  MONSTERS, ZONE_BOSS, ZONE_MONSTERS, damageAt, maxHpAt, readMonsterType, spawnMonsters, type MonsterState,
+  MONSTERS, ZONE_BOSS, ZONE_MONSTERS, damageAt, maxHpAt, readMonsterType, spawnMonsters, xpFor, type MonsterState,
   type MonsterType,
 } from "../../src/game/world/monsters";
 import { RANGE_SLACK, RuleViolation, isPose, type Pose } from "../../src/game/world/types";
@@ -160,7 +160,10 @@ export interface HitResult {
 
 export const NOTHING: HitResult = { hit: [], killed: [], xp: 0, felled: [], gold: 0, items: [] };
 
-function land(monsters: Record<string, MonsterState>, ids: string[], damage: number, stunMs: number, now: number): HitResult {
+// Hits the monsters for damage (and a stun). A hunter of `level` earns the XP of those it fells.
+function land(
+  monsters: Record<string, MonsterState>, ids: string[], damage: number, stunMs: number, now: number, level: number,
+): HitResult {
   const out: HitResult = { ...NOTHING, hit: [], killed: [], felled: [], items: [] };
   for (const id of ids) {
     const m = monsters[id];
@@ -174,7 +177,7 @@ function land(monsters: Record<string, MonsterState>, ids: string[], damage: num
       m.respawnAt = now + spec.respawnMs;
       out.killed.push(id);
       out.felled.push(m.type);
-      out.xp += spec.xp;
+      out.xp += xpFor(m.type, level);
     }
   }
   return out;
@@ -203,7 +206,7 @@ export async function strike(zone: ZoneId, monsterId: unknown, yaw: unknown, now
   const weapon = WEAPONS[f.playerClass];
   if (!inStrikeReach(f.pose, m, weapon, true)) throw new RuleViolation("out_of_range");
   await $room.updateMyState({ strikeReadyAt: now + weapon.intervalMs * COOLDOWN_GRACE }, { returnState: false });
-  const result = land(monsters, [monsterId], damageAt(weapon.damage, f.level, f.gear.power), 0, now);
+  const result = land(monsters, [monsterId], damageAt(weapon.damage, f.level, f.gear.power), 0, now, f.level);
   await writeMonsters(monsters);
   return result;
 }
@@ -240,7 +243,7 @@ export async function useSkill(zone: ZoneId, rawSlot: unknown, yaw: unknown, now
   const monsters = await readMonsters(zone);
   const targets = skillTargets(f.pose, monsters, skill, true);
   if (targets.length === 0) return { ...NOTHING };
-  const result = land(monsters, targets, damageAt(skill.damage, f.level, f.gear.power), skill.stunMs, now);
+  const result = land(monsters, targets, damageAt(skill.damage, f.level, f.gear.power), skill.stunMs, now, f.level);
   await writeMonsters(monsters);
   return result;
 }

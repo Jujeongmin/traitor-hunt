@@ -72,10 +72,12 @@ describe("hunting", () => {
     expect(await errorOf(server.strike("m0"))).toContain("out_of_range");
     expect(await errorOf(server.strike("nobody"))).toContain("no_monster");
 
-    await only("rat", spawn.x, spawn.z - 1.5);
+    // Two blows' worth of health.
+    const hp = WEAPONS.warrior.damage * 2 - 5;
+    await only("rat", spawn.x, spawn.z - 1.5, hp);
     const first = await server.strike("m0");
     expect(first.hit).toEqual(["m0"]);
-    expect((await $room.getRoomState()).monsters.m0.hp).toBe(MONSTERS.rat.hp - WEAPONS.warrior.damage);
+    expect((await $room.getRoomState()).monsters.m0.hp).toBe(hp - WEAPONS.warrior.damage);
     expect(await errorOf(server.strike("m0"))).toContain("too_fast");
 
     await $room.updateMyState({ strikeReadyAt: 0 });

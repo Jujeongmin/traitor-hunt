@@ -4,7 +4,7 @@ import type { PlayerClass } from "./classes";
 // A path adds to every fight what gear would (damage, health, a share of each blow stopped), and a
 // cleric's healer path heals more. Its name shows before the character's name.
 
-export const ADVANCE_LEVEL = 15;
+export const ADVANCE_LEVEL = 30;
 
 export type JobId =
   | "berserker" | "guardian"

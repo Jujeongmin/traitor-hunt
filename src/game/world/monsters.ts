@@ -11,6 +11,8 @@ export type MonsterType =
 
 export interface MonsterSpec {
   name: string;
+  // Its level: a hunter more than XP_GRACE levels above it earns less for it.
+  level: number;
   hp: number;
   damage: number;
   // How close it must be to hit, and how often it can.
@@ -32,7 +34,7 @@ export interface MonsterSpec {
   drops: { item: ItemId; chance: number }[];
 }
 
-const common = { range: 1.5, attackMs: 1400, speed: 1.8, aggro: 9, body: 0.4, respawnMs: 12_000 };
+const common = { range: 1.5, attackMs: 1400, speed: 1.8, aggro: 9, body: 0.4, respawnMs: 15_000 };
 // What the first field's monsters carry, and the second's.
 const field1 = {
   ...common, gold: [3, 8] as [number, number],
@@ -46,19 +48,21 @@ const field2 = {
   ] as MonsterSpec["drops"],
 };
 
+// The first field is for levels 1 to about 11, the second for 12 to 29; the boss is a level-32
+// fight for a group. Health, damage and XP climb with each monster's level.
 export const MONSTERS: Record<MonsterType, MonsterSpec> = {
-  green_blob: { ...field1, name: "초록 슬라임", hp: 60, damage: 6, speed: 1.6, xp: 8 },
-  mushnub: { ...field1, name: "버섯돌이", hp: 70, damage: 7, xp: 9 },
-  rat: { ...field1, name: "들쥐", hp: 55, damage: 8, speed: 2.4, xp: 9 },
-  frog: { ...field1, name: "개구리", hp: 80, damage: 9, xp: 11 },
-  spider: { ...field2, name: "숲거미", hp: 130, damage: 14, speed: 2.2, aggro: 11, xp: 20 },
-  snake: { ...field2, name: "독사", hp: 110, damage: 16, aggro: 10, xp: 20 },
-  wasp: { ...field2, name: "말벌", hp: 100, damage: 13, speed: 2.6, aggro: 12, xp: 20 },
-  goleling: { ...field2, name: "골렘링", hp: 160, damage: 16, speed: 1.7, aggro: 10, body: 0.5, xp: 26 },
-  bat: { ...field2, name: "박쥐", hp: 90, damage: 12, speed: 2.8, aggro: 12, xp: 18 },
+  green_blob: { ...field1, name: "초록 슬라임", level: 1, hp: 50, damage: 5, speed: 1.6, xp: 6 },
+  mushnub: { ...field1, name: "버섯돌이", level: 3, hp: 80, damage: 8, xp: 9 },
+  rat: { ...field1, name: "들쥐", level: 5, hp: 110, damage: 11, speed: 2.4, xp: 12 },
+  frog: { ...field1, name: "개구리", level: 7, hp: 150, damage: 14, xp: 15 },
+  spider: { ...field2, name: "숲거미", level: 12, hp: 420, damage: 26, speed: 2.2, aggro: 11, xp: 40 },
+  snake: { ...field2, name: "독사", level: 15, hp: 480, damage: 30, aggro: 10, xp: 48 },
+  wasp: { ...field2, name: "말벌", level: 18, hp: 520, damage: 34, speed: 2.6, aggro: 12, xp: 56 },
+  bat: { ...field2, name: "박쥐", level: 21, hp: 600, damage: 38, speed: 2.8, aggro: 12, xp: 64 },
+  goleling: { ...field2, name: "골렘링", level: 24, hp: 800, damage: 44, speed: 1.7, aggro: 10, body: 0.5, xp: 80 },
   mushroom_king: {
-    name: "버섯왕", hp: 2500, damage: 32, range: 2.8, attackMs: 1800, speed: 1.6, aggro: 22, body: 1.0, xp: 400,
-    respawnMs: 120_000, gold: [150, 250],
+    name: "버섯왕", level: 32, hp: 30000, damage: 90, range: 2.8, attackMs: 1800, speed: 1.6, aggro: 22, body: 1.0, xp: 6000,
+    respawnMs: 300_000, gold: [800, 1200],
     drops: [{ item: "potion_big", chance: 1 }, { item: "weapon_3", chance: 0.25 }, { item: "armor_3", chance: 0.25 }],
   },
 };
@@ -129,6 +133,18 @@ export function spawnMonsters(zone: ZoneId): Record<string, MonsterState> {
 // Back where it started, whole again.
 export function respawned(m: MonsterState): MonsterState {
   return { ...fresh(m.type, m.homeX, m.homeZ) };
+}
+
+// Levels a hunter can be above a monster before it pays less XP; past that each level takes away
+// XP_FALLOFF of it, down to XP_FLOOR.
+export const XP_GRACE = 5;
+const XP_FALLOFF = 0.1;
+const XP_FLOOR = 0.1;
+
+export function xpFor(type: MonsterType, hunterLevel: number): number {
+  const over = hunterLevel - MONSTERS[type].level - XP_GRACE;
+  const share = over <= 0 ? 1 : Math.max(XP_FLOOR, 1 - over * XP_FALLOFF);
+  return Math.max(1, Math.round(MONSTERS[type].xp * share));
 }
 
 // Player health: a little more with every level.
