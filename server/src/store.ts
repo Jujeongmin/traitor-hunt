@@ -94,6 +94,7 @@ export async function readProfile(account: string): Promise<Profile> {
       made: 0,
       bag: {},
       gear: NO_GEAR,
+      plus: {},
       job: null,
       quest: QUEST_START,
     }];

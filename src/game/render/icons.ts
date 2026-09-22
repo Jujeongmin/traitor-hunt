@@ -11,6 +11,78 @@ const PALETTE: Record<string, string> = {
 export const ICON_SIZE = 12;
 
 const ICONS: Record<string, string[]> = {
+  // Materials for the smith: a blue whetstone, a slime's jelly, a skein of spider silk, a golem's
+  // glowing heart-stone and the Mushroom King's spores.
+  stone: [
+    "............",
+    "............",
+    "....kkkk....",
+    "..kkcbbbkk..",
+    ".kcbbbbbBBk.",
+    ".kbbcbbbBBk.",
+    "kbbbbbbBBBBk",
+    "kbbbbBBBBBBk",
+    ".kBBBBBBBBk.",
+    "..kkBBBBkk..",
+    "....kkkk....",
+    "............",
+  ],
+  jelly: [
+    "............",
+    "............",
+    ".....kk.....",
+    "....kggk....",
+    "...kgwggk...",
+    "..kgwggggk..",
+    ".kggggggGGk.",
+    ".kgggggGGGk.",
+    "kggggGGGGGGk",
+    "kGGGGGGGGGGk",
+    ".kkkkkkkkkk.",
+    "............",
+  ],
+  silk: [
+    "............",
+    "...kkkkkk...",
+    "..kwwwwwwk..",
+    ".kwsswwsswk.",
+    ".kwwwsswwwk.",
+    ".kwsswwsswk.",
+    ".kwwwsswwwk.",
+    ".kwsswwsswk.",
+    "..kwwwwwwk..",
+    "...kkkkkk...",
+    ".....ks.....",
+    "......kk....",
+  ],
+  core: [
+    "............",
+    "....kkkk....",
+    "...kKKKKk...",
+    "..kKKooKKk..",
+    ".kKKoyyoKKk.",
+    ".kKoyyyyoKk.",
+    ".kKoyyyyoKk.",
+    ".kKKoyyoKKk.",
+    "..kKKooKKk..",
+    "...kKKKKk...",
+    "....kkkk....",
+    "............",
+  ],
+  spore: [
+    "............",
+    ".....kk.....",
+    "..k.kppk.k..",
+    ".kpkpPPpkpk.",
+    ".kPPPPPPPPk.",
+    "..kkkwwkkk..",
+    "....kwwk....",
+    "..k.kwwk.k..",
+    ".kpk.kk.kpk.",
+    ".kPk....kPk.",
+    "..k......k..",
+    "............",
+  ],
   potion_small: [
     "....kkkk....",
     "....ksSk....",
@@ -414,7 +486,7 @@ const ICONS: Record<string, string[]> = {
 };
 
 // The metal of each gear tier: the letter m in the gear grids.
-const METAL: Record<string, string> = { "1": "#9c7a4c", "2": "#b9c0c8", "3": "#ffd24a" };
+const METAL: Record<string, string> = { "1": "#9c7a4c", "2": "#b9c0c8", "3": "#ffd24a", "4": "#7fa6c9", "5": "#a0724f" };
 
 const cache = new Map<string, string>();
 

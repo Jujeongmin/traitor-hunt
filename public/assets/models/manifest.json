@@ -309,6 +309,29 @@
         "Walk_Carry"
       ]
     },
+    "npc_smith": {
+      "url": "assets/models/npc_smith.glb",
+      "bytes": 433376,
+      "animations": [
+        "Death",
+        "Defeat",
+        "Idle",
+        "Jump",
+        "PickUp",
+        "Punch",
+        "RecieveHit",
+        "Roll",
+        "Run",
+        "Run_Carry",
+        "Shoot_OneHanded",
+        "SitDown",
+        "StandUp",
+        "SwordSlash",
+        "Victory",
+        "Walk",
+        "Walk_Carry"
+      ]
+    },
     "pt_logs": {
       "url": "assets/models/pt_logs.glb",
       "bytes": 53504,

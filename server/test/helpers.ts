@@ -43,7 +43,7 @@ export async function enterAs(server: any, account: string): Promise<any> {
 }
 
 // Stands the caller next to a village NPC (the shop's merchant, the quests' elder).
-export async function toNpc(server: any, id: "merchant" | "elder"): Promise<void> {
+export async function toNpc(server: any, id: "merchant" | "elder" | "smith"): Promise<void> {
   const spot = npcSpot(id);
   await walkTo(server, spot.x + 1, spot.z);
 }

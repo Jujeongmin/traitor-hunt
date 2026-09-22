@@ -57,12 +57,16 @@ const common = { range: 1.5, attackMs: 1400, speed: 1.8, aggro: 9, body: 0.4, re
 // What the first field's monsters carry, and the second's.
 const field1 = {
   ...common, gold: [3, 8] as [number, number],
-  drops: [{ item: "potion_small", chance: 0.15 }, { item: "weapon_1", chance: 0.02 }, { item: "armor_1", chance: 0.02 }] as MonsterSpec["drops"],
+  drops: [
+    { item: "potion_small", chance: 0.15 }, { item: "weapon_1", chance: 0.02 }, { item: "armor_1", chance: 0.02 },
+    { item: "jelly", chance: 0.3 }, { item: "stone", chance: 0.05 },
+  ] as MonsterSpec["drops"],
 };
 const field3 = {
   ...common, aggro: 12, gold: [30, 60] as [number, number],
   drops: [
     { item: "potion_big", chance: 0.12 }, { item: "weapon_2", chance: 0.03 }, { item: "armor_2", chance: 0.03 },
+    { item: "core", chance: 0.18 }, { item: "stone", chance: 0.14 },
   ] as MonsterSpec["drops"],
 };
 const field2 = {
@@ -70,6 +74,7 @@ const field2 = {
   drops: [
     { item: "potion_small", chance: 0.2 }, { item: "potion_big", chance: 0.05 },
     { item: "weapon_2", chance: 0.015 }, { item: "armor_2", chance: 0.015 },
+    { item: "silk", chance: 0.22 }, { item: "stone", chance: 0.1 },
   ] as MonsterSpec["drops"],
 };
 
@@ -98,7 +103,10 @@ export const MONSTERS: Record<MonsterType, MonsterSpec> = {
   mushroom_king: {
     name: "버섯왕", level: 32, hp: 30000, damage: 90, range: 2.8, attackMs: 1800, speed: 1.6, aggro: 22, body: 1.0, xp: 6000,
     respawnMs: 300_000, gold: [800, 1200],
-    drops: [{ item: "potion_big", chance: 1 }, { item: "weapon_3", chance: 0.25 }, { item: "armor_3", chance: 0.25 }],
+    drops: [
+      { item: "potion_big", chance: 1 }, { item: "weapon_3", chance: 0.25 }, { item: "armor_3", chance: 0.25 },
+      { item: "spore", chance: 1 }, { item: "spore", chance: 0.5 }, { item: "stone", chance: 1 }, { item: "stone", chance: 1 },
+    ],
   },
 };
 

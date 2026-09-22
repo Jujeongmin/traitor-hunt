@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { typing } from "../game/render/FpsInput";
 import { ChatBox } from "./ChatBox";
+import { SmithPanel } from "./SmithPanel";
 import { playMusic } from "../game/audio/music";
 import { trackFor } from "../game/audio/musicTrack";
 import type { PlayerClass } from "../game/combat/classes";
@@ -127,7 +128,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
   // Which of the bag and the shop is open.
-  const [panel, setPanel] = useState<"bag" | "shop" | "skills" | "ranking" | "quest" | "quests" | null>(null);
+  const [panel, setPanel] = useState<"bag" | "shop" | "smith" | "skills" | "ranking" | "quest" | "quests" | null>(null);
   // The quest just finished, shown once as a panel in the middle of the screen.
   const [finished, setFinished] = useState<number | null>(null);
   const lastQuest = useRef<{ index: number; done: boolean } | null>(null);
@@ -154,7 +155,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
       onProgress: (done, total) => setProgress(done / total),
       onTalk: (id) => {
         document.exitPointerLock?.();
-        setPanel(id === "merchant" ? "shop" : "quest");
+        setPanel(id === "merchant" ? "shop" : id === "smith" ? "smith" : "quest");
       },
       onTravel: (to) => {
         void client.travel(to).then((code) => {
@@ -303,6 +304,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         />
       )}
       {panel === "shop" && <ShopPanel client={client} bag={bag} onClose={() => setPanel(null)} />}
+      {panel === "smith" && <SmithPanel client={client} bag={bag} onClose={() => setPanel(null)} />}
       {panel === "skills" && <SkillPanel playerClass={playerClass} level={hud?.level ?? 1} onClose={() => setPanel(null)} />}
       {panel === "quests" && (
         <QuestLog

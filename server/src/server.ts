@@ -15,6 +15,7 @@ import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/g
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
 import { isFreeClass, readClass } from "../../src/game/combat/classes";
 import { rankOf, type RankDetail, type RankingView } from "../../src/game/account/ranking";
+import { enhanceCost, hasMaterials, readRecipe, rollEnhance, type EnhanceOutcome } from "../../src/game/account/forge";
 import { parseNickname, type AccountView } from "../../src/game/account/nickname";
 import { readWorld } from "../../src/game/account/worlds";
 import {
@@ -186,7 +187,9 @@ async function reward(caller: string, roomId: string, result: HitResult): Promis
 }
 
 async function bagView(character: Character): Promise<BagView> {
-  return { gold: await $asset.get(GOLD), bag: character.bag, gear: character.gear, job: character.job, quest: character.quest };
+  return {
+    gold: await $asset.get(GOLD), bag: character.bag, gear: character.gear, plus: character.plus, job: character.job, quest: character.quest,
+  };
 }
 
 // After a change of gear or class: the room carries your new health, what your gear and class add,
@@ -280,7 +283,7 @@ export class Server {
       const character: Character = {
         id: `c-${token(10)}`, world, name, playerClass: picked, costume: look.id, xp: 0, spot: null, made: Date.now(),
         // A start: a few potions.
-        bag: { potion_small: 3 }, gear: NO_GEAR, job: null, quest: QUEST_START,
+        bag: { potion_small: 3 }, gear: NO_GEAR, plus: {}, job: null, quest: QUEST_START,
       };
       await withNicknameLock(() => claimName(account, character.id, key, name));
       await saveProfile(account, [...characters, character], character.id);
@@ -328,7 +331,7 @@ export class Server {
     if (!character) throw new RuleViolation("unavailable");
     return {
       id, nickname: character.name, level: levelOf(character.xp).level, xp: character.xp,
-      playerClass: character.playerClass, job: character.job, power: combatPower(character), gear: character.gear,
+      playerClass: character.playerClass, job: character.job, power: combatPower(character), gear: character.gear, plus: character.plus,
       world: readWorld(character.world)?.name ?? character.world, rank: rankOf(board, id),
     };
   }
@@ -572,9 +575,74 @@ export class Server {
     await requireNpc("merchant");
     const account = $sender.account;
     await playing(account);
-    const next = await updateActive(account, (c) => ({ ...c, bag: addItem(c.bag, item, -n) }));
+    const next = await updateActive(account, (c) => {
+      const bag = addItem(c.bag, item, -n);
+      // The last one sold, its + goes with it.
+      if ((bag[item] ?? 0) > 0 || c.gear.weapon === item || c.gear.armor === item || !c.plus[item]) return { ...c, bag };
+      const plus = { ...c.plus };
+      delete plus[item];
+      return { ...c, bag, plus };
+    });
     await $asset.mint(GOLD, sellPrice(item) * n);
     return bagView(next);
+  }
+
+  // The smith enhances what you wear in a slot by one +: the gold and 강화석 are spent whatever
+  // happens; a failure on the way to +6 and above may break the gear (see forge.ts).
+  async enhanceGear(rawSlot: unknown): Promise<{ outcome: EnhanceOutcome; bag: BagView }> {
+    if (rawSlot !== "weapon" && rawSlot !== "armor") throw new RuleViolation("unavailable");
+    const slot: Slot = rawSlot;
+    await requireNpc("smith");
+    const account = $sender.account;
+    const current = await playing(account);
+    const item = current.gear[slot];
+    if (!item) throw new RuleViolation("unavailable");
+    const cost = enhanceCost(item, current.plus[item] ?? 0);
+    if (!cost) throw new RuleViolation("max_plus");
+    if ((current.bag.stone ?? 0) < cost.stones) throw new RuleViolation("no_item");
+    if (!(await $asset.has(GOLD, cost.gold))) throw new RuleViolation("not_enough_gold");
+    await $asset.burn(GOLD, cost.gold);
+    let outcome: EnhanceOutcome = "fail";
+    try {
+      const next = await updateActive(account, (c) => {
+        // Changed since it was priced (another tab): nothing happens and the gold comes back.
+        if (c.gear[slot] !== item || (c.plus[item] ?? 0) !== cost.to - 1) throw new RuleViolation("unavailable");
+        const bag = addItem(c.bag, "stone", -cost.stones);
+        outcome = rollEnhance(cost, Math.random(), Math.random());
+        if (outcome === "success") return { ...c, bag, plus: { ...c.plus, [item]: cost.to } };
+        if (outcome === "fail") return { ...c, bag };
+        const plus = { ...c.plus };
+        delete plus[item];
+        return { ...c, bag, gear: { ...c.gear, [slot]: null }, plus };
+      });
+      await refreshFighter(next);
+      return { outcome, bag: await bagView(next) };
+    } catch (error) {
+      await $asset.mint(GOLD, cost.gold);
+      throw error;
+    }
+  }
+
+  // The smith makes something from materials and gold (see RECIPES in forge.ts).
+  async craftItem(rawRecipe: unknown): Promise<BagView> {
+    const recipe = readRecipe(rawRecipe);
+    if (!recipe) throw new RuleViolation("unavailable");
+    await requireNpc("smith");
+    const account = $sender.account;
+    const current = await playing(account);
+    if (!hasMaterials(current.bag, recipe)) throw new RuleViolation("no_item");
+    if (!(await $asset.has(GOLD, recipe.gold))) throw new RuleViolation("not_enough_gold");
+    await $asset.burn(GOLD, recipe.gold);
+    try {
+      return bagView(await updateActive(account, (c) => {
+        let bag = c.bag;
+        for (const need of recipe.needs) bag = addItem(bag, need.item, -need.n);
+        return { ...c, bag: addItem(bag, recipe.makes, recipe.n) };
+      }));
+    } catch (error) {
+      await $asset.mint(GOLD, recipe.gold);
+      throw error;
+    }
   }
 
   // Advancement (전직): from ADVANCE_LEVEL, one of the two paths of your class, for good.

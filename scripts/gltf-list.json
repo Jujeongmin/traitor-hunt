@@ -115,6 +115,10 @@
     {
       "name": "sn_mushroom",
       "src": "art-src/stylized-nature/glTF/Mushroom_Common.gltf"
+    },
+    {
+      "name": "npc_smith",
+      "src": "art-src/ultimate-characters/x/glTF/Viking_Male.gltf"
     }
   ]
 }

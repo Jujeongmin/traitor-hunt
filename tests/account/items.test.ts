@@ -28,7 +28,7 @@ describe("items", () => {
 
   it("loot pays gold in the monster's range and drops on each item's chance", () => {
     const [low, high] = MONSTERS.rat.gold;
-    expect(rollLoot("rat", () => 0)).toEqual({ gold: low, items: ["potion_small", "weapon_1", "armor_1"] });
+    expect(rollLoot("rat", () => 0)).toEqual({ gold: low, items: ["potion_small", "weapon_1", "armor_1", "jelly", "stone"] });
     expect(rollLoot("rat", () => 0.999)).toEqual({ gold: high, items: [] });
   });
 });

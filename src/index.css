@@ -679,3 +679,16 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .chat-open { align-self: flex-start; pointer-events: auto; font: 600 14px var(--font-body); border: 0; background: none; color: var(--ink); cursor: pointer; }
 
 .bag-power { margin-left: 14px; color: var(--ember); font-weight: 700; }
+
+/* The smith's forge: enhance and craft tabs, a line per piece of gear or recipe. */
+.smith-panel { width: 560px; }
+.smith-tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+.smith-tabs .on { color: var(--ember); text-decoration: underline; }
+.smith-row .bag-blurb { flex-basis: 100%; }
+.smith-risk { color: var(--blood); font-style: normal; }
+.smith-short { color: var(--blood); }
+.smith-note { font: 700 15px var(--font-head); margin: 8px 0; }
+.smith-note.good { color: #8fe08a; }
+.smith-note.bad { color: var(--blood); }
+.smith-row { flex-wrap: wrap; }
+.smith-row > b { flex: 1; }

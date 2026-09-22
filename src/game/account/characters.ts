@@ -2,7 +2,7 @@ import { readClass, type PlayerClass } from "../combat/classes";
 import { JOBS, readJob, type JobId } from "../combat/jobs";
 import { costumeById } from "../render/costumes";
 import { readZone, type ZoneId } from "../world/zones";
-import { readBag, readGear, type Bag, type Gear } from "./items";
+import { readBag, readGear, readPlus, type Bag, type Gear, type Plus } from "./items";
 import { levelOf, readXp, type LevelView } from "./level";
 import { readQuest, type QuestProgress } from "./quests";
 
@@ -26,6 +26,8 @@ export interface Character {
   // What it carries, and what it wears.
   bag: Bag;
   gear: Gear;
+  // How far each kind of its gear has been enhanced.
+  plus: Plus;
   // The advanced class it took (전직), if any, and where it is in the village's quests.
   job: JobId | null;
   quest: QuestProgress;
@@ -65,7 +67,7 @@ export function readCharacters(raw: unknown): Character[] {
     const made = typeof c.made === "number" && Number.isFinite(c.made) ? c.made : 0;
     out.push({
       id: c.id, world: c.world, name: c.name, playerClass, costume: costume.id, xp: readXp(c.xp), spot: readSpot(c.spot), made,
-      bag: readBag(c.bag), gear: readGear(c.gear), job: readOwnJob(c.job, playerClass), quest: readQuest(c.quest),
+      bag: readBag(c.bag), gear: readGear(c.gear), plus: readPlus(c.plus), job: readOwnJob(c.job, playerClass), quest: readQuest(c.quest),
     });
   }
   return out.sort((a, b) => a.made - b.made);

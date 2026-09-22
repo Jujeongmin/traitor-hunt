@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { ITEMS, ITEM_IDS, SHOP_ITEMS, sellPrice, type BagView, type ItemId, type Slot } from "../game/account/items";
+import { ITEMS, ITEM_IDS, SHOP_ITEMS, gearName, sellPrice, type BagView, type ItemId, type Slot } from "../game/account/items";
 import { ADVANCE_LEVEL, JOBS, jobsOf } from "../game/combat/jobs";
 import type { PlayerClass } from "../game/combat/classes";
 import { combatPowerAt } from "../game/combat/power";
 import { iconFor } from "../game/render/icons";
 import type { WorldClient } from "../net/worldClient";
 
-const PROBLEM: Record<string, string> = {
+export const PROBLEM: Record<string, string> = {
+  max_plus: "더 강화할 수 없어요",
+  not_near: "대장장이 가까이에서 할 수 있어요",
   not_enough_gold: "골드가 모자라요",
   not_in_village: "상점은 마을에 있어요",
   no_item: "가방에 없어요",
@@ -14,7 +16,7 @@ const PROBLEM: Record<string, string> = {
   too_low: `Lv${ADVANCE_LEVEL}부터 전직할 수 있어요`,
 };
 
-const SLOT_LABEL: Record<Slot, string> = { weapon: "무기", armor: "갑옷" };
+export const SLOT_LABEL: Record<Slot, string> = { weapon: "무기", armor: "갑옷" };
 
 interface PanelProps {
   client: WorldClient;
@@ -46,7 +48,7 @@ export function BagPanel({ client, bag, onClose, inVillage, playerClass, level }
         <h2>가방</h2>
         <p className="bag-gold">
           {bag ? `${bag.gold.toLocaleString()} 골드` : "불러오는 중…"}
-          {bag && <span className="bag-power">전투력 {combatPowerAt(level, playerClass, bag.gear, bag.job).toLocaleString()}</span>}
+          {bag && <span className="bag-power">전투력 {combatPowerAt(level, playerClass, bag.gear, bag.job, bag.plus).toLocaleString()}</span>}
         </p>
         <div className="bag-job">
           {job ? (
@@ -74,7 +76,7 @@ export function BagPanel({ client, bag, onClose, inVillage, playerClass, level }
               <div key={slot} className="bag-row">
                 <span className="bag-slot">{SLOT_LABEL[slot]}</span>
                 {worn && <img className="bag-icon" src={iconFor(worn) ?? undefined} alt="" />}
-                <b>{worn ? ITEMS[worn].name : "없음"}</b>
+                <b>{worn ? gearName(worn, bag?.plus) : "없음"}</b>
                 <span className="bag-blurb">{worn ? ITEMS[worn].blurb : ""}</span>
                 {worn && <button type="button" className="text-button" onClick={() => act(() => client.unequip(slot))}>해제</button>}
               </div>
@@ -86,12 +88,15 @@ export function BagPanel({ client, bag, onClose, inVillage, playerClass, level }
           {items.map((id) => (
             <div key={id} className="bag-row">
               <img className="bag-icon" src={iconFor(id) ?? undefined} alt="" />
-              <b>{ITEMS[id].name}</b>
+              <b>{ITEMS[id].kind === "material" ? ITEMS[id].name : gearName(id, bag!.plus)}</b>
               <span className="bag-count">×{bag!.bag[id]}</span>
               <span className="bag-blurb">{ITEMS[id].blurb}</span>
-              {ITEMS[id].kind === "potion"
-                ? <button type="button" className="text-button" onClick={() => act(() => client.drink(id))}>마시기</button>
-                : <button type="button" className="text-button" onClick={() => act(() => client.equip(id))}>장착</button>}
+              {ITEMS[id].kind === "potion" && (
+                <button type="button" className="text-button" onClick={() => act(() => client.drink(id))}>마시기</button>
+              )}
+              {(ITEMS[id].kind === "weapon" || ITEMS[id].kind === "armor") && (
+                <button type="button" className="text-button" onClick={() => act(() => client.equip(id))}>장착</button>
+              )}
               {inVillage && (
                 <button type="button" className="text-button" onClick={() => act(() => client.sell(id))}>
                   팔기 ({sellPrice(id)})

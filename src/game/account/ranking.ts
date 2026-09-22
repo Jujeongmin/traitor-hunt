@@ -1,6 +1,6 @@
 import { readClass, type PlayerClass } from "../combat/classes";
 import { readJob, type JobId } from "../combat/jobs";
-import type { Gear } from "./items";
+import type { Gear, Plus } from "./items";
 import type { LevelView } from "./level";
 
 // One line of the board. The server keeps one per character, refreshed when its XP or its name
@@ -64,6 +64,7 @@ export interface RankDetail {
   job: JobId | null;
   power: number;
   gear: Gear;
+  plus: Plus;
   // Its game server's name.
   world: string;
   rank: number | null;

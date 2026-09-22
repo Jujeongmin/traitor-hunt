@@ -2,15 +2,17 @@ import type { JobId } from "../combat/jobs";
 import { RuleViolation } from "../world/types";
 import type { QuestProgress } from "./quests";
 
-// Everything a character can carry, in one table: potions to drink, and a weapon and armour to wear.
-// Gear fits every class. Prices are in gold, the game's coin (a Verse8 $asset on the account).
+// Everything a character can carry, in one table: potions to drink, a weapon and armour to wear, and
+// the materials monsters drop for the smith (see forge.ts). Gear fits every class. Prices are in gold,
+// the game's coin (a Verse8 $asset on the account).
 
 export const GOLD = "gold";
 
 export type ItemId =
   | "potion_small" | "potion_big"
-  | "weapon_1" | "weapon_2" | "weapon_3"
-  | "armor_1" | "armor_2" | "armor_3";
+  | "weapon_1" | "weapon_2" | "weapon_3" | "weapon_4" | "weapon_5"
+  | "armor_1" | "armor_2" | "armor_3" | "armor_4" | "armor_5"
+  | "stone" | "jelly" | "silk" | "core" | "spore";
 
 export type Slot = "weapon" | "armor";
 
@@ -18,10 +20,14 @@ export interface ItemSpec {
   name: string;
   // What the bag shows under the name.
   blurb: string;
-  // A potion is drunk; gear is worn in its slot.
-  kind: "potion" | Slot;
-  // Gold at the village shop; null when only monsters drop it. Selling gives back half.
+  // A potion is drunk; gear is worn in its slot; a material goes to the smith.
+  kind: "potion" | Slot | "material";
+  // Gold at the village shop; null when only monsters drop it (or the smith makes it). Selling gives
+  // back half, or `sell` for what the shop does not stock.
   price: number | null;
+  sell?: number;
+  // Gear: how good it is, 1 to 5; enhancing costs more the better it is.
+  tier?: number;
   // Potion: health it gives back.
   heal: number;
   // Weapon: extra share of damage on every hit and skill.
@@ -36,12 +42,25 @@ const none = { heal: 0, power: 0, hp: 0, guard: 0 };
 export const ITEMS: Record<ItemId, ItemSpec> = {
   potion_small: { ...none, name: "작은 물약", blurb: "체력 40 회복", kind: "potion", price: 20, heal: 40 },
   potion_big: { ...none, name: "큰 물약", blurb: "체력 120 회복", kind: "potion", price: 70, heal: 120 },
-  weapon_1: { ...none, name: "견습생의 무기", blurb: "공격력 +10%", kind: "weapon", price: 150, power: 0.1 },
-  weapon_2: { ...none, name: "숲지기의 무기", blurb: "공격력 +25%", kind: "weapon", price: 600, power: 0.25 },
-  weapon_3: { ...none, name: "버섯왕의 무기", blurb: "공격력 +45%", kind: "weapon", price: null, power: 0.45 },
-  armor_1: { ...none, name: "가죽 갑옷", blurb: "체력 +25", kind: "armor", price: 120, hp: 25 },
-  armor_2: { ...none, name: "숲지기의 갑옷", blurb: "체력 +60, 받는 피해 -10%", kind: "armor", price: 500, hp: 60, guard: 0.1 },
-  armor_3: { ...none, name: "버섯왕의 갑옷", blurb: "체력 +100, 받는 피해 -20%", kind: "armor", price: null, hp: 100, guard: 0.2 },
+  weapon_1: { ...none, name: "견습생의 무기", blurb: "공격력 +10%", kind: "weapon", price: 150, power: 0.1, tier: 1 },
+  weapon_2: { ...none, name: "숲지기의 무기", blurb: "공격력 +25%", kind: "weapon", price: 600, power: 0.25, tier: 2 },
+  weapon_4: { ...none, name: "강철 무기", blurb: "공격력 +35%", kind: "weapon", price: null, sell: 700, power: 0.35, tier: 3 },
+  weapon_3: { ...none, name: "버섯왕의 무기", blurb: "공격력 +45%", kind: "weapon", price: null, power: 0.45, tier: 4 },
+  weapon_5: { ...none, name: "바위심장 무기", blurb: "공격력 +55%", kind: "weapon", price: null, sell: 1800, power: 0.55, tier: 5 },
+  armor_1: { ...none, name: "가죽 갑옷", blurb: "체력 +25", kind: "armor", price: 120, hp: 25, tier: 1 },
+  armor_2: { ...none, name: "숲지기의 갑옷", blurb: "체력 +60, 받는 피해 -10%", kind: "armor", price: 500, hp: 60, guard: 0.1, tier: 2 },
+  armor_4: {
+    ...none, name: "강철 갑옷", blurb: "체력 +85, 받는 피해 -12%", kind: "armor", price: null, sell: 650, hp: 85, guard: 0.12, tier: 3,
+  },
+  armor_3: { ...none, name: "버섯왕의 갑옷", blurb: "체력 +100, 받는 피해 -20%", kind: "armor", price: null, hp: 100, guard: 0.2, tier: 4 },
+  armor_5: {
+    ...none, name: "바위심장 갑옷", blurb: "체력 +140, 받는 피해 -20%", kind: "armor", price: null, sell: 1700, hp: 140, guard: 0.2, tier: 5,
+  },
+  stone: { ...none, name: "강화석", blurb: "장비 강화 재료. 모든 사냥터", kind: "material", price: null, sell: 15 },
+  jelly: { ...none, name: "슬라임 젤리", blurb: "제작 재료. 숲 필드 1", kind: "material", price: null, sell: 5 },
+  silk: { ...none, name: "거미 비단", blurb: "제작 재료. 숲 필드 2", kind: "material", price: null, sell: 12 },
+  core: { ...none, name: "바위 심장석", blurb: "제작 재료. 깊은 숲", kind: "material", price: null, sell: 30 },
+  spore: { ...none, name: "버섯왕의 포자", blurb: "제작 재료. 버섯왕", kind: "material", price: null, sell: 150 },
 };
 
 export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
@@ -58,6 +77,32 @@ export function readItemId(value: unknown): ItemId | null {
 export type Bag = Partial<Record<ItemId, number>>;
 
 export interface Gear { weapon: ItemId | null; armor: ItemId | null }
+
+// How far each kind of gear has been enhanced (+1 to +10), by item. Kept per kind of item, not per
+// copy: a character wears one of each and rarely owns two.
+export type Plus = Partial<Record<ItemId, number>>;
+export const MAX_PLUS = 10;
+// What each + adds: a weapon's share of damage; armour's health and share of each blow stopped.
+export const PLUS_POWER = 0.04;
+export const PLUS_HP = 12;
+export const PLUS_GUARD = 0.005;
+
+export function readPlus(raw: unknown): Plus {
+  const out: Plus = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [id, n] of Object.entries(raw as Record<string, unknown>)) {
+    const item = readItemId(id);
+    if (item && ITEMS[item].kind !== "potion" && ITEMS[item].kind !== "material" && typeof n === "number" && Number.isInteger(n)
+      && n > 0) out[item] = Math.min(n, MAX_PLUS);
+  }
+  return out;
+}
+
+// A piece of gear's name with its +, as the screens show it.
+export function gearName(id: ItemId, plus: Plus = {}): string {
+  const n = plus[id] ?? 0;
+  return n > 0 ? `+${n} ${ITEMS[id].name}` : ITEMS[id].name;
+}
 
 export const NO_GEAR: Gear = { weapon: null, armor: null };
 
@@ -94,7 +139,7 @@ export function addItem(bag: Bag, id: ItemId, n: number): Bag {
 // Wears an item from the bag; whatever was in that slot goes back into the bag.
 export function equip(bag: Bag, gear: Gear, id: ItemId): { bag: Bag; gear: Gear } {
   const kind = ITEMS[id].kind;
-  if (kind === "potion") throw new RuleViolation("unavailable");
+  if (kind === "potion" || kind === "material") throw new RuleViolation("unavailable");
   let next = addItem(bag, id, -1);
   const old = gear[kind];
   if (old) next = addItem(next, old, 1);
@@ -110,13 +155,13 @@ export function unequip(bag: Bag, gear: Gear, slot: Slot): { bag: Bag; gear: Gea
 // What the worn gear adds up to in a fight.
 export interface GearStats { power: number; hp: number; guard: number }
 
-export function gearStats(gear: Gear): GearStats {
+export function gearStats(gear: Gear, plus: Plus = {}): GearStats {
   const out = { power: 0, hp: 0, guard: 0 };
-  for (const id of [gear.weapon, gear.armor]) {
-    if (!id) continue;
-    out.power += ITEMS[id].power;
-    out.hp += ITEMS[id].hp;
-    out.guard += ITEMS[id].guard;
+  if (gear.weapon) out.power += ITEMS[gear.weapon].power + (plus[gear.weapon] ?? 0) * PLUS_POWER;
+  if (gear.armor) {
+    const n = plus[gear.armor] ?? 0;
+    out.hp += ITEMS[gear.armor].hp + n * PLUS_HP;
+    out.guard += ITEMS[gear.armor].guard + n * PLUS_GUARD;
   }
   return out;
 }
@@ -127,12 +172,15 @@ export interface BagView {
   gold: number;
   bag: Bag;
   gear: Gear;
+  plus: Plus;
   job: JobId | null;
   quest: QuestProgress;
 }
 
 export function sellPrice(id: ItemId): number {
-  const price = ITEMS[id].price;
+  const spec = ITEMS[id];
+  if (spec.sell !== undefined) return spec.sell;
+  const price = spec.price;
   // Drop-only gear has no shop price; the shop pays a flat sum for it.
   if (price === null) return 400;
   return Math.floor(price / 2);

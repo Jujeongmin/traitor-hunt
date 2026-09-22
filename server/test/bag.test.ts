@@ -22,7 +22,7 @@ describe("bag and gold", () => {
   test("a new character starts with a few potions and no gold", async (server) => {
     await inVillage(server);
     expect(await server.getBag()).toEqual({
-      gold: 0, bag: { potion_small: 3 }, gear: { weapon: null, armor: null }, job: null, quest: { index: 0, count: 0 },
+      gold: 0, bag: { potion_small: 3 }, gear: { weapon: null, armor: null }, plus: {}, job: null, quest: { index: 0, count: 0 },
     });
   });
 

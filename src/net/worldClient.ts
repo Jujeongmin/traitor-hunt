@@ -7,6 +7,7 @@ import type { RankDetail, RankingView } from "../game/account/ranking";
 import { readMonsterType, type MonsterState } from "../game/world/monsters";
 import type { ZoneEntry, ZoneId, ZoneLook } from "../game/world/zones";
 import { errorCode } from "./errors";
+import type { EnhanceOutcome } from "../game/account/forge";
 import { readChat, type ChatMessage } from "../game/world/chat";
 import type { MatchTransport } from "./transport";
 
@@ -300,6 +301,22 @@ export class WorldClient {
     } catch (error) {
       return errorCode(error);
     }
+  }
+
+  // The smith: enhancing what is worn in a slot (the outcome, or why it was refused) and making things.
+  async enhance(slot: Slot): Promise<{ outcome: EnhanceOutcome } | { problem: string }> {
+    if (this.current.phase !== "in") return { problem: "unavailable" };
+    try {
+      const { outcome, bag } = await this.transport.call<{ outcome: EnhanceOutcome; bag: BagView }>("enhanceGear", [slot]);
+      this.set({ bag });
+      return { outcome };
+    } catch (error) {
+      return { problem: errorCode(error) };
+    }
+  }
+
+  craft(recipe: string): Promise<string | null> {
+    return this.bagCall("craftItem", [recipe]);
   }
 
   // The board, for the ranking panel in the world.

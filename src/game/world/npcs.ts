@@ -3,7 +3,7 @@ import { START_ZONE, ZONES, zoneLayout } from "./zones";
 
 // The people of the village: the merchant keeps the shop, the elder hands out the quests and takes
 // your reports. Each stands outside the door of a building of the village, the same spot for everyone.
-export type NpcId = "merchant" | "elder";
+export type NpcId = "merchant" | "elder" | "smith";
 
 export interface Npc {
   id: NpcId;
@@ -34,6 +34,13 @@ export const NPCS: readonly Npc[] = [
     id: "elder", name: "촌장 마르타", role: "퀘스트", model: "npc_elder", height: 1.6, idle: "Idle", greet: "Victory",
     colors: { Skin: 0xf0c9a4, Shirt: 0x7d5a9e, Pants: 0x4e3d63, Hair: 0xd9d4cc, Hat: 0x3b2a4a },
     house: [24, 15],
+  },
+  // A bearded viking from the same pack keeps the forge: enhancing gear and making it from what
+  // monsters drop.
+  {
+    id: "smith", name: "대장장이 볼프", role: "강화·제작", model: "npc_smith", height: 1.85, idle: "Idle", greet: "Victory",
+    colors: { Skin: 0xd9a37c, Light: 0x8a6a48, Main: 0x5a3a28, Pants: 0x3a2c22, Hair: 0x8a3a1c },
+    house: [20, 3],
   },
 ];
 
