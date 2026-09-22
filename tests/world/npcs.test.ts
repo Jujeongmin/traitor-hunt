@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { solidAt } from "../../src/game/rules/levelLayout";
 import { gridRoute } from "../../src/game/rules/pathing";
-import { NPCS, npcNear, npcSpot, TALK_RANGE } from "../../src/game/world/npcs";
+import { NPCS, npcFacing, npcNear, npcSpot, TALK_RANGE } from "../../src/game/world/npcs";
 import { START_ZONE, zoneLayout } from "../../src/game/world/zones";
 
 describe("village NPCs", () => {
@@ -17,6 +17,19 @@ describe("village NPCs", () => {
     }
     const [a, b] = NPCS.map((n) => npcSpot(n.id));
     expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(TALK_RANGE * 2);
+  });
+
+  it("stand outside the door of their building, looking out", () => {
+    const t = village.tileSize;
+    for (const npc of NPCS) {
+      const at = npcSpot(npc.id);
+      const out = npcFacing(npc.id);
+      const middle = { x: (npc.house[0] + 1) * t, z: (npc.house[1] + 1) * t };
+      // Straight out from the middle of the building, just past its walls.
+      expect((at.x - middle.x) * out.x + (at.z - middle.z) * out.z).toBeGreaterThan(t);
+      expect(Math.hypot(at.x - middle.x, at.z - middle.z)).toBeLessThan(t * 1.5);
+      expect(solidAt(village, middle.x, middle.z)).toBe(true);
+    }
   });
 
   it("can be talked to only close by", () => {

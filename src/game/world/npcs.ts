@@ -1,8 +1,8 @@
 import type { Point2 } from "../rules/levelLayout";
-import { START_ZONE, zoneLayout } from "./zones";
+import { START_ZONE, ZONES, zoneLayout } from "./zones";
 
 // The people of the village: the merchant keeps the shop, the elder hands out the quests and takes
-// your reports. They stand a few steps from where you arrive, the same spot for everyone.
+// your reports. Each stands outside the door of a building of the village, the same spot for everyone.
 export type NpcId = "merchant" | "elder";
 
 export interface Npc {
@@ -17,8 +17,8 @@ export interface Npc {
   greet: string;
   // Colours laid over the model's materials, by material name (the pack's skin comes out black).
   colors: Record<string, number>;
-  // Where they stand, in cells from the village spawn (the nearest open cell to it is used).
-  offset: [number, number];
+  // The building they stand in front of: the top-left cell of its block (see VILLAGE_HOUSES in zones.ts).
+  house: [number, number];
 }
 
 export const NPCS: readonly Npc[] = [
@@ -28,12 +28,12 @@ export const NPCS: readonly Npc[] = [
   {
     id: "merchant", name: "상인 한스", role: "상점", model: "npc_merchant", height: 1.75, idle: "Idle", greet: "Victory",
     colors: { Skin: 0xe8b98f, Shirt: 0xeee6d6, Pants: 0x5b4a2e, Detail: 0x9a5424 },
-    offset: [2, -2],
+    house: [10, 5],
   },
   {
     id: "elder", name: "촌장 마르타", role: "퀘스트", model: "npc_elder", height: 1.6, idle: "Idle", greet: "Victory",
     colors: { Skin: 0xf0c9a4, Shirt: 0x7d5a9e, Pants: 0x4e3d63, Hair: 0xd9d4cc, Hat: 0x3b2a4a },
-    offset: [-2, -2],
+    house: [15, 6],
   },
 ];
 
@@ -44,31 +44,30 @@ export const TALK_SLACK = 2.5;
 
 const spots = new Map<NpcId, Point2>();
 
-// Where an NPC stands in the village: the open cell nearest their offset from the spawn, at its centre.
+// How far in front of a building's middle an NPC stands: just outside its block, by the door.
+const DOOR_OUT = 5;
+const FACING = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] } as const;
+
+// Where an NPC stands in the village: outside the door of their building.
 export function npcSpot(id: NpcId): Point2 {
   const cached = spots.get(id);
   if (cached) return cached;
   const npc = NPCS.find((n) => n.id === id)!;
-  const layout = zoneLayout(START_ZONE);
-  const t = layout.tileSize;
-  const sc = Math.floor(layout.playerSpawn.x / t) + npc.offset[0];
-  const sr = Math.floor(layout.playerSpawn.z / t) + npc.offset[1];
-  let best: { c: number; r: number; d: number } | null = null;
-  for (let r = 1; r < layout.rows - 1; r++) {
-    for (let c = 1; c < layout.cols - 1; c++) {
-      if (layout.solid[r][c]) continue;
-      // Not on a platform, a portal or the spawn itself.
-      const centre = { x: (c + 0.5) * t, z: (r + 0.5) * t };
-      if (layout.platforms.some((p) => Math.abs(p.x - centre.x) < t && Math.abs(p.z - centre.z) < t)) continue;
-      if (layout.portals.some((p) => Math.hypot(p.x - centre.x, p.z - centre.z) < t * 2)) continue;
-      if (c === Math.floor(layout.playerSpawn.x / t) && r === Math.floor(layout.playerSpawn.z / t)) continue;
-      const d = Math.hypot(c - sc, r - sr);
-      if (!best || d < best.d) best = { c, r, d };
-    }
-  }
-  const spot = { x: (best!.c + 0.5) * t, z: (best!.r + 0.5) * t };
+  const house = (ZONES[START_ZONE].houses ?? []).find((h) => h.at[0] === npc.house[0] && h.at[1] === npc.house[1]);
+  if (!house) throw new Error(`no building at ${npc.house.join(",")} for ${id}`);
+  const t = zoneLayout(START_ZONE).tileSize;
+  const [dx, dz] = FACING[house.face];
+  const spot = { x: (house.at[0] + 1) * t + dx * DOOR_OUT, z: (house.at[1] + 1) * t + dz * DOOR_OUT };
   spots.set(id, spot);
   return spot;
+}
+
+// Which way an NPC looks: out from their door, as a unit step in x and z.
+export function npcFacing(id: NpcId): Point2 {
+  const npc = NPCS.find((n) => n.id === id)!;
+  const house = (ZONES[START_ZONE].houses ?? []).find((h) => h.at[0] === npc.house[0] && h.at[1] === npc.house[1])!;
+  const [x, z] = FACING[house.face];
+  return { x, z };
 }
 
 // The NPC within talking range of (x, z), nearest first; null when nobody is.

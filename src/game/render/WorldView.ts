@@ -16,7 +16,7 @@ import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
 import { BOSS_MOVES, MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
 import type { Point2 } from "../rules/levelLayout";
-import { NPCS, NPC_MODELS, npcNear, npcSpot, type NpcId } from "../world/npcs";
+import { NPCS, NPC_MODELS, npcNear, npcFacing, npcSpot, type NpcId } from "../world/npcs";
 import { NpcActor } from "./NpcActor";
 import type { Pose } from "../world/types";
 import { PORTAL_RADIUS, START_ZONE, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
@@ -499,10 +499,11 @@ export class WorldView {
 
   private addNpcs(): void {
     const library = this.library!;
-    const spawn = this.layout.playerSpawn;
     for (const npc of NPCS) {
       const at = npcSpot(npc.id);
-      const yaw = Math.atan2(-(spawn.x - at.x), -(spawn.z - at.z));
+      // Looking out from their door.
+      const out = npcFacing(npc.id);
+      const yaw = Math.atan2(-out.x, -out.z);
       const actor = new NpcActor(
         library.instance(npc.model), library.get(npc.model).animations, npc, `${npc.name} · ${npc.role}`, at.x, at.z, yaw,
       );
