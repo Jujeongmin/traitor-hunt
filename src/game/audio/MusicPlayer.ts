@@ -1,5 +1,5 @@
 import { publicUrl } from "../assets/publicUrl";
-import { MUSIC_FILES, type Track } from "./musicTrack";
+import { MUSIC_FILES, MUSIC_LEVEL, type Track } from "./musicTrack";
 
 // How long one piece takes to fade out while the next fades in.
 export const CROSSFADE_MS = 2000;
@@ -132,7 +132,7 @@ export class MusicPlayer {
 
   private apply(): void {
     for (const [track, element] of this.loaded) {
-      element.volume = this.volume * (this.gains.get(track) ?? 0);
+      element.volume = this.volume * MUSIC_LEVEL[track] * (this.gains.get(track) ?? 0);
     }
   }
 }

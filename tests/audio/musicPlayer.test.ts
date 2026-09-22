@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CROSSFADE_MS, MusicPlayer, type MusicElement } from "../../src/game/audio/MusicPlayer";
+import { MUSIC_LEVEL } from "../../src/game/audio/musicTrack";
 
 class FakeAudio implements MusicElement {
   volume = 1;
@@ -49,17 +50,18 @@ describe("MusicPlayer", () => {
     const menu = made[0];
     expect(menu.src).toContain("menu.ogg");
     expect(menu.loop).toBe(true);
-    expect(menu.volume).toBeCloseTo(1);
+    // Full volume setting: each piece at its own level (see MUSIC_LEVEL).
+    expect(menu.volume).toBeCloseTo(MUSIC_LEVEL.menu);
 
     player.play("boss");
     vi.advanceTimersByTime(CROSSFADE_MS / 2);
     const boss = made[1];
     expect(menu.volume).toBeGreaterThan(0);
-    expect(menu.volume).toBeLessThan(1);
+    expect(menu.volume).toBeLessThan(MUSIC_LEVEL.menu);
     expect(boss.volume).toBeGreaterThan(0);
 
     vi.advanceTimersByTime(CROSSFADE_MS);
-    expect(boss.volume).toBeCloseTo(1);
+    expect(boss.volume).toBeCloseTo(MUSIC_LEVEL.boss);
     expect(menu.volume).toBe(0);
     expect(menu.playing).toBe(false);
     player.dispose();
@@ -69,15 +71,15 @@ describe("MusicPlayer", () => {
     vi.useFakeTimers();
     const { player, made } = setup();
     player.setVolume(0);
-    player.play("explore");
+    player.play("field");
     vi.advanceTimersByTime(CROSSFADE_MS);
     expect(made).toHaveLength(0);
 
     player.setVolume(0.4);
     vi.advanceTimersByTime(CROSSFADE_MS);
-    expect(made[0].volume).toBeCloseTo(0.4);
+    expect(made[0].volume).toBeCloseTo(0.4 * MUSIC_LEVEL.field);
     player.setVolume(0.2);
-    expect(made[0].volume).toBeCloseTo(0.2);
+    expect(made[0].volume).toBeCloseTo(0.2 * MUSIC_LEVEL.field);
     player.dispose();
   });
 
@@ -98,7 +100,7 @@ describe("MusicPlayer", () => {
     vi.useFakeTimers();
     const { player, made } = setup();
     player.setVolume(1);
-    player.play("tension");
+    player.play("deep");
     vi.advanceTimersByTime(CROSSFADE_MS);
     player.dispose();
     expect(made[0].pauses).toBeGreaterThan(0);

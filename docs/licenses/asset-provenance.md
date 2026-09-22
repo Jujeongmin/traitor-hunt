@@ -92,17 +92,21 @@ npm 패키지(@fontsource)로 넣었고 모두 SIL Open Font License 1.1이다(�
 - Hahmlet (한글 제목·버튼) — https://fonts.google.com/specimen/Hahmlet
 - Noto Serif KR (HUD 본문) — https://fonts.google.com/noto/specimen/Noto+Serif+KR
 
-## 배경음악 (2026-09-21)
+## 배경음악 (2026-09-22 교체)
 
-모두 **CC0(퍼블릭 도메인)** 이라 출처 표기 의무가 없다. 아래는 기록용이며, 원본을 96 kbps Vorbis로 다시 인코딩해
-`public/assets/music/`에 넣었다(합계 약 8 MB). GitHub 공개 저장소에도 그대로 커밋한다.
+모두 **CC0(퍼블릭 도메인)** 이라 출처 표기 의무가 없다. 아래는 기록용이다. 받은 ogg를 그대로
+`public/assets/music/`에 넣었다(합계 약 16.7 MB). GitHub 공개 저장소에도 그대로 커밋한다. 곡마다 녹음 음량이 달라
+`src/game/audio/musicTrack.ts`의 `MUSIC_LEVEL`로 모두 약 -31 dB RMS(가장 조용한 Forest Whisper 수준)에 맞춘다.
+원본 zip은 `art-src/music/`에 있다. (2026-09-21의 공포 분위기 곡 4개는 뺐다.)
 
-| 파일 | 원곡 | 작곡·제작 | 출처 |
+| 파일 | 원곡 | 작곡 | 출처 |
 |---|---|---|---|
-| `menu.ogg` | Dark Cavern Ambient 002 | Paul Wortmann | https://opengameart.org/content/dark-cavern-ambient |
-| `explore.ogg` | Loopable Dungeon Ambience | JaggedStone | https://opengameart.org/content/loopable-dungeon-ambience |
-| `tension.ogg` | Post Apocalyptic Wastelands (Horror Atmosphere) | Juhani Junkala (SubspaceAudio) | https://opengameart.org/content/horror-atmosphere |
-| `boss.ogg` | Oldschool Horror Theme | josepharaoh99 수집, CC0 | https://opengameart.org/content/oldschool-horror-theme |
+| `menu.ogg` | A Place I Call Home (JRPG Music Pack #4 Calm) | Juhani Junkala | https://opengameart.org/content/jrpg-pack-4-calm |
+| `village.ogg` | Home Town (JRPG Music Pack #2 Towns) | Juhani Junkala | https://opengameart.org/content/jrpg-pack-2-towns |
+| `field.ogg` | Grasslands (JRPG Music Pack #1 Exploration) | Juhani Junkala | https://opengameart.org/content/jrpg-pack-1-exploration |
+| `field2.ogg` | Prairie Nights (JRPG Music Pack #1 Exploration) | Juhani Junkala | https://opengameart.org/content/jrpg-pack-1-exploration |
+| `deep.ogg` | Forest Whisper Theme | Cleyton Kauffman | https://opengameart.org/content/forest-whisper-theme |
+| `boss.ogg` | Encounter With The Witches (JRPG Music Pack #5 Action) | Juhani Junkala | https://opengameart.org/content/jrpg-pack-5-action |
 
 ## 야외·치비 전환 (2026-09-21)
 
