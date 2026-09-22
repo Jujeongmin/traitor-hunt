@@ -20,11 +20,6 @@
       "bytes": 1099540,
       "animations": []
     },
-    "chest_closed": {
-      "url": "assets/models/chest_closed.glb",
-      "bytes": 477632,
-      "animations": []
-    },
     "hero_cleric": {
       "url": "assets/models/hero_cleric.glb",
       "bytes": 385444,

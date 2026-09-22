@@ -38,14 +38,14 @@ export const ZONES: Record<ZoneId, Zone> = {
     id: "village", name: "초록숲 마을", paid: false, minLevel: 1, portals: ["forest1"], houses: VILLAGE_HOUSES,
     map: fieldMap({
       cols: 34, rows: 26, seed: 3, spawn: [14, 13], portals: [{ side: "E", at: 13 }],
-      monsters: 0, groves: 5, edge: 2, props: "cBCHcBcC", houses: VILLAGE_HOUSES,
+      monsters: 0, groves: 5, edge: 2, props: "cBHcBc", houses: VILLAGE_HOUSES,
     }),
   },
   forest1: {
     id: "forest1", name: "숲 필드 1", paid: false, minLevel: 1, portals: ["village", "forest2"],
     map: fieldMap({
       cols: 50, rows: 36, seed: 11, spawn: [5, 18], portals: [{ side: "W", at: 18 }, { side: "E", at: 17 }],
-      monsters: 24, groves: 16, edge: 3, props: "cBcCcB",
+      monsters: 24, groves: 16, edge: 3, props: "cBccB",
     }),
   },
   forest2: {
@@ -53,14 +53,14 @@ export const ZONES: Record<ZoneId, Zone> = {
     map: fieldMap({
       cols: 50, rows: 36, seed: 29, spawn: [5, 17],
       portals: [{ side: "W", at: 17 }, { side: "N", at: 38 }, { side: "E", at: 24 }],
-      monsters: 26, groves: 20, edge: 3, props: "cBcCH",
+      monsters: 26, groves: 20, edge: 3, props: "cBcH",
     }),
   },
   forest3: {
     id: "forest3", name: "깊은 숲", paid: true, minLevel: 25, portals: ["forest2"],
     map: fieldMap({
       cols: 54, rows: 40, seed: 61, spawn: [5, 20], portals: [{ side: "W", at: 20 }],
-      monsters: 28, groves: 26, edge: 4, props: "cBcCHc",
+      monsters: 28, groves: 26, edge: 4, props: "cBcHc",
     }),
   },
   boss: {
@@ -78,7 +78,7 @@ export const MENU_MAP = [
   "#############",
   "#..c.....B..#",
   "#.....#.....#",
-  "#..C........#",
+  "#...........#",
   "#....P......O",
   "#...........#",
   "#.H.....c...#",

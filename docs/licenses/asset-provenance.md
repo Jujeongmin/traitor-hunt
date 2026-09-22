@@ -141,7 +141,7 @@ WAV는 모노 22.05 kHz로 줄이고 앞뒤 무음을 잘랐고, OGG는 그대�
 | Mini Legion Footman PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 일반 몬스터(footman) |
 | Mini Legion Rock Golem PBR HP Polyart | Dungeon Mason | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 보스(golem) |
 | Low Poly Environment - Nature Free | Polytope Studio | Standard Unity Asset Store EULA / Extension Asset | 무료 | 없음 | 발판용 통나무(pt_logs)·바위(pt_rock)·그루터기(pt_tree_stump)만 (나무·풀·꽃은 2026-09-22에 Stylized Nature로 바꿈) |
-| Treasure Chest - PBR | Thomas K. Kerff | Standard Unity Asset Store EULA / Extension Asset | 무료 | — | 올라서는 상자(chest_closed) |
+| Treasure Chest - PBR | Thomas K. Kerff | Standard Unity Asset Store EULA / Extension Asset | 무료 | — | 올라서는 상자(chest_closed), 2026-09-22에 뺌 |
 
 패키지 5개를 모두 풀어 readme·license 파일이 없는 것을 확인했다. 약관 원문(2.2.1)은 "electronic application or
 digital media"에 넣는 것을 허락하고 Unity 엔진을 조건으로 두지 않으며, 제품 안 수익화(유료 판매)도 허락한다.

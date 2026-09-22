@@ -23,7 +23,7 @@ export const TILE_SIZE = 4;
 
 // # forest, h a house's cell; everything else is ground: P spawn, Z monster, K boss, O portal,
 // c B C H platforms.
-const FLOOR_SYMBOLS = new Set([".", "P", "Z", "K", "O", "c", "B", "C", "H"]);
+const FLOOR_SYMBOLS = new Set([".", "P", "Z", "K", "O", "c", "B", "H"]);
 const SOLID_SYMBOLS = new Set(["#", "h"]);
 
 export function parseLevel(rows: string[], tileSize: number): LevelLayout {

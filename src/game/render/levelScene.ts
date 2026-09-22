@@ -12,7 +12,7 @@ import { SPRITE_MODELS, bakeTreeSprites } from "./treeSprites";
 
 // The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
 // same as ever; solid cells are drawn as trees and rocks instead of stone walls.
-const PLATFORM_MODELS = ["pt_logs", "pt_rock", "pt_tree_stump", "chest_closed"];
+const PLATFORM_MODELS = ["pt_logs", "pt_rock", "pt_tree_stump"];
 export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, ...SPRITE_MODELS, ...CASTLE_MODELS])];
 
 export const SKY = HORIZON;

@@ -1,6 +1,6 @@
 import { MAX_JUMP_RISE, PLAYER_RADIUS } from "./movement";
 
-// Things you can stand on: log piles, a boulder beside them, a stump and a chest. Each is a box on
+// Things you can stand on: log piles, a boulder beside them and a stump. Each is a box on
 // the floor: x/z its centre, w along x, d along z, h its top. Players jump onto them; monsters and bots
 // walk around them, since they never leave the floor.
 export interface Platform {
@@ -22,7 +22,6 @@ export const STEP_UP = 0.05;
 
 // Measured from the models at kit scale (2026-09-18).
 const BARREL = { w: 1.1, d: 1.1, h: 1.3 };
-const CHEST = { w: 0.7, d: 0.45, h: 0.47 };
 
 // Platforms for one map cell, by its symbol, centred on the cell centre.
 export function platformsFor(symbol: string, x: number, z: number): Platform[] {
@@ -36,8 +35,6 @@ export function platformsFor(symbol: string, x: number, z: number): Platform[] {
       ];
     case "B":
       return [{ x, z, ...BARREL, model: "pt_tree_stump" }];
-    case "C":
-      return [{ x, z, ...CHEST, model: "chest_closed" }];
     default:
       return [];
   }
