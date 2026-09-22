@@ -16,6 +16,8 @@ import { SkillPanel } from "./SkillPanel";
 import { RankingPanel } from "./RankingPanel";
 import { iconFor } from "../game/render/icons";
 import { QuestPanel } from "./QuestPanel";
+import { QuestCompleteBanner, QuestLog } from "./QuestLog";
+import { QUESTS, questDone } from "../game/account/quests";
 import { SettingsPanel } from "./SettingsPanel";
 
 interface WorldScreenProps {
@@ -109,6 +111,8 @@ interface ZoneScreenProps extends Omit<WorldScreenProps, "onExit"> {
   onExit: () => void;
 }
 
+// How long the quest-complete panel stays up.
+const QUEST_BANNER_MS = 4500;
 // How long a refused portal's message stays up.
 const PROBLEM_MS = 3000;
 
@@ -121,7 +125,23 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
   // Which of the bag and the shop is open.
-  const [panel, setPanel] = useState<"bag" | "shop" | "skills" | "ranking" | "quest" | null>(null);
+  const [panel, setPanel] = useState<"bag" | "shop" | "skills" | "ranking" | "quest" | "quests" | null>(null);
+  // The quest just finished, shown once as a panel in the middle of the screen.
+  const [finished, setFinished] = useState<number | null>(null);
+  const lastQuest = useRef<{ index: number; done: boolean } | null>(null);
+  useEffect(() => {
+    if (!bag) return;
+    const done = questDone(bag.quest);
+    const last = lastQuest.current;
+    // Only a quest seen going from unfinished to finished, not one already done when you arrive.
+    if (last && last.index === bag.quest.index && !last.done && done) setFinished(bag.quest.index);
+    lastQuest.current = { index: bag.quest.index, done };
+  }, [bag]);
+  useEffect(() => {
+    if (finished === null) return;
+    const timer = setTimeout(() => setFinished(null), QUEST_BANNER_MS);
+    return () => clearTimeout(timer);
+  }, [finished]);
   const inVillage = entry.zone === START_ZONE;
   const [now, setNow] = useState(() => performance.now());
   const touch = isTouchDevice();
@@ -198,6 +218,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           <div className="hud-menu-buttons">
             {([
               ["ranking", "랭킹", () => setPanel("ranking")],
+              ["quests", "퀘스트", () => setPanel((p) => (p === "quests" ? null : "quests"))],
               ["skills", "스킬", () => setPanel((p) => (p === "skills" ? null : "skills"))],
               ["bag", "가방", () => setPanel("bag")],
               ["menu", "메뉴", () => setMenu(true)],
@@ -238,10 +259,13 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
             />
           )}
           <SkillBar hud={hud} playerClass={playerClass} onSkill={(slot) => view.current?.tapSkill(slot)} onPotion={() => view.current?.tapPotion()} />
-          <QuestTracker
-            bag={bag} seeking={hud.seeking} inVillage={inVillage}
-            onSeek={(types) => view.current?.seekQuest(types)} onReport={() => view.current?.walkToNpc("elder")}
-          />
+          {/* The side panels sit where the tracker is; it steps aside while one is open. */}
+          {panel !== "quests" && panel !== "skills" && (
+            <QuestTracker
+              bag={bag} seeking={hud.seeking} inVillage={inVillage}
+              onSeek={(types) => view.current?.seekQuest(types)} onReport={() => view.current?.walkToNpc("elder")}
+            />
+          )}
           {!touch && <div className="crosshair" />}
           {hud.hurt > 0 && <div className="hud-hurt" style={{ opacity: hud.hurt }} />}
           {hud.dead && (
@@ -276,6 +300,16 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
       )}
       {panel === "shop" && <ShopPanel client={client} bag={bag} onClose={() => setPanel(null)} />}
       {panel === "skills" && <SkillPanel playerClass={playerClass} level={hud?.level ?? 1} onClose={() => setPanel(null)} />}
+      {panel === "quests" && (
+        <QuestLog
+          bag={bag} inVillage={inVillage}
+          onSeek={(types) => view.current?.seekQuest(types)} onReport={() => view.current?.walkToNpc("elder")}
+          onClose={() => setPanel(null)}
+        />
+      )}
+      {finished !== null && QUESTS[finished] && (
+        <QuestCompleteBanner quest={QUESTS[finished]} inVillage={inVillage} onClose={() => setFinished(null)} />
+      )}
       {panel === "quest" && (
         <QuestPanel client={client} bag={bag} onSeek={(types) => view.current?.seekQuest(types)} onClose={() => setPanel(null)} />
       )}
