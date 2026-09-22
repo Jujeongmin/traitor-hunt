@@ -24,6 +24,25 @@ export interface LevelView {
   need: number;
 }
 
+// Falling costs this share of the current level's XP, never more than was earned inside the level:
+// nobody loses a level by dying.
+export const DEATH_XP_SHARE = 0.03;
+
+export function deathXpLoss(xp: number): number {
+  const { into, need } = levelOf(xp);
+  return Math.min(into, Math.round(need * DEATH_XP_SHARE));
+}
+
+// Getting up where you fell costs this much gold per level; you stand up with this share of health,
+// and monsters leave you be for REVIVE_SAFE_MS.
+export const REVIVE_GOLD_PER_LEVEL = 30;
+export const REVIVE_HP_SHARE = 0.5;
+export const REVIVE_SAFE_MS = 3000;
+
+export function reviveCost(level: number): number {
+  return REVIVE_GOLD_PER_LEVEL * Math.max(1, level);
+}
+
 export function levelOf(xp: number): LevelView {
   let left = Number.isFinite(xp) && xp > 0 ? Math.floor(xp) : 0;
   let level = 1;

@@ -2,6 +2,7 @@ import { MONSTERS, maxHpAt } from "../../src/game/world/monsters";
 import { SKILLS } from "../../src/game/combat/skills";
 import { WEAPONS } from "../../src/game/combat/classes";
 import { portalsOf, zoneLayout } from "../../src/game/world/zones";
+import { REVIVE_HP_SHARE, deathXpLoss, levelCost, levelOf, reviveCost } from "../../src/game/account/level";
 import { enterAs, errorOf, giveXp, join, makeCharacter, walkTo } from "./helpers";
 
 // Into the first hunting field, through the village portal, as the client does it.
@@ -143,6 +144,35 @@ describe("hunting", () => {
     expect([...used.hit].sort()).toEqual(["a", "b"]);
     expect((await $room.getRoomState()).monsters.a.hp).toBe(80 - SKILLS.warrior[0].damage);
     expect(await errorOf(server.useSkill())).toContain("too_fast");
+  });
+
+  test("falling costs a little XP, never a level, and you can stand up where you fell for gold", async (server) => {
+    const entry = await toForest(server, "test-a");
+    const xp = levelCost(1) + 400;
+    await giveXp("test-a", xp);
+    server.connect({ account: "test-a", roomId: entry.roomId });
+    const spawn = zoneLayout("forest1").playerSpawn;
+    await standAt(server, spawn.x, spawn.z);
+    expect(await errorOf(server.reviveHere())).toContain("unavailable");
+    await only("spider", spawn.x, spawn.z - 1);
+    await $room.updateMyState({ hp: 1 });
+    await server.simulateTick(entry.roomId, 200);
+    const lost = deathXpLoss(xp);
+    expect(lost).toBeGreaterThan(0);
+    expect(await $room.getMyState()).toMatchObject({ dead: true, lostXp: lost, xp: xp - lost });
+    expect((await server.getAccount()).xp).toBe(xp - lost);
+
+    expect(await errorOf(server.reviveHere())).toContain("not_enough_gold");
+    const cost = reviveCost(levelOf(xp - lost).level);
+    await $asset.mint("gold", cost + 5);
+    expect((await server.reviveHere()).gold).toBe(5);
+    const mine = await $room.getMyState();
+    expect(mine).toMatchObject({ dead: false, hp: Math.ceil(mine.maxHp * REVIVE_HP_SHARE) });
+    // The spider leaves you be for a moment.
+    await server.simulateTick(entry.roomId, 200);
+    expect((await $room.getMyState()).hp).toBe(mine.hp);
+    // Just into a level, there is nothing to lose.
+    expect(deathXpLoss(levelCost(1))).toBe(0);
   });
 
   test("fallen, you can only go back to the village, where you stand up whole", async (server) => {

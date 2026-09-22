@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { typing } from "../game/render/FpsInput";
 import { ChatBox } from "./ChatBox";
 import { SmithPanel } from "./SmithPanel";
+import { DeathPanel } from "./DeathPanel";
 import { playMusic } from "../game/audio/music";
 import { trackFor } from "../game/audio/musicTrack";
 import type { PlayerClass } from "../game/combat/classes";
@@ -304,14 +305,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           {!touch && <div className="crosshair" />}
           {hud.hurt > 0 && <div className="hud-hurt" style={{ opacity: hud.hurt }} />}
           {hud.dead && (
-            <div className="pain fallen">
-              <div className="solid-panel world-panel">
-                <p className="band">쓰러졌어요</p>
-                <button type="button" className="brush-button" disabled={travelling} onClick={() => void client.respawn()}>
-                  마을에서 다시 시작
-                </button>
-              </div>
-            </div>
+            <DeathPanel client={client} level={hud.level} lostXp={hud.lostXp} gold={bag?.gold ?? null} travelling={travelling} />
           )}
         </>
       )}

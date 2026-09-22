@@ -100,6 +100,8 @@ export interface WorldHud {
   hp: number;
   maxHp: number;
   dead: boolean;
+  // XP lost to the last fall.
+  lostXp: number;
   level: number;
   xpInto: number;
   xpNeed: number;
@@ -811,6 +813,7 @@ export class WorldView {
       hp: me?.hp ?? 0,
       maxHp: me?.maxHp ?? 1,
       dead: me?.dead === true,
+      lostXp: me?.lostXp ?? 0,
       level: level.level,
       xpInto: level.into,
       xpNeed: level.need,

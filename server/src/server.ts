@@ -1,7 +1,9 @@
 import {
   acceptFriend, isOnline, removeFriend, requestFriend, type FriendSide, type FriendsView,
 } from "../../src/game/account/friends";
-import { levelOf } from "../../src/game/account/level";
+import {
+  REVIVE_HP_SHARE, REVIVE_SAFE_MS, deathXpLoss, levelOf, reviveCost,
+} from "../../src/game/account/level";
 import {
   GOLD, ITEMS, MAX_STACK, NO_GEAR, addItem, equip, readItemId, sellPrice, unequip, type BagView, type ItemId, type Slot,
 } from "../../src/game/account/items";
@@ -119,6 +121,19 @@ interface Pay {
   gold: number;
   items: ItemId[];
   felled: MonsterType[];
+}
+
+// A character has fallen: it loses a little XP (never a level), and the room shows how much.
+async function fallen(account: string, roomId: string): Promise<void> {
+  let lost = 0;
+  const next = await updateActive(account, (c) => {
+    lost = deathXpLoss(c.xp);
+    return { ...c, xp: c.xp - lost };
+  });
+  if (lost > 0) await writeRanking(account, next);
+  await withRoomLock(roomId, async () => {
+    await $room.updateUserState(account, { xp: next.xp, lostXp: lost }, { returnState: false });
+  });
 }
 
 // Pays a character (gold onto its account as a Verse8 asset, the rest into the character) and shows
@@ -681,6 +696,35 @@ export class Server {
     return bagView(next);
   }
 
+  // Fallen: up again where you fell, for gold (see reviveCost), with half your health and a moment
+  // in which the monsters leave you be.
+  async reviveHere(): Promise<{ gold: number }> {
+    const account = $sender.account;
+    const { roomId } = currentChannel();
+    const character = await playing(account);
+    if ((await $room.getMyState()).dead !== true) throw new RuleViolation("unavailable");
+    const cost = reviveCost(levelOf(character.xp).level);
+    if (!(await $asset.has(GOLD, cost))) throw new RuleViolation("not_enough_gold");
+    await $asset.burn(GOLD, cost);
+    const now = Date.now();
+    const stood = await withRoomLock(roomId, async () => {
+      const mine = await $room.getMyState();
+      if (mine.dead !== true) return false;
+      const maxHp = typeof mine.maxHp === "number" ? mine.maxHp : fightStats(character).maxHp;
+      await $room.updateMyState(
+        { dead: false, hp: Math.ceil(maxHp * REVIVE_HP_SHARE), hitAt: now, safeUntil: now + REVIVE_SAFE_MS, lostXp: 0 },
+        { returnState: false },
+      );
+      return true;
+    });
+    // Up already (another tab): the gold comes back.
+    if (!stood) {
+      await $asset.mint(GOLD, cost);
+      throw new RuleViolation("unavailable");
+    }
+    return { gold: await $asset.get(GOLD) };
+  }
+
   // Fallen: back to the village, whole again (arrive heals).
   async respawn(): Promise<ZoneEntry> {
     const account = $sender.account;
@@ -690,10 +734,12 @@ export class Server {
   }
 
   // Every room tick (Verse8 runs it about every 200 ms): the monsters of a hunting zone move and fight.
+  // Whoever falls loses a little XP (see deathXpLoss); the room shows them how much.
   async $roomTick(delta: number, roomId: string): Promise<void> {
     const here = readChannelRoom(roomId);
     if (!here || !hasMonsters(here.zone)) return;
-    await withRoomLock(roomId, () => tickRoom(here.zone, delta, Date.now()));
+    const fell = await withRoomLock(roomId, () => tickRoom(here.zone, delta, Date.now()));
+    for (const account of fell) await fallen(account, roomId);
   }
 
   // Verse8 calls this when someone leaves a room for good (after the reconnect grace period):

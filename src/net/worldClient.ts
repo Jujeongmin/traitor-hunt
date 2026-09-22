@@ -26,6 +26,8 @@ export interface Vitals {
   maxHp: number;
   dead: boolean;
   xp: number;
+  // XP lost to the last fall (0 when none).
+  lostXp: number;
 }
 
 export interface WorldState {
@@ -114,7 +116,7 @@ function readMonsters(raw: unknown): Record<string, MonsterState> {
 
 function readVitals(user: Record<string, unknown>): Vitals | null {
   if (typeof user.hp !== "number" || typeof user.maxHp !== "number") return null;
-  return { hp: user.hp, maxHp: user.maxHp, dead: user.dead === true, xp: num(user.xp) };
+  return { hp: user.hp, maxHp: user.maxHp, dead: user.dead === true, xp: num(user.xp), lostXp: num(user.lostXp) };
 }
 
 // Your place in the open world: which zone and channel you are in, who else is there and where,
@@ -329,6 +331,18 @@ export class WorldClient {
   }
 
   // Fallen: back to the village.
+  // Fallen: up again where you fell, for gold. Null once up, or why it was refused.
+  async reviveHere(): Promise<string | null> {
+    if (this.current.phase !== "in" || !this.current.me?.dead) return "unavailable";
+    try {
+      await this.transport.call("reviveHere");
+      void this.refreshBag();
+      return null;
+    } catch (error) {
+      return errorCode(error);
+    }
+  }
+
   async respawn(): Promise<void> {
     if (this.current.phase !== "in" || !this.current.me?.dead) return;
     this.set({ phase: "travelling" });

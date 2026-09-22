@@ -90,21 +90,24 @@ async function writeMonsters(monsters: Record<string, MonsterState>): Promise<vo
 }
 
 // One room tick: monsters move and swing, blows land on players (a raised guard facing the monster
-// stops part of it), and players out of a fight heal a little.
-export async function tickRoom(zone: ZoneId, deltaMs: number, now: number): Promise<void> {
+// stops part of it), and players out of a fight heal a little. Answers who fell in it.
+export async function tickRoom(zone: ZoneId, deltaMs: number, now: number): Promise<string[]> {
   const state = await $room.getRoomState(["monsters", "regenAt"]);
   const accounts: string[] = state.$users;
-  if (accounts.length === 0) return;
+  if (accounts.length === 0) return [];
   const monsters = await readMonsters(zone);
   const users: (Record<string, any> & { account: string })[] = await $room.getUserStates(
-    accounts, ["pose", "look", "hp", "maxHp", "dead", "hitAt"],
+    accounts, ["pose", "look", "hp", "maxHp", "dead", "hitAt", "safeUntil"],
   );
   const fighters = new Map(users.map((u) => [u.account, { ...readFighter(u), hitAt: typeof u.hitAt === "number" ? u.hitAt : 0 }]));
   const prey: Prey[] = [];
-  for (const [account, f] of fighters) if (f.pose && !f.dead) prey.push({ account, x: f.pose.x, z: f.pose.z });
+  // Just stood up where they fell: the monsters leave them be for a moment.
+  const safe = new Set(users.filter((u) => typeof u.safeUntil === "number" && now < u.safeUntil).map((u) => u.account));
+  for (const [account, f] of fighters) if (f.pose && !f.dead && !safe.has(account)) prey.push({ account, x: f.pose.x, z: f.pose.z });
 
   const hits = stepMonsters(monsters, prey, zoneLayout(zone), Math.min(deltaMs, MAX_TICK_MS) / 1000, now);
   const hurt = new Set<string>();
+  const fell: string[] = [];
   for (const hit of hits) {
     const f = fighters.get(hit.account);
     const m = monsters[hit.monsterId];
@@ -114,6 +117,7 @@ export async function tickRoom(zone: ZoneId, deltaMs: number, now: number): Prom
     const damage = Math.max(1, Math.round(hit.damage * shield * (1 - f.gear.guard)));
     f.hp = Math.max(0, f.hp - damage);
     f.dead = f.hp <= 0;
+    if (f.dead) fell.push(hit.account);
     f.hitAt = now;
     hurt.add(hit.account);
   }
@@ -129,6 +133,7 @@ export async function tickRoom(zone: ZoneId, deltaMs: number, now: number): Prom
   // Written only when something changed (or they were just spawned): most ticks of a quiet room write nothing.
   if (JSON.stringify(tidy(monsters)) !== JSON.stringify(state.monsters ?? null)) await writeMonsters(monsters);
   if (regen) await $room.updateRoomState({ regenAt: now + REGEN_MS }, { returnState: false });
+  return fell;
 }
 
 // What one blow or skill did: the monsters it hit and felled. Each felled one comes with everyone
