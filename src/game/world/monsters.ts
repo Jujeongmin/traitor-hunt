@@ -7,7 +7,8 @@ import { zoneLayout } from "./zones";
 export type MonsterType =
   | "green_blob" | "mushnub" | "rat" | "frog"
   | "spider" | "snake" | "wasp" | "goleling" | "bat"
-  | "mushroom_king";
+  | "dire_spider" | "venom_snake" | "hornet" | "vampire_bat" | "stone_golem"
+  | "mushnub_guard" | "mushroom_king";
 
 export interface MonsterSpec {
   name: string;
@@ -34,11 +35,35 @@ export interface MonsterSpec {
   drops: { item: ItemId; chance: number }[];
 }
 
+// The boss's moves, beyond biting whoever is closest (see stepBoss in monsterAi.ts).
+export const BOSS_MOVES = {
+  // Every slamEveryMs it rears up for slamWarnMs (a red ring shows where it will land), then strikes
+  // everyone within slamRadius for slamDamage (a raised guard facing it still helps).
+  slamEveryMs: 12_000,
+  slamWarnMs: 1_500,
+  slamRadius: 7,
+  slamDamage: 140,
+  // At these shares of its health it calls its brood: this many of the kind, around it.
+  summonAt: [0.7, 0.4],
+  summonCount: 4,
+  summonType: "mushnub_guard" as const,
+  // Below this share it rages: attacks come this much faster and harder.
+  rageBelow: 0.25,
+  rageSpeed: 0.6,
+  rageDamage: 1.3,
+};
+
 const common = { range: 1.5, attackMs: 1400, speed: 1.8, aggro: 9, body: 0.4, respawnMs: 15_000 };
 // What the first field's monsters carry, and the second's.
 const field1 = {
   ...common, gold: [3, 8] as [number, number],
   drops: [{ item: "potion_small", chance: 0.15 }, { item: "weapon_1", chance: 0.02 }, { item: "armor_1", chance: 0.02 }] as MonsterSpec["drops"],
+};
+const field3 = {
+  ...common, aggro: 12, gold: [30, 60] as [number, number],
+  drops: [
+    { item: "potion_big", chance: 0.12 }, { item: "weapon_2", chance: 0.03 }, { item: "armor_2", chance: 0.03 },
+  ] as MonsterSpec["drops"],
 };
 const field2 = {
   ...common, gold: [10, 22] as [number, number],
@@ -48,8 +73,8 @@ const field2 = {
   ] as MonsterSpec["drops"],
 };
 
-// The first field is for levels 1 to about 11, the second for 12 to 29; the boss is a level-32
-// fight for a group. Health, damage and XP climb with each monster's level.
+// The first field is for levels 1 to about 11, the second for 12 to 29, the deep forest for 28 to
+// 40 (its monsters are the second field's, grown and darker); the boss is a level-32 fight for a group. Health, damage and XP climb with each monster's level.
 export const MONSTERS: Record<MonsterType, MonsterSpec> = {
   green_blob: { ...field1, name: "초록 슬라임", level: 1, hp: 50, damage: 5, speed: 1.6, xp: 6 },
   mushnub: { ...field1, name: "버섯돌이", level: 3, hp: 80, damage: 8, xp: 9 },
@@ -60,6 +85,16 @@ export const MONSTERS: Record<MonsterType, MonsterSpec> = {
   wasp: { ...field2, name: "말벌", level: 18, hp: 520, damage: 34, speed: 2.6, aggro: 12, xp: 56 },
   bat: { ...field2, name: "박쥐", level: 21, hp: 600, damage: 38, speed: 2.8, aggro: 12, xp: 64 },
   goleling: { ...field2, name: "골렘링", level: 24, hp: 800, damage: 44, speed: 1.7, aggro: 10, body: 0.5, xp: 80 },
+  dire_spider: { ...field3, name: "거대 독거미", level: 28, hp: 1400, damage: 58, speed: 2.3, xp: 120 },
+  venom_snake: { ...field3, name: "맹독사", level: 31, hp: 1600, damage: 64, xp: 140 },
+  hornet: { ...field3, name: "장수말벌", level: 34, hp: 1700, damage: 70, speed: 2.8, xp: 160 },
+  vampire_bat: { ...field3, name: "흡혈박쥐", level: 37, hp: 1900, damage: 76, speed: 3, xp: 180 },
+  stone_golem: { ...field3, name: "바위 골렘", level: 40, hp: 3200, damage: 90, speed: 1.6, body: 0.8, xp: 240 },
+  // The boss's brood: they come when it calls, and do not come back.
+  mushnub_guard: {
+    ...common, name: "버섯 호위병", level: 30, hp: 900, damage: 40, speed: 2.2, aggro: 30, xp: 60,
+    gold: [5, 10], drops: [],
+  },
   mushroom_king: {
     name: "버섯왕", level: 32, hp: 30000, damage: 90, range: 2.8, attackMs: 1800, speed: 1.6, aggro: 22, body: 1.0, xp: 6000,
     respawnMs: 300_000, gold: [800, 1200],
@@ -84,6 +119,7 @@ export const ZONE_MONSTERS: Record<ZoneId, MonsterType[]> = {
   village: [],
   forest1: ["green_blob", "mushnub", "rat", "frog"],
   forest2: ["spider", "snake", "wasp", "goleling", "bat"],
+  forest3: ["dire_spider", "venom_snake", "hornet", "vampire_bat", "stone_golem"],
   boss: [],
 };
 export const ZONE_BOSS: Partial<Record<ZoneId, MonsterType>> = { boss: "mushroom_king" };
@@ -105,6 +141,13 @@ export interface MonsterState {
   // Where it started, where it returns to and comes back.
   homeX: number;
   homeZ: number;
+  // The boss only: when its next slam comes, whether it is rearing up for one now (the client's
+  // warning ring), and how many of its calls for the brood it has made.
+  slamAt?: number;
+  slamming?: boolean;
+  calls?: number;
+  // Called by the boss: gone for good once felled.
+  summoned?: boolean;
 }
 
 export function readMonsterType(value: unknown): MonsterType | null {

@@ -75,6 +75,7 @@ function readMonsters(raw: unknown): Record<string, MonsterState> {
       type, x: num(m.x), z: num(m.z), yaw: num(m.yaw), hp: num(m.hp), alive: m.alive === true,
       stunnedUntil: num(m.stunnedUntil), attackReadyAt: num(m.attackReadyAt), respawnAt: num(m.respawnAt),
       homeX: num(m.homeX), homeZ: num(m.homeZ),
+      slamming: m.slamming === true, summoned: m.summoned === true,
     };
   }
   return out;

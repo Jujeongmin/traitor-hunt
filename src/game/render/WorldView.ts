@@ -14,7 +14,7 @@ import {
 import { gridRoute } from "../rules/pathing";
 import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
-import { MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
+import { BOSS_MOVES, MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
 import type { Point2 } from "../rules/levelLayout";
 import type { Pose } from "../world/types";
 import { PORTAL_RADIUS, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
@@ -72,7 +72,8 @@ const POTION_GAP_MS = 1000;
 function zoneMonsterModels(zone: ZoneId): string[] {
   const types: MonsterType[] = [...ZONE_MONSTERS[zone]];
   const boss = ZONE_BOSS[zone];
-  if (boss) types.push(boss);
+  // A boss brings its brood.
+  if (boss) types.push(boss, BOSS_MOVES.summonType);
   return [...new Set(types.map((t) => MONSTER_SKINS[t].model))];
 }
 
@@ -593,6 +594,11 @@ export class WorldView {
         this.effects.floatText(at, String(Math.round(change.damage)), big ? "#ffb347" : "#fff4dc", big);
       }
       if (change.died) this.effects.burst(new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z), 0xfff1c9);
+      if (change.slammed) {
+        const ground = new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z);
+        this.effects.ring(ground, BOSS_MOVES.slamRadius, 0xff7a3a);
+        this.effects.burst(ground, 0xc9a27a);
+      }
     }
     for (const [id, actor] of this.monsters) {
       if (monsters[id]) continue;

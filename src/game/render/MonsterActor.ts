@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MonsterState } from "../world/monsters";
+import { BOSS_MOVES, type MonsterState } from "../world/monsters";
 import { ActionBlender, clipByName, ownMaterials, skinnedHeight } from "./skinned";
 import { playHit } from "../audio/sfx";
 
@@ -13,7 +13,7 @@ const KNOCK_DISTANCE = 0.35;
 const KNOCK_RETURN = 9;
 
 // What a frame's sync saw happen to a monster, for the view's numbers and puffs.
-export interface MonsterChange { damage: number; died: boolean }
+export interface MonsterChange { damage: number; died: boolean; slammed: boolean }
 
 // How a monster model is drawn: its standing height in metres, an optional colour tint, and the
 // names of its clips (they differ from pack to pack). A null death means it just sinks away.
@@ -49,6 +49,10 @@ export class MonsterActor {
   private readonly knock = new THREE.Vector3();
   // Where the next blow comes from (set by the view before sync), to push away from.
   private blowFrom: { x: number; z: number } | null = null;
+  // The boss's warning: a red ring on the ground where its slam will land, while it rears up.
+  private readonly warning: THREE.Mesh;
+  private warningClock = 0;
+  private wasSlamming = false;
 
   constructor(readonly id: string, readonly body: THREE.Object3D, clips: THREE.AnimationClip[], look: MonsterLook, private readonly maxHp = 100) {
     body.scale.setScalar(look.height / skinnedHeight(body));
@@ -80,8 +84,19 @@ export class MonsterActor {
     this.bar.add(back, this.barFill);
     this.bar.position.y = look.height + 0.35;
     this.bar.visible = false;
+    this.warning = new THREE.Mesh(
+      new THREE.RingGeometry(BOSS_MOVES.slamRadius - 0.35, BOSS_MOVES.slamRadius, 64).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    const fill = new THREE.Mesh(
+      new THREE.CircleGeometry(BOSS_MOVES.slamRadius, 64).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    this.warning.add(fill);
+    this.warning.position.y = 0.07;
+    this.warning.visible = false;
     this.object = new THREE.Group();
-    this.object.add(body, this.bar);
+    this.object.add(body, this.bar, this.warning);
   }
 
   // The spot the next blow comes from (a hunter), so the monster jolts away from it.
@@ -95,7 +110,17 @@ export class MonsterActor {
   }
 
   sync(state: MonsterState, dt: number, camera: THREE.Camera | null): MonsterChange {
-    const change: MonsterChange = { damage: 0, died: false };
+    const change: MonsterChange = { damage: 0, died: false, slammed: false };
+    // The boss rearing up: the ring pulses; when it lets go, the view shows a shockwave.
+    const slamming = state.slamming === true && state.alive;
+    if (this.wasSlamming && !slamming && state.alive) change.slammed = true;
+    this.wasSlamming = slamming;
+    this.warning.visible = slamming;
+    if (slamming) {
+      this.warningClock += dt;
+      const pulse = 0.5 + 0.5 * Math.sin(this.warningClock * 14);
+      (this.warning.material as THREE.MeshBasicMaterial).opacity = 0.45 + pulse * 0.45;
+    }
     const p = this.object.position;
     // Back from the dead: standing where it started.
     if (state.alive && this.dead) {

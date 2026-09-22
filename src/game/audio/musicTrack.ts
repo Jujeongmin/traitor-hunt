@@ -20,6 +20,8 @@ export function trackFor(zone: ZoneId | null): Track {
     case "forest1":
     case "forest2":
       return "explore";
+    case "forest3":
+      return "tension";
     case "boss":
       return "boss";
   }

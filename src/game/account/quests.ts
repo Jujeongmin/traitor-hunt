@@ -24,6 +24,9 @@ export const QUESTS: readonly Quest[] = [
   { name: "하늘의 사냥", goal: "말벌이나 박쥐 60마리", targets: ["wasp", "bat"], count: 60, xp: 18000, gold: 1000, items: [] },
   { name: "돌의 정령", goal: "골렘링 60마리", targets: ["goleling"], count: 60, xp: 30000, gold: 1500, items: [{ id: "weapon_2", n: 1 }] },
   { name: "버섯왕 토벌", goal: "버섯왕의 공터의 버섯왕", targets: ["mushroom_king"], count: 1, xp: 40000, gold: 3000, items: [] },
+  { name: "깊은 숲의 거미굴", goal: "깊은 숲의 거대 독거미나 맹독사 60마리", targets: ["dire_spider", "venom_snake"], count: 60, xp: 60000, gold: 4000, items: [{ id: "potion_big", n: 10 }] },
+  { name: "하늘을 덮은 날개", goal: "장수말벌이나 흡혈박쥐 80마리", targets: ["hornet", "vampire_bat"], count: 80, xp: 90000, gold: 6000, items: [] },
+  { name: "숲의 수호석", goal: "바위 골렘 60마리", targets: ["stone_golem"], count: 60, xp: 130000, gold: 9000, items: [{ id: "armor_2", n: 1 }] },
 ];
 
 // Where a character is in the chain: the quest it is on (QUESTS.length when all are done) and how

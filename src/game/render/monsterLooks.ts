@@ -32,6 +32,19 @@ export const MONSTER_SKINS: Record<MonsterType, MonsterSkin> = {
     model: "mon_bat",
     look: { height: 0.9, tint: null, clips: { idle: "Flying", walk: "Flying", attack: "Bite_Front", death: "Death" } },
   },
+  // The deep forest's monsters: the second field's models, grown and darkened.
+  dire_spider: { model: "mon_spider", look: { height: 1.4, tint: 0x8a5ad0, clips: { idle: "Idle", walk: "Walk", attack: "Attack", death: "Death" } } },
+  venom_snake: { model: "mon_snake", look: { height: 0.9, tint: 0x6fe070, clips: { idle: "Idle", walk: "Walk", attack: "Attack", death: null } } },
+  hornet: { model: "mon_wasp", look: { height: 1.3, tint: 0xff9a40, clips: { idle: "Flying", walk: "Flying", attack: "Attack", death: "Death" } } },
+  vampire_bat: {
+    model: "mon_bat", look: { height: 1.3, tint: 0xe05050, clips: { idle: "Flying", walk: "Flying", attack: "Bite_Front", death: "Death" } },
+  },
+  stone_golem: {
+    model: "mon_goleling", look: { height: 2.0, tint: 0x9aa0a8, clips: { idle: "Flying_Idle", walk: "Fast_Flying", attack: "Headbutt", death: "Death" } },
+  },
+  mushnub_guard: {
+    model: "mon_mushnub", look: { height: 1.3, tint: 0xd07060, clips: { idle: "Idle", walk: "Walk", attack: "Bite_Front", death: "Death" } },
+  },
   mushroom_king: {
     model: "mon_mushroom_king",
     look: { height: 2.8, tint: null, clips: { idle: "Idle", walk: "Walk", attack: "Weapon", death: "Death" } },

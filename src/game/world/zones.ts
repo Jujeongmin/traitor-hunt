@@ -4,7 +4,7 @@ import { fieldMap } from "./fieldMap";
 // The open world: a village, two forest fields and the boss's clearing, joined by portals (O cells).
 // Each zone runs as channels of at most CHANNEL_CAPACITY players (one Verse8 room each). The
 // village and the first field are free; the rest open with the full game.
-export type ZoneId = "village" | "forest1" | "forest2" | "boss";
+export type ZoneId = "village" | "forest1" | "forest2" | "forest3" | "boss";
 
 export interface Zone {
   id: ZoneId;
@@ -38,10 +38,18 @@ export const ZONES: Record<ZoneId, Zone> = {
     }),
   },
   forest2: {
-    id: "forest2", name: "숲 필드 2", paid: true, minLevel: 10, portals: ["forest1", "boss"],
+    id: "forest2", name: "숲 필드 2", paid: true, minLevel: 10, portals: ["forest1", "boss", "forest3"],
     map: fieldMap({
-      cols: 50, rows: 36, seed: 29, spawn: [5, 17], portals: [{ side: "W", at: 17 }, { side: "N", at: 38 }],
+      cols: 50, rows: 36, seed: 29, spawn: [5, 17],
+      portals: [{ side: "W", at: 17 }, { side: "N", at: 38 }, { side: "E", at: 24 }],
       monsters: 26, groves: 20, edge: 3, props: "cBcCH",
+    }),
+  },
+  forest3: {
+    id: "forest3", name: "깊은 숲", paid: true, minLevel: 25, portals: ["forest2"],
+    map: fieldMap({
+      cols: 54, rows: 40, seed: 61, spawn: [5, 20], portals: [{ side: "W", at: 20 }],
+      monsters: 28, groves: 26, edge: 4, props: "cBcCHc",
     }),
   },
   boss: {
