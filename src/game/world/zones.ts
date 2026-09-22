@@ -77,7 +77,7 @@ export const MENU_MAP = [
 
 export const ZONE_IDS = Object.keys(ZONES) as ZoneId[];
 export const START_ZONE: ZoneId = "village";
-export const CHANNEL_CAPACITY = 20;
+export const CHANNEL_CAPACITY = 10;
 // Channels are numbered from 1; this many at most per zone and server.
 export const MAX_CHANNELS = 50;
 // Standing this close to a portal's centre takes you through.
