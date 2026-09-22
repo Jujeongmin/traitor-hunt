@@ -74,6 +74,9 @@ const HURT_FLASH_MS = 350;
 // How long a "+XP" note, and a note of gold or a drop, stays up.
 const GAIN_MS = 1500;
 const NOTE_MS = 3000;
+// In a hidden tab the game steps this often (ms), and no step covers more than this (s).
+const BACKGROUND_STEP_MS = 200;
+const BACKGROUND_MAX_DT = 0.25;
 // Potions go down no faster than this.
 const POTION_GAP_MS = 1000;
 
@@ -240,6 +243,7 @@ export class WorldView {
     if (this.options.entry.zone === START_ZONE) this.addNpcs();
     this.clock.start();
     this.frame = requestAnimationFrame(this.tick);
+    this.startBackgroundSteps();
   }
 
   // For checking the game from the browser console in development.
@@ -321,6 +325,7 @@ export class WorldView {
   dispose(): void {
     this.disposed = true;
     cancelAnimationFrame(this.frame);
+    this.stopBackground();
     this.resizeObserver.disconnect();
     cancelAnimationFrame(this.resizeFrame);
     this.effects.dispose();
@@ -332,7 +337,34 @@ export class WorldView {
 
   private tick = (): void => {
     this.frame = requestAnimationFrame(this.tick);
-    const dt = Math.min(this.clock.getDelta(), 0.1);
+    this.step(Math.min(this.clock.getDelta(), 0.1), true);
+  };
+
+  // A hidden tab gets no animation frames: then a worker's timer steps the game (moving, fighting,
+  // potions, poses to the server) without drawing it, so auto-battle goes on while you look elsewhere.
+  private startBackgroundSteps(): void {
+    const onBeat = () => {
+      if (this.disposed || !document.hidden) return;
+      this.step(Math.min(this.clock.getDelta(), BACKGROUND_MAX_DT), false);
+    };
+    try {
+      const source = `setInterval(() => postMessage(0), ${BACKGROUND_STEP_MS});`;
+      const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+      const worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      worker.onmessage = onBeat;
+      this.stopBackground = () => worker.terminate();
+    } catch {
+      // No workers here (a strict embed): a plain timer, which a hidden tab slows to about once a second.
+      const timer = setInterval(onBeat, BACKGROUND_STEP_MS);
+      this.stopBackground = () => clearInterval(timer);
+    }
+  }
+
+  private stopBackground: () => void = () => {};
+
+  // One step of the game: `draw` is false in a hidden tab, which only needs the game to go on.
+  private step(dt: number, draw: boolean): void {
     const state = this.client.state;
 
     const look = this.input.consumeLook();
@@ -399,8 +431,8 @@ export class WorldView {
     this.camera.position.set(cam.x, cam.y, cam.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
     this.emitHud();
-    this.renderer.render(this.scene, this.camera);
-  };
+    if (draw) this.renderer.render(this.scene, this.camera);
+  }
 
   // Where auto-battle goes: toward the monster it is fighting (or the nearest one it can find), and
   // whether it still has to walk to reach it. Hunting for a quest, it picks the nearest of the asked
