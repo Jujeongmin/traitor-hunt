@@ -11,6 +11,14 @@ export interface Settings extends Controls {
   music: number;
   // Renderer exposure.
   brightness: number;
+  // Moving the mouse up looks down.
+  invertY: boolean;
+  // How much the world draws (see QUALITY).
+  quality: Quality;
+  // Other players' names over them, damage numbers over monsters and you, chat lines over speakers.
+  showNames: boolean;
+  damageNumbers: boolean;
+  chatBubbles: boolean;
   // From Controls: which of the potion and the three skills auto-battle may use on its own
   // (dragged down under their slots to turn on), and what sits in the three skill slots of the bar,
   // per class (a skill's index, or null for an empty slot; a learned skill is dragged in from the
@@ -38,7 +46,19 @@ export function setHotbarSlot(playerClass: string, slot: number, skill: number |
 }
 
 const STORAGE_KEY = "traitor-hunt:settings";
+// Graphics quality: how many pixels a point (at most) and how near trees and ground cover are drawn in
+// full (metres; beyond, pictures or nothing).
+export type Quality = "low" | "mid" | "high";
+export const QUALITY: Record<Quality, { label: string; pixelRatio: number; near: number }> = {
+  low: { label: "낮음", pixelRatio: 1, near: 26 },
+  mid: { label: "보통", pixelRatio: 1.5, near: 38 },
+  high: { label: "높음", pixelRatio: 2, near: 55 },
+};
+// Phones and tablets start at the middle; computers at the top.
+const COARSE = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
+
 export const DEFAULT_SETTINGS: Settings = {
+  invertY: false, quality: COARSE ? "mid" : "high", showNames: true, damageNumbers: true, chatBubbles: true,
   sensitivity: 1, volume: 0.8, music: 0.5, brightness: 1, autoPotion: true, potionAt: POTION_AT.start, autoSkills: [true, false, false], hotbars: {},
 };
 

@@ -20,7 +20,7 @@ import { NPCS, NPC_MODELS, npcNear, npcFacing, npcSpot, type NpcId } from "../wo
 import { NpcActor } from "./NpcActor";
 import type { Pose } from "../world/types";
 import { PORTAL_RADIUS, START_ZONE, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
-import { playShot, playSkill, playSwing } from "../audio/sfx";
+import { playCue, playHurt, playShot, playSkill, playStep, playSwing, preloadCues } from "../audio/sfx";
 import { costumeById, type Costume } from "./costumes";
 import { Effects } from "./effects";
 import { FpsInput } from "./FpsInput";
@@ -31,7 +31,7 @@ import type { LodBatch } from "./lodBatch";
 import { MonsterActor } from "./MonsterActor";
 import { MONSTER_SKINS } from "./monsterLooks";
 import { PlayerActor } from "./PlayerActor";
-import { hotbarFor, settings } from "../../ui/settings";
+import { QUALITY, hotbarFor, onSettings, settings } from "../../ui/settings";
 
 export const LOOK_SENSITIVITY = 0.0022;
 export const WORLD_MODELS = [...new Set([...LEVEL_MODELS, ...HERO_MODELS])];
@@ -78,6 +78,8 @@ const NOTE_MS = 3000;
 // In a hidden tab the game steps this often (ms), and no step covers more than this (s).
 const BACKGROUND_STEP_MS = 200;
 const BACKGROUND_MAX_DT = 0.25;
+// A footstep sounds every this many metres walked.
+const STRIDE = 1.7;
 // Potions go down no faster than this.
 const POTION_GAP_MS = 1000;
 
@@ -213,10 +215,15 @@ export class WorldView {
     this.portals = portalsOf(options.entry.zone);
     this.walls = solidWith(this.layout, Infinity);
     this.pose = { x: options.entry.x, z: options.entry.z, yaw: 0 };
-    // Phones and tablets draw at no more than 1.5 pixels a point: their screens are small and their
-    // chips warm up.
-    const coarse = window.matchMedia?.("(pointer: coarse)").matches === true;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
+    // As many pixels a point as the graphics quality allows (phones start at 1.5: small screens, warm chips).
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY[settings().quality].pixelRatio));
+    this.stopQuality = onSettings((s) => {
+      const ratio = Math.min(window.devicePixelRatio, QUALITY[s.quality].pixelRatio);
+      if (ratio !== this.renderer.getPixelRatio()) {
+        this.renderer.setPixelRatio(ratio);
+        this.resize();
+      }
+    });
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     container.appendChild(this.renderer.domElement);
     this.input = new FpsInput(this.renderer.domElement);
@@ -246,6 +253,7 @@ export class WorldView {
     this.me = this.hero(this.options.playerClass, this.options.costume);
     if (this.options.entry.zone === START_ZONE) this.addNpcs();
     this.clock.start();
+    preloadCues();
     this.frame = requestAnimationFrame(this.tick);
     this.startBackgroundSteps();
   }
@@ -347,6 +355,7 @@ export class WorldView {
     this.disposed = true;
     cancelAnimationFrame(this.frame);
     this.stopBackground();
+    this.stopQuality();
     this.resizeObserver.disconnect();
     cancelAnimationFrame(this.resizeFrame);
     this.effects.dispose();
@@ -401,13 +410,17 @@ export class WorldView {
   }
 
   private stopBackground: () => void = () => {};
+  // Where the last footstep sounded, and the level last heard (for the level-up jingle).
+  private lastStepAt = { x: 0, z: 0 };
+  private heardLevel = 0;
+  private stopQuality: () => void = () => {};
 
   // One step of the game: `draw` is false in a hidden tab, which only needs the game to go on.
   private step(dt: number, draw: boolean): void {
     const state = this.client.state;
 
     const look = this.input.consumeLook();
-    const view = applyLook(this.yaw, this.pitch, look.dx, look.dy, LOOK_SENSITIVITY * settings().sensitivity);
+    const view = applyLook(this.yaw, this.pitch, look.dx, settings().invertY ? -look.dy : look.dy, LOOK_SENSITIVITY * settings().sensitivity);
     this.renderer.toneMappingExposure = settings().brightness;
     this.yaw = view.yaw;
     this.pitch = view.pitch;
@@ -460,6 +473,13 @@ export class WorldView {
       slot: this.lastSlot,
     };
     if (here) this.client.reportPose(this.pose);
+    // Footsteps on the grass, one every stride, while walking on the ground (and being watched).
+    const walked = Math.hypot(this.pose.x - this.lastStepAt.x, this.pose.z - this.lastStepAt.z);
+    if (!draw || !here || this.air.y > 0 || walked > STRIDE * 4) this.lastStepAt = { x: this.pose.x, z: this.pose.z };
+    else if (walked >= STRIDE) {
+      this.lastStepAt = { x: this.pose.x, z: this.pose.z };
+      playStep();
+    }
     this.checkPortals(here);
 
     this.showHurt(state.me?.hp ?? null);
@@ -468,6 +488,7 @@ export class WorldView {
     this.effects.update(dt);
     const cam = chaseCamera(this.pose, this.yaw, this.pitch, this.walls, SKY_CEILING);
     this.camera.position.set(cam.x, cam.y, cam.z);
+    this.lod?.setNear(QUALITY[settings().quality].near);
     this.lod?.update(this.pose.x, this.pose.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
     this.emitHud();
@@ -711,6 +732,7 @@ export class WorldView {
     const pick = big && (missing >= ITEMS.potion_big.heal || !small) ? "potion_big" : small ? "potion_small" : null;
     if (!pick) return;
     this.lastPotionAt = now;
+    playCue("potion");
     void this.client.drink(pick);
   }
 
@@ -769,14 +791,14 @@ export class WorldView {
         entry = { actor, key };
         this.others.set(other.account, entry);
       }
-      entry.actor.label(`Lv${other.look.level} ${other.look.job ? `${other.look.job} ` : ""}${other.look.name}`);
+      entry.actor.label(settings().showNames ? `Lv${other.look.level} ${other.look.job ? `${other.look.job} ` : ""}${other.look.name}` : "");
       entry.actor.sync(other.pose, "active", dt);
       entry.actor.fadeLabel(this.camera.position.distanceTo(entry.actor.object.position));
     }
     for (const line of this.client.state.chat) {
       if (line.id <= this.chatShown) continue;
       this.chatShown = line.id;
-      (line.mine ? this.me : this.others.get(line.account)?.actor)?.say(line.text);
+      if (settings().chatBubbles) (line.mine ? this.me : this.others.get(line.account)?.actor)?.say(line.text);
     }
     for (const [account, entry] of this.others) {
       if (seen.has(account)) continue;
@@ -789,8 +811,9 @@ export class WorldView {
   private showHurt(hp: number | null): void {
     if (hp !== null && this.lastHp !== null && hp < this.lastHp && this.me) {
       const at = new THREE.Vector3(this.pose.x, 2.1, this.pose.z);
-      this.effects.floatText(at, `-${Math.round(this.lastHp - hp)}`, "#ff5a4a");
+      if (settings().damageNumbers) this.effects.floatText(at, `-${Math.round(this.lastHp - hp)}`, "#ff5a4a");
       this.hurtAt = performance.now();
+      playHurt();
     }
     this.lastHp = hp;
   }
@@ -815,7 +838,7 @@ export class WorldView {
         const skillAt = this.skillHits.get(id);
         const big = skillAt !== undefined && performance.now() - skillAt < SKILL_NUMBER_MS;
         if (big) this.skillHits.delete(id);
-        this.effects.floatText(at, String(Math.round(change.damage)), big ? "#ffb347" : "#fff4dc", big);
+        if (settings().damageNumbers) this.effects.floatText(at, String(Math.round(change.damage)), big ? "#ffb347" : "#fff4dc", big);
       }
       if (change.died) this.effects.burst(new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z), 0xfff1c9);
       if (change.slammed) {
@@ -864,6 +887,9 @@ export class WorldView {
     const near = this.nearestPortal();
     const me = this.client.state.me;
     const level = levelOf(me?.xp ?? 0);
+    // A new level: a jingle (not for the level you arrive with).
+    if (me && this.heardLevel > 0 && level.level > this.heardLevel) playCue("levelup");
+    if (me) this.heardLevel = level.level;
     const fighting = this.target ? this.client.state.monsters[this.target] : undefined;
     const hud: WorldHud = {
       zone: ZONES[entry.zone].name,

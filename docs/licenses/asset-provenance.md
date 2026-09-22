@@ -108,6 +108,22 @@ npm 패키지(@fontsource)로 넣었고 모두 SIL Open Font License 1.1이다(�
 | `deep.ogg` | Forest Whisper Theme | Cleyton Kauffman | https://opengameart.org/content/forest-whisper-theme |
 | `boss.ogg` | Encounter With The Witches (JRPG Music Pack #5 Action) | Juhani Junkala | https://opengameart.org/content/jrpg-pack-5-action |
 
+## 효과음 (2026-09-22)
+
+전투음(휘두르기, 활·마법, 타격, 스킬, 피격)은 Web Audio로 합성한다(`src/game/audio/sfx.ts`). 그 밖의 소리는 Kenney의
+CC0 팩(Reroll-Beasts/art-src에서 복사)을 `public/assets/sfx/`에 그대로 넣었다(합계 약 160 KB).
+
+| 파일 | 원본 | 팩 |
+|---|---|---|
+| `levelup.ogg` | jingles_STEEL03 | Kenney Music Jingles |
+| `quest.ogg` | jingles_STEEL12 | Kenney Music Jingles |
+| `enhance_ok.ogg` | jingles_PIZZI10 | Kenney Music Jingles |
+| `enhance_fail.ogg` | error_004 | Kenney Interface Sounds |
+| `enhance_break.ogg` | glass_006 | Kenney Interface Sounds |
+| `potion.ogg` | glass_002 | Kenney Interface Sounds |
+| `click.ogg`, `open.ogg`, `close.ogg` | click_002, open_001, close_001 | Kenney Interface Sounds |
+| `step_0~3.ogg` | footstep_grass_000~003 | Kenney Impact Sounds |
+
 ## 야외·치비 전환 (2026-09-21)
 
 게임은 이제 아래 에셋만 싣는다. 위 표의 다른 에셋(Decrepit Dungeon, Adventure Character, Zombie, AKM 등)은

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { typing } from "../game/render/FpsInput";
 import { ChatBox } from "./ChatBox";
 import { SmithPanel } from "./SmithPanel";
+import { playCue } from "../game/audio/sfx";
 import { DeathPanel } from "./DeathPanel";
 import { PowerSaveScreen } from "./PowerSaveScreen";
 import { useWakeLock } from "./useWakeLock";
@@ -131,8 +132,8 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   const [hud, setHud] = useState<WorldHud | null>(null);
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
+  // The settings panel (P), which also leads out to the menus.
   const [menu, setMenu] = useState(false);
-  const [settings, setSettings] = useState(false);
   // Which of the bag and the shop is open.
   const [panel, setPanel] = useState<Panel | null>(null);
   // The quest just finished, shown once as a panel in the middle of the screen.
@@ -143,7 +144,10 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     const done = questDone(bag.quest);
     const last = lastQuest.current;
     // Only a quest seen going from unfinished to finished, not one already done when you arrive.
-    if (last && last.index === bag.quest.index && !last.done && done) setFinished(bag.quest.index);
+    if (last && last.index === bag.quest.index && !last.done && done) {
+      setFinished(bag.quest.index);
+      playCue("quest");
+    }
     lastQuest.current = { index: bag.quest.index, done };
   }, [bag]);
   useEffect(() => {
@@ -227,7 +231,13 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   };
   // A clicked button lets go of the focus at once, or Space (jump) and Enter (chat) would press it again.
   useEffect(() => {
-    const release = (e: MouseEvent) => (e.target as HTMLElement | null)?.closest?.("button")?.blur();
+    const release = (e: MouseEvent) => {
+      const button = (e.target as HTMLElement | null)?.closest?.("button");
+      if (!button) return;
+      button.blur();
+      // A click for buttons in panels; the menu's own buttons sound as their panels open and close.
+      if (!button.closest(".hud-menu-buttons, .pad-buttons, .hud-skills")) playCue("click");
+    };
     document.addEventListener("click", release);
     return () => document.removeEventListener("click", release);
   }, []);
@@ -236,7 +246,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   // about, once all of it is closed. Losing the capture otherwise (Escape, which the browser keeps)
   // unfolds the menu, so the cursor has something to point at; clicking back into the world closes
   // what was open.
-  const uiOpen = panel !== null || menu || settings || saving || menuOpen || hud?.dead === true;
+  const uiOpen = panel !== null || menu || saving || menuOpen || hud?.dead === true;
   const uiOpenNow = useRef(uiOpen);
   uiOpenNow.current = uiOpen;
   useEffect(() => {
@@ -263,6 +273,13 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     document.addEventListener("pointerlockchange", onChange);
     return () => document.removeEventListener("pointerlockchange", onChange);
   }, [touch]);
+  // Panels open and close with a sound.
+  const hadPanel = useRef(false);
+  useEffect(() => {
+    const open = panel !== null || menu;
+    if (open !== hadPanel.current) playCue(open ? "open" : "close");
+    hadPanel.current = open;
+  }, [panel, menu]);
   const keys = useRef(menuItems);
   keys.current = menuItems;
   useEffect(() => {
@@ -377,18 +394,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           )}
         </>
       )}
-      {menu && (
-        <div className="menu-modal" onClick={() => setMenu(false)}>
-          <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
-            <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · E 대화 · R 자동 전투 · J 퀘스트 찾아가기/보고 · Enter 채팅 · M 메뉴 펼치기 · Esc 창 닫기 · O 랭킹 · L 퀘스트 · K 스킬 창 · U 대장간 · I 가방 · B 절전 모드 · P 설정 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
-            <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
-            <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
-            <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>
-          </div>
-        </div>
-      )}
-      {settings && <SettingsPanel onClose={() => setSettings(false)} />}
+      {menu && <SettingsPanel onClose={() => setMenu(false)} onExit={onExit} />}
       {panel === "bag" && (
         <BagPanel
           client={client} bag={bag} inVillage={inVillage} playerClass={playerClass} level={hud?.level ?? 1}

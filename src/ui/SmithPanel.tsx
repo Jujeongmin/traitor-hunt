@@ -4,6 +4,7 @@ import { ITEMS, MAX_PLUS, gearName, type BagView, type Slot } from "../game/acco
 import { iconFor } from "../game/render/icons";
 import type { WorldClient } from "../net/worldClient";
 import { PROBLEM, SLOT_LABEL } from "./BagPanel";
+import { playCue } from "../game/audio/sfx";
 
 const OUTCOME: Record<EnhanceOutcome, string> = {
   success: "강화 성공!",
@@ -26,7 +27,10 @@ export function SmithPanel({ client, bag, onClose }: { client: WorldClient; bag:
     setNote(null);
     void client.enhance(slot).then((r) => {
       setBusy(false);
-      if ("outcome" in r) setNote({ text: OUTCOME[r.outcome], tone: r.outcome === "success" ? "good" : "bad" });
+      if ("outcome" in r) {
+        setNote({ text: OUTCOME[r.outcome], tone: r.outcome === "success" ? "good" : "bad" });
+        playCue(r.outcome === "success" ? "enhance_ok" : r.outcome === "broken" ? "enhance_break" : "enhance_fail");
+      }
       else setNote({ text: PROBLEM[r.problem] ?? "지금은 할 수 없어요", tone: "bad" });
     });
   };
@@ -36,6 +40,7 @@ export function SmithPanel({ client, bag, onClose }: { client: WorldClient; bag:
     void client.craft(id).then((code) => {
       setBusy(false);
       setNote(code ? { text: PROBLEM[code] ?? "지금은 할 수 없어요", tone: "bad" } : { text: `${name} 제작 완료!`, tone: "good" });
+      if (!code) playCue("enhance_ok");
     });
   };
 

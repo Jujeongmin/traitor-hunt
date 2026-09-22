@@ -7,7 +7,8 @@ import { crossedCards, spriteMaterial, type TreeSprites } from "./treeSprites";
 // off (the fog and the grass colour hide it). One instanced mesh per model part plus one for the
 // pictures, refilled whenever the camera has moved a few metres.
 
-// Within this distance a piece is its model; beyond it, its picture (or nothing).
+// Within this distance a piece is its model; beyond it, its picture (or nothing). Set by the graphics
+// quality (see QUALITY in settings.ts).
 export const LOD_NEAR = 38;
 // Refill after the camera moves this far, or this long after the last refill anyway.
 const REFILL_MOVE = 3;
@@ -26,6 +27,14 @@ export class LodBatch {
   readonly object = new THREE.Group();
   private readonly kinds: Kind[] = [];
   private last: { x: number; z: number; at: number } | null = null;
+  private near = LOD_NEAR;
+
+  // A new distance refills at the next update.
+  setNear(near: number): void {
+    if (near === this.near) return;
+    this.near = near;
+    this.last = null;
+  }
 
   // `sprites`: the pictures of the models that have one; any other model is left out when far.
   constructor(library: ModelSource, pieces: StaticPiece[], sprites: TreeSprites) {
@@ -86,7 +95,7 @@ export class LodBatch {
       let far = 0;
       kind.pieces.forEach((piece, i) => {
         const w = kind.where[i];
-        if (Math.hypot(w.x - x, w.z - z) <= LOD_NEAR) {
+        if (Math.hypot(w.x - x, w.z - z) <= this.near) {
           for (const part of kind.parts) part.mesh.setMatrixAt(near, m.multiplyMatrices(piece.matrix, part.relative));
           near++;
         } else if (kind.far) {
