@@ -1,6 +1,6 @@
 import type { JobId } from "../combat/jobs";
 import { RuleViolation } from "../world/types";
-import type { QuestProgress } from "./quests";
+import type { DailyProgress, QuestProgress } from "./quests";
 
 // Everything a character can carry, in one table: potions to drink, a weapon and armour to wear, and
 // the materials monsters drop for the smith (see forge.ts). Gear fits every class. Prices are in gold,
@@ -175,6 +175,8 @@ export interface BagView {
   plus: Plus;
   job: JobId | null;
   quest: QuestProgress;
+  // Today's daily quests.
+  daily: DailyProgress;
 }
 
 export function sellPrice(id: ItemId): number {

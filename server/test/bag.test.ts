@@ -21,9 +21,12 @@ async function toForest(server: any, account: string, from: any): Promise<any> {
 describe("bag and gold", () => {
   test("a new character starts with a few potions and no gold", async (server) => {
     await inVillage(server);
-    expect(await server.getBag()).toEqual({
+    const { daily, ...rest } = await server.getBag();
+    expect(rest).toEqual({
       gold: 0, bag: { potion_small: 3 }, gear: { weapon: null, armor: null }, plus: {}, job: null, quest: { index: 0, count: 0 },
     });
+    expect(daily.counts).toEqual({});
+    expect(daily.claimed).toEqual([]);
   });
 
   test("a kill pays gold onto the account alongside the XP", async (server) => {

@@ -10,7 +10,9 @@ import {
 import { readControls, type Controls } from "../../src/game/account/controls";
 import { CHAT_WINDOW_MS, chatAllowed, readChat, type ChatMessage } from "../../src/game/world/chat";
 import { rankHitters, rollLoot, xpFor, type MonsterType } from "../../src/game/world/monsters";
-import { QUESTS, QUEST_START, countKills, questDone } from "../../src/game/account/quests";
+import {
+  QUESTS, QUEST_START, countDaily, countKills, dailyToday, questDone, readDaily, readDailyId,
+} from "../../src/game/account/quests";
 import { ADVANCE_LEVEL, JOBS, readJob } from "../../src/game/combat/jobs";
 import { TALK_RANGE, TALK_SLACK, npcSpot, type NpcId } from "../../src/game/world/npcs";
 import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/game/account/characters";
@@ -147,6 +149,7 @@ async function payHunter(account: string, roomId: string, pay: Pay): Promise<voi
   }
   const next = await updateActive(account, (c) => ({
     ...c, xp: c.xp + pay.xp, bag: pay.items.reduce((bag, id) => addItem(bag, id, 1), c.bag), quest: countKills(c.quest, pay.felled),
+    daily: countDaily(c.daily, pay.felled, Date.now()),
   }));
   if (pay.xp > 0) await writeRanking(account, next);
   const levelled = levelOf(next.xp).level > levelOf(next.xp - pay.xp).level;
@@ -204,6 +207,7 @@ async function reward(caller: string, roomId: string, result: HitResult): Promis
 async function bagView(character: Character): Promise<BagView> {
   return {
     gold: await $asset.get(GOLD), bag: character.bag, gear: character.gear, plus: character.plus, job: character.job, quest: character.quest,
+    daily: dailyToday(character.daily, Date.now()),
   };
 }
 
@@ -298,7 +302,7 @@ export class Server {
       const character: Character = {
         id: `c-${token(10)}`, world, name, playerClass: picked, costume: look.id, xp: 0, spot: null, made: Date.now(),
         // A start: a few potions.
-        bag: { potion_small: 3 }, gear: NO_GEAR, plus: {}, job: null, quest: QUEST_START,
+        bag: { potion_small: 3 }, gear: NO_GEAR, plus: {}, daily: readDaily(null), job: null, quest: QUEST_START,
       };
       await withNicknameLock(() => claimName(account, character.id, key, name));
       await saveProfile(account, [...characters, character], character.id);
@@ -693,6 +697,25 @@ export class Server {
     if (paid > 0) await $asset.mint(GOLD, paid);
     await writeRanking(account, next);
     await refreshFighter(next);
+    return bagView(next);
+  }
+
+  // Claims a finished daily quest's reward (gold and items), once a day, from anywhere.
+  async claimDaily(id: unknown): Promise<BagView> {
+    const quest = readDailyId(id);
+    if (!quest) throw new RuleViolation("unavailable");
+    const account = $sender.account;
+    await playing(account);
+    const next = await updateActive(account, (c) => {
+      const today = dailyToday(c.daily, Date.now());
+      if ((today.counts[quest.id] ?? 0) < quest.count || today.claimed.includes(quest.id)) throw new RuleViolation("quest_unfinished");
+      return {
+        ...c,
+        bag: quest.items.reduce((bag, item) => addItem(bag, item.id, item.n), c.bag),
+        daily: { ...today, claimed: [...today.claimed, quest.id] },
+      };
+    });
+    await $asset.mint(GOLD, quest.gold);
     return bagView(next);
   }
 

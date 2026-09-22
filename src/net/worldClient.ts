@@ -250,6 +250,10 @@ export class WorldClient {
     return this.bagCall("claimQuest", []);
   }
 
+  claimDaily(id: string): Promise<string | null> {
+    return this.bagCall("claimDaily", [id]);
+  }
+
   // Payouts that came in since the last call, oldest first.
   takePayouts(): Payout[] {
     const out = this.payouts;

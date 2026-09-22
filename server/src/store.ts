@@ -4,7 +4,7 @@ import {
 } from "../../src/game/account/party";
 import { levelOf, readXp } from "../../src/game/account/level";
 import { NO_GEAR } from "../../src/game/account/items";
-import { QUEST_START } from "../../src/game/account/quests";
+import { QUEST_START, readDaily } from "../../src/game/account/quests";
 import { JOBS } from "../../src/game/combat/jobs";
 import {
   characterMap, legacyMatchXp, readCharacters, readSpot, type Character, type Spot,
@@ -95,6 +95,7 @@ export async function readProfile(account: string): Promise<Profile> {
       bag: {},
       gear: NO_GEAR,
       plus: {},
+      daily: readDaily(null),
       job: null,
       quest: QUEST_START,
     }];

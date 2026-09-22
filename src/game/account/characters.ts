@@ -4,7 +4,7 @@ import { costumeById } from "../render/costumes";
 import { readZone, type ZoneId } from "../world/zones";
 import { readBag, readGear, readPlus, type Bag, type Gear, type Plus } from "./items";
 import { levelOf, readXp, type LevelView } from "./level";
-import { readQuest, type QuestProgress } from "./quests";
+import { readDaily, readQuest, type DailyProgress, type QuestProgress } from "./quests";
 
 // An account holds characters on each server. One of them is active: the one the menus show and
 // the one that walks into the world. Its class and look are fixed when it is made.
@@ -28,6 +28,8 @@ export interface Character {
   gear: Gear;
   // How far each kind of its gear has been enhanced.
   plus: Plus;
+  // Today's daily quests.
+  daily: DailyProgress;
   // The advanced class it took (전직), if any, and where it is in the village's quests.
   job: JobId | null;
   quest: QuestProgress;
@@ -67,7 +69,7 @@ export function readCharacters(raw: unknown): Character[] {
     const made = typeof c.made === "number" && Number.isFinite(c.made) ? c.made : 0;
     out.push({
       id: c.id, world: c.world, name: c.name, playerClass, costume: costume.id, xp: readXp(c.xp), spot: readSpot(c.spot), made,
-      bag: readBag(c.bag), gear: readGear(c.gear), plus: readPlus(c.plus), job: readOwnJob(c.job, playerClass), quest: readQuest(c.quest),
+      bag: readBag(c.bag), gear: readGear(c.gear), plus: readPlus(c.plus), daily: readDaily(c.daily), job: readOwnJob(c.job, playerClass), quest: readQuest(c.quest),
     });
   }
   return out.sort((a, b) => a.made - b.made);

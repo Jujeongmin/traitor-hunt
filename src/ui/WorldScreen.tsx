@@ -402,7 +402,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <QuestLog
           bag={bag} inVillage={inVillage}
           onSeek={(types) => view.current?.seekQuest(types)} onReport={() => view.current?.walkToNpc("elder")}
-          onClose={() => setPanel(null)}
+          onClaimDaily={(id) => client.claimDaily(id)} onClose={() => setPanel(null)}
         />
       )}
       {finished !== null && QUESTS[finished] && (

@@ -42,3 +42,21 @@ describe("monster XP", () => {
     expect(xpFor("rat", 99)).toBe(Math.round(rat.xp * 0.1));
   });
 });
+
+describe("daily quests", () => {
+  it("count a day's kills in their own field, and start over the next day (Korean time)", async () => {
+    const { countDaily, dailyDay, dailyToday, readDaily } = await import("../../src/game/account/quests");
+    // 23:30 and 00:30 in Korea are different days even though both are the same UTC date.
+    const late = Date.UTC(2026, 8, 22, 14, 30);
+    const early = Date.UTC(2026, 8, 22, 15, 30);
+    expect(dailyDay(late)).toBe("2026-09-22");
+    expect(dailyDay(early)).toBe("2026-09-23");
+    const start = readDaily(null);
+    const one = countDaily(start, ["green_blob", "spider", "stone_golem", "mushroom_king"], late);
+    expect(one.counts).toEqual({ forest1: 1, forest2: 1, forest3: 1 });
+    expect(dailyToday(one, early)).toEqual({ day: "2026-09-23", counts: {}, claimed: [] });
+    expect(readDaily({ day: "x", counts: { forest1: 9999, nope: 3 }, claimed: ["forest2", "nope"] })).toEqual({
+      day: "x", counts: { forest1: 30 }, claimed: ["forest2"],
+    });
+  });
+});
