@@ -34,6 +34,12 @@ export class FpsInput {
     return document.pointerLockElement === this.element;
   }
 
+  // Captures the mouse for looking about (hiding the cursor); the browser allows it just after a
+  // click or a key, and says no quietly otherwise.
+  lock(): void {
+    if (!this.locked) this.element.requestPointerLock()?.catch(() => {});
+  }
+
   moveInput(): MoveInput {
     const k = (code: string) => (this.keys.has(code) ? 1 : 0);
     const forward = k("KeyW") - k("KeyS") + this.virtualMove.forward;

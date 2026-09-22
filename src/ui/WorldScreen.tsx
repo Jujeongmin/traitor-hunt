@@ -231,6 +231,38 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     document.addEventListener("click", release);
     return () => document.removeEventListener("click", release);
   }, []);
+  // The cursor shows whenever something on screen wants the mouse (a panel, the settings, the
+  // unfolded menu, the fallen panel, power saving) and hides again, capturing the mouse for looking
+  // about, once all of it is closed. Losing the capture otherwise (Escape, which the browser keeps)
+  // unfolds the menu, so the cursor has something to point at; clicking back into the world closes
+  // what was open.
+  const uiOpen = panel !== null || menu || settings || saving || menuOpen || hud?.dead === true;
+  const uiOpenNow = useRef(uiOpen);
+  uiOpenNow.current = uiOpen;
+  useEffect(() => {
+    if (touch) return;
+    if (uiOpen) document.exitPointerLock?.();
+    else view.current?.controls.lock();
+  }, [uiOpen, touch]);
+  useEffect(() => {
+    if (touch) return;
+    // Only a capture that was really held and then lost unfolds the menu.
+    let held = !!document.pointerLockElement;
+    const onChange = () => {
+      if (!document.pointerLockElement) {
+        if (held && !uiOpenNow.current) setMenuOpen(true);
+        held = false;
+        return;
+      }
+      held = true;
+      // Clicked back into the world (past a side panel): what was open steps aside.
+      setMenuOpen(false);
+      setPanel(null);
+      setMenu(false);
+    };
+    document.addEventListener("pointerlockchange", onChange);
+    return () => document.removeEventListener("pointerlockchange", onChange);
+  }, [touch]);
   const keys = useRef(menuItems);
   keys.current = menuItems;
   useEffect(() => {
