@@ -5,6 +5,7 @@ import { NATURE_MODELS, cellNoise, natureLayout } from "../rules/nature";
 import type { Platform } from "../rules/platforms";
 import { buildStaticBatch, type StaticPiece } from "./staticBatch";
 import { HORIZON, skyTexture } from "./sky";
+import { buildVista } from "./vista";
 
 // The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
 // same as ever; solid cells are drawn as trees and rocks instead of stone walls.
@@ -14,8 +15,11 @@ export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS])]
 export const SKY = HORIZON;
 // Where the sunlight comes from, relative to the middle of the map.
 const SUN_OFFSET = new THREE.Vector3(-35, 60, 25);
-const FOG_NEAR = 28;
-const FOG_FAR = 78;
+// Clear for the length of a field, then the far forest and the mountains fade into the haze.
+const FOG_NEAR = 90;
+const FOG_FAR = 1100;
+// How far a camera over this scene should see.
+export const VIEW_FAR = 1500;
 // Open ground is sunlit grass; the forest floor under the trees is darker.
 const PATH_COLOR = new THREE.Color(0x8fb35a);
 const FOREST_COLOR = new THREE.Color(0x4f6e32);
@@ -78,7 +82,7 @@ export function buildLevelScene(scene: THREE.Scene, library: ModelLibrary, layou
   sun.position.copy(centre).add(SUN_OFFSET);
   sun.target.position.copy(centre);
   scene.add(sun, sun.target);
-  scene.add(buildGround(layout));
+  scene.add(buildGround(layout), buildVista(layout));
 
   const pieces: StaticPiece[] = natureLayout(layout).map((p) => ({
     model: p.model,

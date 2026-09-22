@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FOOTPRINT, NATURE_MODELS, TREES, natureLayout } from "../../src/game/rules/nature";
+import { FOOTPRINT, NATURE_MODELS, TREES, forestFillers, natureLayout } from "../../src/game/rules/nature";
 import { TILE_SIZE, solidAt } from "../../src/game/rules/levelLayout";
 import { zoneLayout } from "../../src/game/world/zones";
 
@@ -18,9 +18,16 @@ describe("natureLayout", () => {
     for (const t of trees) expect(solidAt(layout, t.x, t.z) || t.x < 0 || t.z < 0 || cellOf(t.x) >= layout.cols || cellOf(t.z) >= layout.rows).toBe(true);
   });
 
-  it("rings the map with forest beyond its edge", () => {
-    const outside = pieces.filter((p) => p.x < 0 || p.z < 0 || p.x > layout.cols * TILE_SIZE || p.z > layout.rows * TILE_SIZE);
-    expect(outside.length).toBeGreaterThan(20);
+  it("fills the forest behind its edge, and on past the map, with cheap firs", () => {
+    const fillers = forestFillers(layout);
+    const outside = fillers.filter((p) => p.x < 0 || p.z < 0 || p.x > layout.cols * TILE_SIZE || p.z > layout.rows * TILE_SIZE);
+    expect(outside.length).toBeGreaterThan(200);
+    for (const f of fillers) expect(solidAt(layout, f.x, f.z)).toBe(true);
+  });
+
+  it("draws full trees only along the forest's edge", () => {
+    const trees = pieces.filter((p) => TREES.includes(p.model));
+    expect(trees.length).toBeLessThan(600);
   });
 
   it("scatters small plants on open ground but leaves the portals clear", () => {
@@ -42,13 +49,16 @@ describe("nothing on the ground overlaps", () => {
   const foot = (p: { model: string; scale: number }) => FOOTPRINT[p.model] * p.scale;
 
   it("keeps every piece clear of every other piece", () => {
+    const clashes: string[] = [];
     for (let i = 0; i < pieces.length; i++) {
       for (let j = i + 1; j < pieces.length; j++) {
         const a = pieces[i];
         const b = pieces[j];
-        expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThanOrEqual(foot(a) + foot(b));
+        if (Math.abs(a.x - b.x) > 8 || Math.abs(a.z - b.z) > 8) continue;
+        if (Math.hypot(a.x - b.x, a.z - b.z) < foot(a) + foot(b)) clashes.push(`${a.model}@${a.x},${a.z} ${b.model}@${b.x},${b.z}`);
       }
     }
+    expect(clashes).toEqual([]);
   });
 
   it("keeps every piece clear of the platforms", () => {

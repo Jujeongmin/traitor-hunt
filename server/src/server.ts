@@ -500,7 +500,8 @@ export class Server {
     if (!here) return;
     const pose = (await $room.getUserState(account)).pose;
     const { active } = await readProfile(account);
-    if (!active || active.world !== here.world || !isPose(pose)) return;
+    // Gone on through a portal: the spot already points into the next zone, and must stay there.
+    if (!active || active.world !== here.world || !isPose(pose) || active.spot?.zone !== here.zone) return;
     await saveSpot(account, { zone: here.zone, x: pose.x, z: pose.z });
   }
 

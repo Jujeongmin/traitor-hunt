@@ -22,7 +22,7 @@ import { Effects } from "./effects";
 import { FpsInput } from "./FpsInput";
 import { HEROES, HERO_MODELS } from "./heroes";
 import { createLabel, setLabel } from "./labels";
-import { LEVEL_MODELS, buildLevelScene } from "./levelScene";
+import { LEVEL_MODELS, VIEW_FAR, buildLevelScene } from "./levelScene";
 import { MonsterActor } from "./MonsterActor";
 import { MONSTER_SKINS } from "./monsterLooks";
 import { PlayerActor } from "./PlayerActor";
@@ -39,8 +39,8 @@ const HUD_INTERVAL_MS = 100;
 // A portal only takes you once you have stepped this far clear of it (you arrive right beside one).
 const PORTAL_REARM = PORTAL_RADIUS + 0.8;
 // Auto-battle looks for monsters this close, and lets one go once it is this far.
-const AUTO_SEEK = 14;
-const AUTO_DROP = 20;
+const AUTO_SEEK = 60;
+const AUTO_DROP = 70;
 // Auto-battle walks in until this share of your reach.
 const AUTO_CLOSE = 0.8;
 // How quickly the camera turns to follow an auto-battle.
@@ -108,7 +108,7 @@ export interface WorldViewOptions {
 export class WorldView {
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(70, 1, 0.05, 120);
+  private readonly camera = new THREE.PerspectiveCamera(70, 1, 0.1, VIEW_FAR);
   private readonly clock = new THREE.Clock();
   private readonly input: FpsInput;
   private readonly effects = new Effects(this.scene);

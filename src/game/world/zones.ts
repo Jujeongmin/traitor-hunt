@@ -1,4 +1,5 @@
 import { TILE_SIZE, parseLevel, type LevelLayout, type Point2 } from "../rules/levelLayout";
+import { fieldMap } from "./fieldMap";
 
 // The open world: a village, two forest fields and the boss's clearing, joined by portals (O cells).
 // Each zone runs as channels of at most CHANNEL_CAPACITY players (one Verse8 room each). The
@@ -17,68 +18,52 @@ export interface Zone {
   portals: ZoneId[];
 }
 
+// The fields are wide open country (drawn by fieldMap from a few numbers): about 200 by 140 metres
+// of meadow and groves between walls of forest, the village a little smaller.
 export const ZONES: Record<ZoneId, Zone> = {
   village: {
     id: "village", name: "초록숲 마을", paid: false, portals: ["forest1"],
-    map: [
-      "#############",
-      "#..c.....B..#",
-      "#.....#.....#",
-      "#..C........#",
-      "#....P......O",
-      "#...........#",
-      "#.H.....c...#",
-      "#.......#...#",
-      "#############",
-    ],
+    map: fieldMap({
+      cols: 34, rows: 26, seed: 3, spawn: [14, 13], portals: [{ side: "E", at: 13 }],
+      monsters: 0, groves: 5, edge: 2, props: "cBCHcBcC",
+    }),
   },
   forest1: {
     id: "forest1", name: "숲 필드 1", paid: false, portals: ["village", "forest2"],
-    map: [
-      "###################",
-      "#..Z....#....Z....#",
-      "#.......#.........#",
-      "OP....c.....Z.....O",
-      "#...Z.......#.....#",
-      "##.....##.......Z.#",
-      "#...........B.....#",
-      "#.Z...###.....Z...#",
-      "#.........c.......#",
-      "#....Z.......Z....#",
-      "###################",
-    ],
+    map: fieldMap({
+      cols: 50, rows: 36, seed: 11, spawn: [5, 18], portals: [{ side: "W", at: 18 }, { side: "E", at: 17 }],
+      monsters: 24, groves: 16, edge: 3, props: "cBcCcB",
+    }),
   },
   forest2: {
     id: "forest2", name: "숲 필드 2", paid: true, portals: ["forest1", "boss"],
-    map: [
-      "###################",
-      "#.Z.....Z...#..Z..#",
-      "#....##.......Z...#",
-      "OP.......Z....c...#",
-      "#..Z...#.....##...#",
-      "#......#..Z.......#",
-      "##..c.....Z...#...#",
-      "#..Z....##.....Z..O",
-      "#......Z......B...#",
-      "#..Z.......Z....Z.#",
-      "###################",
-    ],
+    map: fieldMap({
+      cols: 50, rows: 36, seed: 29, spawn: [5, 17], portals: [{ side: "W", at: 17 }, { side: "N", at: 38 }],
+      monsters: 26, groves: 20, edge: 3, props: "cBcCH",
+    }),
   },
   boss: {
     id: "boss", name: "버섯왕의 공터", paid: true, portals: ["forest2"],
-    map: [
-      "###############",
-      "#.....###.....#",
-      "#.............#",
-      "#......K......#",
-      "#.............#",
-      "OP.....c......#",
-      "#.............#",
-      "#.............#",
-      "###############",
-    ],
+    map: fieldMap({
+      cols: 30, rows: 30, seed: 47, spawn: [15, 25], portals: [{ side: "S", at: 15 }],
+      monsters: 0, boss: [15, 11], groves: 4, edge: 3, props: "cc",
+    }),
   },
 };
+
+// The square the menus stand in: the first village, kept as it was, since the menu's camera and
+// lineup are placed on it.
+export const MENU_MAP = [
+  "#############",
+  "#..c.....B..#",
+  "#.....#.....#",
+  "#..C........#",
+  "#....P......O",
+  "#...........#",
+  "#.H.....c...#",
+  "#.......#...#",
+  "#############",
+];
 
 export const ZONE_IDS = Object.keys(ZONES) as ZoneId[];
 export const START_ZONE: ZoneId = "village";
