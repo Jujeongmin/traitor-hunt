@@ -3,7 +3,7 @@ import { QUESTS } from "../../src/game/account/quests";
 import { JOBS } from "../../src/game/combat/jobs";
 import { SKILLS } from "../../src/game/combat/skills";
 import { WEAPONS } from "../../src/game/combat/classes";
-import { maxHpAt } from "../../src/game/world/monsters";
+import { MONSTERS, maxHpAt } from "../../src/game/world/monsters";
 import { portalsOf, zoneLayout } from "../../src/game/world/zones";
 import { enterAs, errorOf, giveXp, join, makeCharacter, walkTo } from "./helpers";
 
@@ -105,5 +105,33 @@ describe("quests", () => {
     expect(claimed.bag.potion_small).toBeGreaterThanOrEqual(3 + first.items[0].n);
     expect((await server.getAccount()).xp).toBe(xpBefore + first.xp);
     expect(await errorOf(server.claimQuest())).toContain("quest_unfinished");
+  });
+});
+
+describe("party hunting", () => {
+  test("a kill's XP is shared with party members standing close, with a bonus", async (server) => {
+    await hunter(server, "test-a", 1);
+    await hunter(server, "test-b", 1);
+    await server.syncFriends();
+    server.connect({ account: "test-a" });
+    await server.syncFriends();
+    await server.requestFriend("성장b");
+    server.connect({ account: "test-b" });
+    await server.acceptFriend("test-a");
+    server.connect({ account: "test-a" });
+    await server.inviteToParty("test-b");
+    server.connect({ account: "test-b" });
+    await server.acceptPartyInvite("test-a");
+
+    const forest = "rpg-w1-forest1-1";
+    server.connect({ account: "test-a", roomId: forest });
+    await ring("rat", 1);
+    const result = await server.strike("m0");
+    // Two in the party: 10% more, split in two.
+    expect(result.xp).toBe(Math.round((MONSTERS.rat.xp * 1.1) / 2));
+    expect((await server.getAccount()).xp).toBe(result.xp);
+    server.connect({ account: "test-b", roomId: forest });
+    expect((await server.getAccount()).xp).toBe(result.xp);
+    expect((await server.getBag()).quest.count).toBe(0);
   });
 });

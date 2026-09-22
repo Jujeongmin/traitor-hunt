@@ -86,27 +86,57 @@ async function enter(account: string, character: Character, zone: ZoneId, x: num
   return { roomId, zone, channel, x, z };
 }
 
-// Pays a hunter for what they felled: XP, gold (onto the account, as a Verse8 asset) and whatever
-// dropped (into the bag). A new level heals them to their new, larger health.
+// Party members this close to a kill, alive and in the same channel, share its XP and its quest
+// count; the XP grows by PARTY_BONUS for every member beyond the first before it is split.
+const PARTY_SHARE_RANGE = 30;
+const PARTY_BONUS = 0.1;
+
+// The caller's party members standing near them in this room.
+async function partyNearby(account: string): Promise<string[]> {
+  const stored = await readPartyOf(account);
+  const others = stored?.party.members.filter((m) => m !== account) ?? [];
+  if (others.length === 0) return [];
+  const [me, ...rest]: (Record<string, any> & { account: string })[] = await $room.getUserStates(
+    [account, ...others], ["pose", "dead"],
+  );
+  if (!isPose(me.pose)) return [];
+  const at = me.pose;
+  return rest
+    .filter((u) => isPose(u.pose) && u.dead !== true && Math.hypot(u.pose.x - at.x, u.pose.z - at.z) <= PARTY_SHARE_RANGE)
+    .map((u) => u.account);
+}
+
+// Adds XP (and kills toward the quest) to a character, and shows it in the room: a new level heals
+// it to its new, larger health.
+async function payHunter(account: string, roomId: string, xp: number, felled: HitResult["felled"], items: ItemId[]): Promise<void> {
+  const next = await updateActive(account, (c) => ({
+    ...c, xp: c.xp + xp, bag: items.reduce((bag, id) => addItem(bag, id, 1), c.bag), quest: countKills(c.quest, felled),
+  }));
+  await writeRanking(account, next);
+  const levelled = levelOf(next.xp).level > levelOf(next.xp - xp).level;
+  await withRoomLock(roomId, async () => {
+    const stats = fightStats(next);
+    await $room.updateUserState(
+      account,
+      { look: zoneLook(next), xp: next.xp, ...(levelled ? { maxHp: stats.maxHp, hp: stats.maxHp } : {}) },
+      { returnState: false },
+    );
+  });
+}
+
+// Pays for what a hunter felled: XP (shared with party members close by), gold (onto the hunter's
+// account, as a Verse8 asset) and whatever dropped (into the hunter's bag).
 async function reward(account: string, roomId: string, result: HitResult): Promise<HitResult> {
   if (result.felled.length === 0) return result;
   const loot = result.felled.map((type) => rollLoot(type));
   const gold = loot.reduce((sum, l) => sum + l.gold, 0);
   const items = loot.flatMap((l) => l.items);
   if (gold > 0) await $asset.mint(GOLD, gold);
-  const next = await updateActive(account, (c) => ({
-    ...c, xp: c.xp + result.xp, bag: items.reduce((bag, id) => addItem(bag, id, 1), c.bag), quest: countKills(c.quest, result.felled),
-  }));
-  await writeRanking(account, next);
-  const levelled = levelOf(next.xp).level > levelOf(next.xp - result.xp).level;
-  await withRoomLock(roomId, async () => {
-    const stats = fightStats(next);
-    await $room.updateMyState(
-      { look: zoneLook(next), xp: next.xp, ...(levelled ? { maxHp: stats.maxHp, hp: stats.maxHp } : {}) },
-      { returnState: false },
-    );
-  });
-  return { ...result, gold, items };
+  const party = await partyNearby(account);
+  const share = Math.max(1, Math.round((result.xp * (1 + PARTY_BONUS * party.length)) / (party.length + 1)));
+  await payHunter(account, roomId, share, result.felled, items);
+  for (const member of party) await payHunter(member, roomId, share, result.felled, []);
+  return { ...result, xp: share, gold, items };
 }
 
 async function bagView(character: Character): Promise<BagView> {
