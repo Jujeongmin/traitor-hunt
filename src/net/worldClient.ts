@@ -3,6 +3,7 @@ import { readJumpY } from "../game/rules/movement";
 import { PROTOCOL_VERSION, isPose, readSwing, type Pose } from "../game/world/types";
 import type { BagView, ItemId, Slot } from "../game/account/items";
 import type { JobId } from "../game/combat/jobs";
+import type { RankingView } from "../game/account/ranking";
 import { readMonsterType, type MonsterState } from "../game/world/monsters";
 import type { ZoneEntry, ZoneId, ZoneLook } from "../game/world/zones";
 import { errorCode } from "./errors";
@@ -226,6 +227,11 @@ export class WorldClient {
     } catch (error) {
       return errorCode(error);
     }
+  }
+
+  // The board, for the ranking panel in the world.
+  ranking(): Promise<RankingView> {
+    return this.transport.call<RankingView>("getRanking");
   }
 
   // Fallen: back to the village.

@@ -15,6 +15,8 @@ interface SkillBarProps {
 }
 
 interface CellProps {
+  // Which slot of the bar this is (the skill panel drops skills by it); -1 for the potion.
+  slot: number;
   keyLabel: string;
   name: string;
   icon: string | null;
@@ -34,7 +36,7 @@ const DRAG_MAX_PX = 16;
 
 // One square of the bar: the icon and its key. A tap uses it. Dragging it down settles it a little
 // lower with a glowing band along its foot: auto-battle may use it. Dragging again lifts it back.
-function Cell({ keyLabel, name, icon, corner, cooling, locked, isAuto, use, flip }: CellProps) {
+function Cell({ slot, keyLabel, name, icon, corner, cooling, locked, isAuto, use, flip }: CellProps) {
   const drag = useRef<{ id: number; y: number; moved: boolean } | null>(null);
   const [pull, setPull] = useState<number | null>(null);
   const rest = isAuto ? AUTO_DROP_PX : 0;
@@ -42,8 +44,9 @@ function Cell({ keyLabel, name, icon, corner, cooling, locked, isAuto, use, flip
   return (
     <div className="hud-slot">
       <div
-        className={`hud-cell${locked ? " locked" : ""}${isAuto ? " auto" : ""}${pull !== null ? " pulling" : ""}`}
+        className={`hud-cell${locked ? " locked" : ""}${isAuto ? " auto" : ""}${pull !== null ? " pulling" : ""}${icon ? "" : " empty"}`}
         style={{ transform: `translateY(${offset}px)` }}
+        data-slot={slot >= 0 ? slot : undefined}
         title={name}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -87,19 +90,20 @@ export function SkillBar({ hud, playerClass, onSkill, onPotion }: SkillBarProps)
   return (
     <div className="hud-skills">
       <Cell
-        keyLabel="Q" name="물약" icon={iconFor("potion_small")} corner={String(hud.potions)} cooling={null}
+        slot={-1} keyLabel="Q" name="물약" icon={iconFor("potion_small")} corner={String(hud.potions)} cooling={null}
         locked={hud.potions === 0} isAuto={auto.potion} use={onPotion}
         flip={() => updateSettings({ autoPotion: !settings().autoPotion })}
       />
       {hud.skills.map((skill, i) => (
         <Cell
           key={i}
+          slot={i}
           keyLabel={String(i + 1)}
-          name={skill.name}
-          icon={iconFor(skillIconId(playerClass, i))}
-          corner={!skill.open ? `Lv${skill.level}` : skill.readyInMs > 0 ? `${Math.ceil(skill.readyInMs / 1000)}` : ""}
-          cooling={skill.open ? skill.readyInMs / skill.cooldownMs : null}
-          locked={!skill.open}
+          name={skill ? skill.name : "빈 칸"}
+          icon={skill ? iconFor(skillIconId(playerClass, skill.skill)) : null}
+          corner={!skill ? "" : !skill.open ? `Lv${skill.level}` : skill.readyInMs > 0 ? `${Math.ceil(skill.readyInMs / 1000)}` : ""}
+          cooling={skill?.open ? skill.readyInMs / skill.cooldownMs : null}
+          locked={!skill || !skill.open}
           isAuto={auto.skills[i] === true}
           use={() => onSkill(i)}
           flip={() => {

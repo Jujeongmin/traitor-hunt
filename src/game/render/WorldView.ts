@@ -28,7 +28,7 @@ import { LEVEL_MODELS, VIEW_FAR, buildLevelScene } from "./levelScene";
 import { MonsterActor } from "./MonsterActor";
 import { MONSTER_SKINS } from "./monsterLooks";
 import { PlayerActor } from "./PlayerActor";
-import { settings } from "../../ui/settings";
+import { hotbarFor, settings } from "../../ui/settings";
 
 export const LOOK_SENSITIVITY = 0.0022;
 export const WORLD_MODELS = [...new Set([...LEVEL_MODELS, ...HERO_MODELS])];
@@ -77,8 +77,8 @@ export interface WorldHud {
   channel: number;
   // A locked portal needs the full game or, failing that, a level.
   portal: { to: string; locked: boolean; needLevel: number | null } | null;
-  // Keys 1 to 3; a skill above your level shows the level it opens at.
-  skills: { name: string; readyInMs: number; cooldownMs: number; level: number; open: boolean }[];
+  // The three slots of the bar (keys 1 to 3): the skill each holds, or null while empty.
+  skills: ({ skill: number; name: string; readyInMs: number; cooldownMs: number; level: number; open: boolean } | null)[];
   blocking: boolean;
   hp: number;
   maxHp: number;
@@ -112,7 +112,7 @@ export interface WorldViewOptions {
 
 // One zone of the open world on screen: the forest and its portals, you (over the shoulder) and the
 // others and the monsters in your channel. Moving, jumping, guarding, attacking and your skill are
-// drawn here and sent through the WorldClient; the server decides what they hit. Auto-battle (F)
+// drawn here and sent through the WorldClient; the server decides what they hit. Auto-battle (its button)
 // walks you to the nearest monster, fights it and uses your skill when it helps.
 export class WorldView {
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -207,7 +207,7 @@ export class WorldView {
     };
   }
 
-  // Auto-battle on or off (the HUD button; F does the same).
+  // Auto-battle on or off (the HUD button).
   toggleAuto(): void {
     this.auto = !this.auto;
     this.questSeek = null;
@@ -281,7 +281,6 @@ export class WorldView {
     const here = state.phase === "in" && !this.travelling && !dead;
     // Mid-swing you stand still (and turn only through the attack itself).
     const rooted = this.me?.rooted === true;
-    if (this.input.consumePress("KeyF")) this.toggleAuto();
     const potion = this.input.consumePress("KeyQ");
     const autoPotion = this.auto && settings().autoPotion && !!state.me && state.me.hp < state.me.maxHp * AUTO_POTION_BELOW;
     if (here && (potion || autoPotion)) this.drinkPotion();
@@ -414,27 +413,33 @@ export class WorldView {
       if (target) void this.client.strike(target, yaw).then((r) => this.gained(r));
     }
     if (now - Math.max(...this.lastSkillAt) < SKILL_GAP_MS) return yaw;
-    const ready = (slot: number) => this.skillOpen(SKILLS[c][slot]) && now - this.lastSkillAt[slot] >= SKILLS[c][slot].cooldownMs;
-    let slot = pressed.findIndex((p, i) => p && ready(i));
+    // The bar's slots hold skills; a key or auto-battle picks a slot, and the skill in it is used.
+    const bar = hotbarFor(c);
+    const ready = (index: number | null): index is number =>
+      index !== null && this.skillOpen(SKILLS[c][index]) && now - this.lastSkillAt[index] >= SKILLS[c][index].cooldownMs;
+    let slot = pressed.findIndex((p, i) => p && ready(bar[i]));
     // Auto-battle reaches for the strongest skill it may use that would help.
     if (slot < 0 && this.auto) {
       const allowed = settings().autoSkills;
-      for (let i = SKILLS[c].length - 1; i >= 0; i--) {
-        if (allowed[i] && ready(i) && this.skillHelps(SKILLS[c][i], monsters, yaw)) {
+      let bestDamage = -1;
+      bar.forEach((index, i) => {
+        if (allowed[i] && ready(index) && SKILLS[c][index].damage + SKILLS[c][index].heal > bestDamage
+          && this.skillHelps(SKILLS[c][index], monsters, yaw)) {
+          bestDamage = SKILLS[c][index].damage + SKILLS[c][index].heal;
           slot = i;
-          break;
         }
-      }
+      });
     }
-    if (slot < 0) return yaw;
-    const skill = SKILLS[c][slot];
+    const index = slot < 0 ? null : bar[slot];
+    if (index === null) return yaw;
+    const skill = SKILLS[c][index];
     const target = this.aim(monsters, yaw);
     if (target && skill.damage > 0) yaw = this.yawTo(monsters[target]);
-    this.lastSkillAt[slot] = now;
-    this.lastSlot = slot;
+    this.lastSkillAt[index] = now;
+    this.lastSlot = index;
     this.skills += 1;
     playSkill();
-    void this.client.useSkill(slot, yaw).then((r) => this.gained(r));
+    void this.client.useSkill(index, yaw).then((r) => this.gained(r));
     return yaw;
   }
 
@@ -600,10 +605,14 @@ export class WorldView {
           needLevel: level.level < ZONES[near.portal.to].minLevel ? ZONES[near.portal.to].minLevel : null,
         }
         : null,
-      skills: SKILLS[this.options.playerClass].map((skill, i) => ({
-        name: skill.name, cooldownMs: skill.cooldownMs, level: skill.level, open: level.level >= skill.level,
-        readyInMs: Math.max(0, this.lastSkillAt[i] + skill.cooldownMs - now),
-      })),
+      skills: hotbarFor(this.options.playerClass).map((index) => {
+        if (index === null) return null;
+        const skill = SKILLS[this.options.playerClass][index];
+        return {
+          skill: index, name: skill.name, cooldownMs: skill.cooldownMs, level: skill.level, open: level.level >= skill.level,
+          readyInMs: Math.max(0, this.lastSkillAt[index] + skill.cooldownMs - now),
+        };
+      }),
       blocking: !!this.pose.block,
       hp: me?.hp ?? 0,
       maxHp: me?.maxHp ?? 1,

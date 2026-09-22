@@ -11,7 +11,10 @@ import { START_ZONE } from "../game/world/zones";
 import { BagPanel, ShopPanel } from "./BagPanel";
 import { QuestTracker } from "./QuestTracker";
 import { SkillBar } from "./SkillBar";
-import { TouchControls, isTouchDevice } from "./TouchControls";
+import { PadButtons, TouchStick, isTouchDevice } from "./TouchControls";
+import { SkillPanel } from "./SkillPanel";
+import { RankingPanel } from "./RankingPanel";
+import { iconFor } from "../game/render/icons";
 import { SettingsPanel } from "./SettingsPanel";
 
 interface WorldScreenProps {
@@ -107,7 +110,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
   // Which of the bag and the shop is open.
-  const [panel, setPanel] = useState<"bag" | "shop" | null>(null);
+  const [panel, setPanel] = useState<"bag" | "shop" | "skills" | "ranking" | null>(null);
   const inVillage = entry.zone === START_ZONE;
   const [now, setNow] = useState(() => performance.now());
   const touch = isTouchDevice();
@@ -161,7 +164,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
       {travelling && <div className="overlay">이동하는 중…</div>}
       {hud && (
         <>
-          {touch && view.current && <TouchControls controls={view.current.controls} onJump={() => view.current?.tapJump()} />}
+          {touch && view.current && <TouchStick controls={view.current.controls} />}
           <div className="hud-left">
             <div className="hud-top band">
               <b>{hud.zone}</b>
@@ -178,9 +181,18 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
             </div>
           </div>
           <div className="hud-menu-buttons">
-            {inVillage && <button type="button" className="brush-button small" onClick={() => setPanel("shop")}>상점</button>}
-            <button type="button" className="brush-button small" onClick={() => setPanel("bag")}>가방 (I)</button>
-            <button type="button" className="brush-button small" onClick={() => setMenu(true)}>메뉴</button>
+            {([
+              ["ranking", "랭킹", () => setPanel("ranking")],
+              ["skills", "스킬", () => setPanel((p) => (p === "skills" ? null : "skills"))],
+              ["bag", "가방", () => setPanel("bag")],
+              ...(inVillage ? [["shop", "상점", () => setPanel("shop")] as const] : []),
+              ["menu", "메뉴", () => setMenu(true)],
+            ] as const).map(([id, label, open]) => (
+              <button key={id} type="button" className={`hud-icon-button${panel === id ? " on" : ""}`} onClick={open}>
+                <img src={iconFor(`ui_${id}`) ?? undefined} alt="" draggable={false} />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
           {hud.notes.length > 0 && (
             <div className="hud-notes">
@@ -202,13 +214,12 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
               <div className="hud-bar hp"><i style={{ width: `${Math.round((hud.target.hp / hud.target.maxHp) * 100)}%` }} /></div>
             </div>
           )}
-          <button
-            type="button"
-            className={`brush-button small hud-auto${hud.auto ? " on" : ""}`}
-            onClick={() => view.current?.toggleAuto()}
-          >
-            {hud.auto ? "자동 전투 중" : "자동 전투"} (F)
-          </button>
+          {view.current && (
+            <PadButtons
+              controls={view.current.controls} auto={hud.auto}
+              onJump={() => view.current?.tapJump()} onAuto={() => view.current?.toggleAuto()}
+            />
+          )}
           <SkillBar hud={hud} playerClass={playerClass} onSkill={(slot) => view.current?.tapSkill(slot)} onPotion={() => view.current?.tapPotion()} />
           <QuestTracker client={client} bag={bag} seeking={hud.seeking} onSeek={(types) => view.current?.seekQuest(types)} />
           {!touch && <div className="crosshair" />}
@@ -228,7 +239,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · I 가방 · F 자동 전투 · 스킬을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · I 가방 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>
@@ -243,6 +254,8 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         />
       )}
       {panel === "shop" && <ShopPanel client={client} bag={bag} onClose={() => setPanel(null)} />}
+      {panel === "skills" && <SkillPanel playerClass={playerClass} level={hud?.level ?? 1} onClose={() => setPanel(null)} />}
+      {panel === "ranking" && <RankingPanel account={client.account} load={() => client.ranking()} onClose={() => setPanel(null)} />}
       </div>
     </div>
   );

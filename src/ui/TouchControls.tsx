@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FpsInput } from "../game/render/FpsInput";
 
-// Whether this is a touch device (a phone or tablet): then the on-screen controls show.
+// Whether this is a touch device (a phone or tablet): then the joystick and the look area show.
 export function isTouchDevice(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 }
@@ -9,25 +9,15 @@ export function isTouchDevice(): boolean {
 // The joystick's ring, and how far the knob can be pushed, in CSS pixels.
 const STICK_RADIUS = 56;
 
-interface TouchControlsProps {
-  controls: FpsInput;
-  onJump: () => void;
-}
-
-// On-screen controls for phones: a joystick on the left to walk, a drag anywhere on the right to
-// look round, and buttons to attack, guard and jump.
-export function TouchControls({ controls, onJump }: TouchControlsProps) {
+// The joystick on the left to walk, and a drag anywhere on the right to look round (phones only).
+export function TouchStick({ controls }: { controls: FpsInput }) {
   const [knob, setKnob] = useState<{ x: number; y: number } | null>(null);
   const stick = useRef<HTMLDivElement>(null);
   const stickPointer = useRef<number | null>(null);
   const look = useRef<{ id: number; x: number; y: number } | null>(null);
 
-  // Let go of everything when the controls unmount (leaving the zone).
-  useEffect(() => () => {
-    controls.setVirtualMove(0, 0);
-    controls.setVirtualFiring(false);
-    controls.setVirtualBlocking(false);
-  }, [controls]);
+  // Let go when the controls unmount (leaving the zone).
+  useEffect(() => () => controls.setVirtualMove(0, 0), [controls]);
 
   const moveKnob = (e: React.PointerEvent) => {
     const el = stick.current;
@@ -48,15 +38,6 @@ export function TouchControls({ controls, onJump }: TouchControlsProps) {
     setKnob(null);
     controls.setVirtualMove(0, 0);
   };
-
-  const hold = (set: (on: boolean) => void) => ({
-    onPointerDown: (e: React.PointerEvent) => {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      set(true);
-    },
-    onPointerUp: () => set(false),
-    onPointerCancel: () => set(false),
-  });
 
   return (
     <>
@@ -98,11 +79,42 @@ export function TouchControls({ controls, onJump }: TouchControlsProps) {
       >
         <div className="touch-knob" style={{ transform: `translate(${knob?.x ?? 0}px, ${knob?.y ?? 0}px)` }} />
       </div>
-      <div className="touch-buttons">
-        <button type="button" className="touch-button attack" {...hold((on) => controls.setVirtualFiring(on))}>공격</button>
-        <button type="button" className="touch-button" {...hold((on) => controls.setVirtualBlocking(on))}>막기</button>
-        <button type="button" className="touch-button" onPointerDown={onJump}>점프</button>
-      </div>
     </>
+  );
+}
+
+interface PadButtonsProps {
+  controls: FpsInput;
+  auto: boolean;
+  onJump: () => void;
+  onAuto: () => void;
+}
+
+// The round buttons at the bottom right, on every device: attack (held for a flurry), guard, jump
+// and auto-battle.
+export function PadButtons({ controls, auto, onJump, onAuto }: PadButtonsProps) {
+  useEffect(() => () => {
+    controls.setVirtualFiring(false);
+    controls.setVirtualBlocking(false);
+  }, [controls]);
+
+  const hold = (set: (on: boolean) => void) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      set(true);
+    },
+    onPointerUp: () => set(false),
+    onPointerCancel: () => set(false),
+  });
+
+  return (
+    <div className="touch-buttons">
+      <button type="button" className="touch-button attack" {...hold((on) => controls.setVirtualFiring(on))}>공격</button>
+      <button type="button" className="touch-button" {...hold((on) => controls.setVirtualBlocking(on))}>막기</button>
+      <button type="button" className="touch-button" onPointerDown={onJump}>점프</button>
+      <button type="button" className={`touch-button auto${auto ? " on" : ""}`} onClick={onAuto}>
+        {auto ? "자동\n중" : "자동\n전투"}
+      </button>
+    </div>
   );
 }
