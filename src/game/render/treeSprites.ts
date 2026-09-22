@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { TREES as EDGE_TREES } from "../rules/nature";
 import type { ModelSource } from "./staticBatch";
 
 // The forest too deep or too far to draw tree by tree (thousands of trees): each is two crossed
@@ -10,7 +11,8 @@ import type { ModelSource } from "./staticBatch";
 export const SPRITE_TREES = ["sn_tree_1", "sn_tree_2", "sn_tree_3", "sn_tree_4", "sn_pine_1"];
 // The world tree on the horizon is a picture too.
 const WORLD_TREE_MODEL = "sn_tree_2";
-export const SPRITE_MODELS = [...new Set([...SPRITE_TREES, WORLD_TREE_MODEL])];
+// Every tree of the forest's edge has a picture too, for when it is far from the camera (lodBatch.ts).
+export const SPRITE_MODELS = [...new Set([...SPRITE_TREES, WORLD_TREE_MODEL, ...EDGE_TREES])];
 
 // Pixels across a picture; its height follows the tree's shape.
 const PICTURE_WIDTH = 256;
@@ -67,7 +69,7 @@ export function bakeTreeSprites(renderer: THREE.WebGLRenderer, library: ModelSou
 }
 
 // Two unit cards crossed at right angles, standing on the origin.
-function crossedCards(): THREE.BufferGeometry {
+export function crossedCards(): THREE.BufferGeometry {
   const a = new THREE.PlaneGeometry(1, 1);
   a.translate(0, 0.5, 0);
   const b = a.clone();
@@ -75,7 +77,7 @@ function crossedCards(): THREE.BufferGeometry {
   return mergeGeometries([a, b]);
 }
 
-function spriteMaterial(sprite: TreeSprite): THREE.MeshBasicMaterial {
+export function spriteMaterial(sprite: TreeSprite): THREE.MeshBasicMaterial {
   return new THREE.MeshBasicMaterial({
     map: sprite.texture, alphaTest: ALPHA_TEST, side: THREE.DoubleSide, color: new THREE.Color(TONE, TONE, TONE),
   });

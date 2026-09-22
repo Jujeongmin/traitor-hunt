@@ -27,6 +27,7 @@ import { FpsInput } from "./FpsInput";
 import { HEROES, HERO_MODELS } from "./heroes";
 import { createLabel, setLabel } from "./labels";
 import { LEVEL_MODELS, VIEW_FAR, buildLevelScene } from "./levelScene";
+import type { LodBatch } from "./lodBatch";
 import { MonsterActor } from "./MonsterActor";
 import { MONSTER_SKINS } from "./monsterLooks";
 import { PlayerActor } from "./PlayerActor";
@@ -212,7 +213,10 @@ export class WorldView {
     this.portals = portalsOf(options.entry.zone);
     this.walls = solidWith(this.layout, Infinity);
     this.pose = { x: options.entry.x, z: options.entry.z, yaw: 0 };
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Phones and tablets draw at no more than 1.5 pixels a point: their screens are small and their
+    // chips warm up.
+    const coarse = window.matchMedia?.("(pointer: coarse)").matches === true;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     container.appendChild(this.renderer.domElement);
     this.input = new FpsInput(this.renderer.domElement);
@@ -235,7 +239,7 @@ export class WorldView {
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
-    buildLevelScene(this.scene, library, this.layout, this.renderer, this.doorways());
+    this.lod = buildLevelScene(this.scene, library, this.layout, this.renderer, this.doorways());
     this.addPortals();
     this.addHouses();
     // Your own name stays off: the camera is right behind you and it would only cover the view.
@@ -249,9 +253,26 @@ export class WorldView {
   // For checking the game from the browser console in development.
   debugHandle(): {
     pose: () => Pose; setPose: (p: { x: number; z: number; yaw?: number }) => void; npcs: () => unknown; zone: string;
+    drawn: () => { calls: number; triangles: number; geometries: number; textures: number };
+    heaviest: () => [string, number][];
   } {
     return {
       zone: this.options.entry.zone,
+      drawn: () => ({ ...this.renderer.info.render, ...this.renderer.info.memory }),
+      // Triangles per kind of mesh across the scene (instances counted), heaviest first.
+      heaviest: () => {
+        const by = new Map<string, number>();
+        this.scene.traverse((o) => {
+          const mesh = o as THREE.Mesh & { count?: number; isInstancedMesh?: boolean };
+          if (!mesh.isMesh || !mesh.visible) return;
+          const g = mesh.geometry;
+          const tris = (g.index ? g.index.count : g.getAttribute("position").count) / 3;
+          const n = mesh.isInstancedMesh ? mesh.count ?? 1 : 1;
+          const key = (mesh.name.split(":")[0].split("|")[0] || mesh.parent?.name || "?").slice(0, 40);
+          by.set(key, (by.get(key) ?? 0) + tris * n);
+        });
+        return [...by.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25);
+      },
       npcs: () => this.npcs.map((n) => ({ id: n.id, at: n.at, shown: n.actor.object.visible, pos: n.actor.object.position.toArray() })),
       pose: () => ({ ...this.pose }),
       setPose: (p) => {
@@ -349,6 +370,8 @@ export class WorldView {
   };
 
   private powerSave = false;
+  // Trees and ground cover near you in full, further off as pictures or not at all.
+  private lod: LodBatch | null = null;
   private lastSavedStep = 0;
 
   // Power saving (절전): the screen shows a summary instead of the world, which goes on undrawn.
@@ -445,6 +468,7 @@ export class WorldView {
     this.effects.update(dt);
     const cam = chaseCamera(this.pose, this.yaw, this.pitch, this.walls, SKY_CEILING);
     this.camera.position.set(cam.x, cam.y, cam.z);
+    this.lod?.update(this.pose.x, this.pose.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
     this.emitHud();
     if (draw) this.renderer.render(this.scene, this.camera);

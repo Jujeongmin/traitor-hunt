@@ -16,7 +16,7 @@ export interface NaturePiece {
 export const TREES = ["sn_tree_1", "sn_tree_2", "sn_tree_3", "sn_tree_4", "sn_tree_1", "sn_tree_3", "sn_pine_1", "sn_pine_3"];
 const EDGE_PROPS = ["sn_rock", "sn_bush_flowers", "sn_fern"];
 // Mostly grass, with clover, flowers, pebbles and the odd mushroom among it.
-const GROUND_PLANTS = [
+export const GROUND_PLANTS = [
   "sn_grass", "sn_grass", "sn_grass", "sn_grass", "sn_grass", "sn_grass_wispy", "sn_clover", "sn_clover", "sn_flowers", "sn_flowers",
   "sn_pebbles", "sn_pebbles", "sn_mushroom",
 ];

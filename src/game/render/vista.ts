@@ -12,7 +12,7 @@ import type { ModelSource } from "./staticBatch";
 // Beyond the map's own ground (see levelScene) the hills start this far out, and the land ends here.
 const HILLS_FROM = 20;
 const LAND_RADIUS = 1400;
-const LAND_STEP = 14;
+const LAND_STEP = 20;
 // Far trees: how many, and the band of distance beyond the map edge they grow in.
 const FAR_TREES = 2600;
 const TREES_FROM = 22;

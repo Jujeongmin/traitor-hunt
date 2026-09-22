@@ -2,7 +2,8 @@ import * as THREE from "three";
 import type { ModelLibrary } from "../assets/ModelLibrary";
 import type { LevelLayout, Point2 } from "../rules/levelLayout";
 import { PATH_HALF_WIDTH, groundPaths, pathDistance } from "../rules/paths";
-import { NATURE_MODELS, cellNoise, natureLayout } from "../rules/nature";
+import { GROUND_PLANTS, NATURE_MODELS, TREES, cellNoise, natureLayout } from "../rules/nature";
+import { LodBatch } from "./lodBatch";
 import type { Platform } from "../rules/platforms";
 import { buildStaticBatch, type StaticPiece } from "./staticBatch";
 import { HORIZON, skyTexture } from "./sky";
@@ -93,9 +94,11 @@ function buildGround(layout: LevelLayout, paths: readonly Point2[][]): THREE.Mes
 // Builds the sky, the sun, the ground, the forest and the platforms. Shared by the world view and
 // the menus.
 // `destinations`: places besides the portals the dirt paths lead to (the village's doors).
+// Answers the near-and-far batch of trees and ground cover, for the view to keep up to date with its
+// camera (see lodBatch.ts).
 export function buildLevelScene(
   scene: THREE.Scene, library: ModelLibrary, layout: LevelLayout, renderer: THREE.WebGLRenderer, destinations: readonly Point2[] = [],
-): void {
+): LodBatch {
   scene.background = skyTexture(SUN_OFFSET) ?? new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, FOG_NEAR, FOG_FAR);
   scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x5b6b34, 1.4));
@@ -105,7 +108,8 @@ export function buildLevelScene(
   sun.target.position.copy(centre);
   scene.add(sun, sun.target);
   const paths = groundPaths(layout, destinations);
-  scene.add(buildGround(layout, paths), buildVista(layout, bakeTreeSprites(renderer, library), library));
+  const sprites = bakeTreeSprites(renderer, library);
+  scene.add(buildGround(layout, paths), buildVista(layout, sprites, library));
 
   const pieces: StaticPiece[] = natureLayout(layout, paths).map((p) => ({
     model: p.model,
@@ -129,5 +133,12 @@ export function buildLevelScene(
     pieces.push({ model: platform.model, matrix: platformMatrix(platform, boundsOf(platform.model)) });
   }
 
-  scene.add(buildStaticBatch(library, pieces));
+  // Trees, ground cover and the stones in the paths are drawn in full only near the camera; rocks,
+  // bushes and the platforms always.
+  const near = new Set<string>([...TREES, ...GROUND_PLANTS, "sn_stepping"]);
+  scene.add(buildStaticBatch(library, pieces.filter((p) => !near.has(p.model))));
+  const lod = new LodBatch(library, pieces.filter((p) => near.has(p.model)), sprites);
+  lod.update(centre.x, centre.z, true);
+  scene.add(lod.object);
+  return lod;
 }
