@@ -6,13 +6,13 @@ import { NATURE_MODELS, cellNoise, natureLayout } from "../rules/nature";
 import type { Platform } from "../rules/platforms";
 import { buildStaticBatch, type StaticPiece } from "./staticBatch";
 import { HORIZON, skyTexture } from "./sky";
-import { ISLAND_MODELS, buildVista, smoothNoise } from "./vista";
+import { CASTLE_MODELS, buildVista, smoothNoise } from "./vista";
 import { SPRITE_MODELS, bakeTreeSprites } from "./treeSprites";
 
 // The outdoor level: open grass paths between walls of forest, under a clear sky. The grid is the
 // same as ever; solid cells are drawn as trees and rocks instead of stone walls.
 const PLATFORM_MODELS = ["pt_logs", "pt_rock", "pt_tree_stump", "chest_closed"];
-export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, ...SPRITE_MODELS, ...ISLAND_MODELS])];
+export const LEVEL_MODELS = [...new Set([...NATURE_MODELS, ...PLATFORM_MODELS, ...SPRITE_MODELS, ...CASTLE_MODELS])];
 
 export const SKY = HORIZON;
 // Where the sunlight comes from, relative to the middle of the map.
