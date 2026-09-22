@@ -15,6 +15,11 @@
       "bytes": 609044,
       "animations": []
     },
+    "bld_tower": {
+      "url": "assets/models/bld_tower.glb",
+      "bytes": 1522256,
+      "animations": []
+    },
     "chest_closed": {
       "url": "assets/models/chest_closed.glb",
       "bytes": 477632,

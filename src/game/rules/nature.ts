@@ -36,6 +36,8 @@ const PLANT_SCALE: Record<string, number> = {
 };
 // How far apart the stones set into a path are, in metres.
 const STONE_STEP = 2.4;
+// No stones this close to where you arrive.
+const STONE_CLEAR = 8;
 // Room kept between any two things on the ground, so no two meshes cut into each other.
 export const GROUND_GAP = 0.05;
 // How many nudged spots a piece tries before it is left out.
@@ -206,12 +208,14 @@ export function natureLayout(layout: LevelLayout, paths: readonly Point2[][] = [
       const length = Math.hypot(b.x - a.x, b.z - a.z);
       for (; travelled < length; travelled += STONE_STEP) {
         const k = Math.round(travelled * 10) + i * 7919 + n * 104729;
-        if (cellNoise(k, n, 140) < 0.35) continue;
+        if (cellNoise(k, n, 140) < 0.5) continue;
         const f = travelled / length;
         // Off to either side of the middle a little, along the path's own crosswise direction.
         const side = (cellNoise(k, n, 141) - 0.5) * PATH_HALF_WIDTH;
         const x = a.x + (b.x - a.x) * f - ((b.z - a.z) / length) * side;
         const z = a.z + (b.z - a.z) * f + ((b.x - a.x) / length) * side;
+        // Every path starts where you arrive; the stones start further out, so they do not pile up there.
+        if (Math.hypot(x - layout.playerSpawn.x, z - layout.playerSpawn.z) < STONE_CLEAR) continue;
         place("sn_stepping", 0.8 + cellNoise(k, n, 142) * 0.4, cellNoise(k, n, 143) * Math.PI * 2, () => ({ x, z }));
       }
       travelled -= length;

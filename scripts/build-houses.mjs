@@ -83,6 +83,37 @@ function house({ w, d, storeys, door, roof, gable, chimney, shutters = false }) 
   return pieces;
 }
 
+// A tall square tower of `storeys` stone storeys (2 by 2 wall pieces), its door in front, narrow
+// windows up the sides, a balcony round the top storey and the kit's round-tiled tower roof. The
+// stone corner piece fits the front-left corner as it comes and is turned for the others.
+function tower({ storeys, top }) {
+  const pieces = [];
+  const h = WALL;
+  const corners = [[-h, h, 0], [h, h, Math.PI / 2], [h, -h, Math.PI], [-h, -h, -Math.PI / 2]];
+  for (let level = 0; level < storeys; level++) {
+    const y = level * STOREY;
+    const last = level === storeys - 1;
+    const wall = last ? top : level % 2 === 0 ? "Wall_UnevenBrick_Straight" : "Wall_UnevenBrick_Window_Thin_Round";
+    for (const [face, yaw] of Object.entries(FACE)) {
+      for (const along of [-1, 1]) {
+        const c = Math.cos(yaw);
+        const s = Math.sin(yaw);
+        // Slot `along` of the side facing `face`, turned with it.
+        const x = along * c + h * s;
+        const z = -along * s + h * c;
+        const piece = level === 0 && face === "front" && along === 1 ? "Wall_UnevenBrick_Door_Round"
+          : level === 0 ? "Wall_UnevenBrick_Straight" : wall;
+        pieces.push([piece, x, y, z, yaw]);
+        for (const [fill, fx, fz] of FILLS[piece] ?? []) pieces.push([fill, x + fx * c + fz * s, y, z - fx * s + fz * c, yaw]);
+        if (last) pieces.push(["Balcony_Cross_Straight", x, y, z, yaw]);
+      }
+    }
+    for (const [x, z, yaw] of corners) pieces.push(["Corner_Exterior_Brick", x, y, z, yaw]);
+  }
+  pieces.push(["Roof_Tower_RoundTiles", 0, storeys * STOREY, 0, 0]);
+  return pieces;
+}
+
 const STONE = { wall: "Wall_UnevenBrick_Straight", window: "Wall_UnevenBrick_Window_Wide_Round", corner: "Corner_Exterior_Wood" };
 const PLASTER = { wall: "Wall_Plaster_Straight", window: "Wall_Plaster_Window_Wide_Round", corner: "Corner_Exterior_Wood" };
 const TIMBER = { wall: "Wall_Plaster_WoodGrid", window: "Wall_Plaster_Window_Wide_Round", corner: "Corner_Exterior_Wood" };
@@ -99,6 +130,8 @@ const HOUSES = {
     w: 3, d: 4, storeys: [STONE, TIMBER], door: "Wall_UnevenBrick_Door_Round",
     roof: "Roof_RoundTiles_6x8", gable: "Roof_Front_Brick6", chimney: { x: -1.6, z: 1.8 }, shutters: true,
   }),
+  // The village's landmark: a stone watchtower eight storeys high under a pointed roof.
+  bld_tower: tower({ storeys: 8, top: "Wall_Plaster_Window_Wide_Round" }),
   // A cottage: one plaster storey under a big roof.
   bld_house_small: house({
     w: 3, d: 3, storeys: [PLASTER], door: "Wall_Plaster_Door_Round",

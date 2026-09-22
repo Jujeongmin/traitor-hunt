@@ -25,6 +25,8 @@ const SIMPLIFY = {
   sn_tree_4: { ratio: 0.5, error: 0.02 }, sn_pine_1: { ratio: 0.5, error: 0.02 }, sn_pine_3: { ratio: 0.4, error: 0.02 },
   sn_flowers: { ratio: 0.4, error: 0.03 }, sn_clover: { ratio: 0.5, error: 0.03 }, sn_mushroom: { ratio: 0.3, error: 0.03 },
   sn_bush_flowers: { ratio: 0.5, error: 0.03 },
+  // The tower's stone corner pieces are finely carved; from the ground a third of it does.
+  bld_tower: { ratio: 0.3, error: 0.01 },
 };
 mkdirSync(outDir, { recursive: true });
 
