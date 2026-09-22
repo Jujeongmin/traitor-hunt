@@ -5,9 +5,9 @@ import { buildSpriteForest, buildWorldTreeSprite, type TreeSprites } from "./tre
 import type { ModelSource } from "./staticBatch";
 
 // The land beyond the playable map, so a zone sits in wide country instead of a walled box: rolling
-// hills that rise away from the forest edge, a dark forest running over them for hundreds of metres,
-// and two ranges of mountains on the horizon, the far one snow-capped. All of it is made here from
-// numbers (no files), is the same for everyone, and costs a few draw calls.
+// hills that rise away from the forest edge and a dark forest running over them for hundreds of
+// metres, until it fades into the haze. The land is made here from numbers (no files), is the same
+// for everyone, and costs a few draw calls.
 
 // Beyond the map's own ground (see levelScene) the hills start this far out, and the land ends here.
 const HILLS_FROM = 20;
@@ -17,12 +17,6 @@ const LAND_STEP = 20;
 const FAR_TREES = 2600;
 const TREES_FROM = 22;
 const TREES_TO = 420;
-// The mountain ranges: distance from the map's middle, and how tall their peaks grow.
-const RANGES = [
-  { radius: 520, low: 70, high: 170, seed: 3, snow: false },
-  { radius: 900, low: 150, high: 330, seed: 9, snow: true },
-];
-
 // Smooth noise in [0, 1): stable values on a grid, blended between.
 export function smoothNoise(x: number, z: number, salt: number): number {
   const x0 = Math.floor(x);
@@ -106,58 +100,7 @@ function farTrees(layout: LevelLayout) {
   return out;
 }
 
-// A ring of mountains round the centre: a ridge of peaks whose slopes run from forest green through
-// bare rock, with snow on the far range's tops.
-function buildRange(centre: THREE.Vector3, range: (typeof RANGES)[number]): THREE.Mesh {
-  const around = 180;
-  // Rings of the ridge's cross-section: distance out from the range's line, and share of the peak.
-  const profile = [[-160, 0], [-80, 0.45], [0, 1], [70, 0.6], [180, 0.1]] as const;
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const colour = new THREE.Color();
-  const rock = new THREE.Color(0x7d8580);
-  const foot = new THREE.Color(0x4f6b43);
-  const snow = new THREE.Color(0xf4f7fa);
-  const peakAt = (i: number) => {
-    const a = i / around;
-    const broad = smoothNoise(a * 9, range.seed, 500);
-    const sharp = smoothNoise(a * 37, range.seed, 501);
-    return range.low + (range.high - range.low) * (broad * 0.7 + sharp * 0.3);
-  };
-  for (let i = 0; i <= around; i++) {
-    const angle = (i / around) * Math.PI * 2;
-    const peak = peakAt(i % around);
-    for (const [offset, share] of profile) {
-      // Each ring wobbles a little so the slopes are not combed straight.
-      const wobble = (cellNoise(i % around, offset + 200, 502 + range.seed) - 0.5) * 30;
-      const radius = range.radius + offset + wobble;
-      const y = peak * share * (0.85 + cellNoise(i % around, offset + 300, 503) * 0.3);
-      positions.push(centre.x + Math.cos(angle) * radius, y - 4, centre.z + Math.sin(angle) * radius);
-      const height = y / range.high;
-      colour.copy(foot).lerp(rock, Math.min(1, height * 1.6));
-      if (range.snow && height > 0.62) colour.lerp(snow, Math.min(1, (height - 0.62) * 4));
-      colors.push(colour.r, colour.g, colour.b);
-    }
-  }
-  const index: number[] = [];
-  const rings = profile.length;
-  for (let i = 0; i < around; i++) {
-    for (let k = 0; k < rings - 1; k++) {
-      const a = i * rings + k;
-      const b = (i + 1) * rings + k;
-      index.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setIndex(index);
-  geometry.computeVertexNormals();
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
-  return new THREE.Mesh(geometry, material);
-}
-
-// The world tree: a landmark far to the north, taller than the mountains, seen from every zone.
+// The world tree: a landmark far to the north, towering over the forest, seen from every zone.
 const WORLD_TREE = { distance: 760, bearing: -Math.PI * 0.42, height: 380 };
 
 // A castle far out beyond the forest, where nobody can walk: the village tower model (see
@@ -194,7 +137,6 @@ export function buildVista(layout: LevelLayout, sprites: TreeSprites, library: M
   const group = new THREE.Group();
   const fillers = forestFillers(layout).map((f) => ({ ...f, y: landHeight(layout, f.x, f.z) }));
   group.add(buildLand(layout, centre), buildSpriteForest(sprites, [...fillers, ...farTrees(layout)]));
-  for (const range of RANGES) group.add(buildRange(centre, range));
   group.add(buildCastle(layout, library, centre));
   group.add(buildWorldTreeSprite(
     sprites,
