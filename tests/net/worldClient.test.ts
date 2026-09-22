@@ -102,3 +102,28 @@ describe("WorldClient pose rate", () => {
     expect((sent.at(-1) as { swing: number }).swing).toBe(60);
   });
 });
+
+describe("joining a room", () => {
+  it("tries again when the room server turns the connection away for a moment", async () => {
+    const { list: [a] } = await clients("test-a");
+    const transport = (a as unknown as { transport: { joinRoom: (id: string) => Promise<void> } }).transport;
+    const real = transport.joinRoom.bind(transport);
+    let failures = 2;
+    transport.joinRoom = async (id: string) => {
+      if (failures-- > 0) throw Object.assign(new Error("RS connection failed"), { terminal: false });
+      return real(id);
+    };
+    await a.enter();
+    expect(a.state.phase).toBe("in");
+  });
+
+  it("gives up at once on a terminal refusal", async () => {
+    const { list: [a] } = await clients("test-a");
+    const transport = (a as unknown as { transport: { joinRoom: (id: string) => Promise<void> } }).transport;
+    transport.joinRoom = async () => {
+      throw Object.assign(new Error("RS connection failed"), { terminal: true });
+    };
+    await a.enter();
+    expect(a.state.phase).toBe("error");
+  });
+});

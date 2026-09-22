@@ -37,6 +37,15 @@ const ENTER_PROBLEM: Record<string, string> = {
   unavailable: "월드에 들어가지 못했어요",
 };
 
+// A room server that would not take the connection: usually the network or a busy server.
+function enterProblem(error: string | null): string {
+  if (error && ENTER_PROBLEM[error]) return ENTER_PROBLEM[error];
+  if (error?.includes("RS connect") || error?.includes("RS:connect") || error?.includes("rs_connect_failed")) {
+    return "게임 서버에 연결하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.";
+  }
+  return `월드에 들어가지 못했어요 (${error})`;
+}
+
 // The world: enters on mount, shows the zone you are in (one WorldView per zone and channel), and
 // takes you through portals.
 export function WorldScreen({ client, playerClass, costume, name, owned, onExit }: WorldScreenProps) {
@@ -64,7 +73,8 @@ export function WorldScreen({ client, playerClass, costume, name, owned, onExit 
     return (
       <div className="overlay">
         <div className="solid-panel world-panel">
-          <p>{ENTER_PROBLEM[state.error ?? ""] ?? `월드에 들어가지 못했어요 (${state.error})`}</p>
+          <p>{enterProblem(state.error)}</p>
+          <button type="button" className="brush-button small" onClick={() => void client.enter()}>다시 시도</button>
           <button type="button" className="text-button" onClick={onExit}>메뉴로</button>
         </div>
       </div>

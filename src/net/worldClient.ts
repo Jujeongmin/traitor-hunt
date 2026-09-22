@@ -47,6 +47,9 @@ export const IDLE_POSE_MS = 1000;
 // Verse8 turns away more than 10 calls a second to one function, so no two poses leave closer than
 // this; a guard, attack or skill that comes sooner goes out with the next one.
 export const MIN_POSE_GAP_MS = 110;
+// Joining a room is tried this many times, waiting this much longer before each retry.
+const JOIN_ATTEMPTS = 4;
+const JOIN_RETRY_MS = 800;
 // Smaller changes than these count as standing still.
 const POSE_EPSILON = 0.01;
 
@@ -252,8 +255,19 @@ export class WorldClient {
   }
 
   // Joins the room the server picked and stands your character in it (Verse8 2.0: the client joins).
+  // Joining a room can fail for a moment (the room server busy, a network blip); the platform marks
+  // such failures as not terminal, and they are tried again a few times before giving up.
   private async moveTo(entry: ZoneEntry): Promise<void> {
-    await this.transport.joinRoom(entry.roomId);
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this.transport.joinRoom(entry.roomId);
+        break;
+      } catch (error) {
+        const terminal = (error as { terminal?: unknown } | null)?.terminal === true;
+        if (terminal || attempt >= JOIN_ATTEMPTS) throw error;
+        await new Promise((resolve) => setTimeout(resolve, JOIN_RETRY_MS * attempt));
+      }
+    }
     await this.transport.call("arrive");
     this.arrive(entry);
   }
