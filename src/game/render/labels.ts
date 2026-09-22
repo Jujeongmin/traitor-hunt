@@ -17,8 +17,10 @@ export function setLabel(sprite: THREE.Sprite, text: string, color = "#f0d9a8"):
     ctx.font = "600 30px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-    ctx.fillRect(0, 8, 256, 48);
+    // A dark rim instead of a plate behind the text, so less of the scene is covered.
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.strokeText(text, 128, 32);
     ctx.fillStyle = color;
     ctx.fillText(text, 128, 32);
   }

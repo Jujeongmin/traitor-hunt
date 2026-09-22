@@ -8,6 +8,12 @@ const FOLLOW_RATE = 12;
 // Without a death take, a fallen monster sinks into the ground over this long.
 const SINK_SECONDS = 0.8;
 const BAR_WIDTH = 0.9;
+// A blow pushes the model back this far, and it springs back at this rate.
+const KNOCK_DISTANCE = 0.35;
+const KNOCK_RETURN = 9;
+
+// What a frame's sync saw happen to a monster, for the view's numbers and puffs.
+export interface MonsterChange { damage: number; died: boolean }
 
 // How a monster model is drawn: its standing height in metres, an optional colour tint, and the
 // names of its clips (they differ from pack to pack). A null death means it just sinks away.
@@ -39,6 +45,10 @@ export class MonsterActor {
   private lastAttackReadyAt: number | null = null;
   private dead = false;
   private placed = false;
+  // The jolt of the last blow, springing back to nothing.
+  private readonly knock = new THREE.Vector3();
+  // Where the next blow comes from (set by the view before sync), to push away from.
+  private blowFrom: { x: number; z: number } | null = null;
 
   constructor(readonly id: string, readonly body: THREE.Object3D, clips: THREE.AnimationClip[], look: MonsterLook, private readonly maxHp = 100) {
     body.scale.setScalar(look.height / skinnedHeight(body));
@@ -74,7 +84,18 @@ export class MonsterActor {
     this.object.add(body, this.bar);
   }
 
-  sync(state: MonsterState, dt: number, camera: THREE.Camera | null): void {
+  // The spot the next blow comes from (a hunter), so the monster jolts away from it.
+  hitFrom(x: number, z: number): void {
+    this.blowFrom = { x, z };
+  }
+
+  // The model's height, for placing numbers over it.
+  get height(): number {
+    return this.bar.position.y;
+  }
+
+  sync(state: MonsterState, dt: number, camera: THREE.Camera | null): MonsterChange {
+    const change: MonsterChange = { damage: 0, died: false };
     const p = this.object.position;
     // Back from the dead: standing where it started.
     if (state.alive && this.dead) {
@@ -98,8 +119,17 @@ export class MonsterActor {
 
     if (this.lastHp !== null && state.hp < this.lastHp) {
       this.flashLeft = HIT_FLASH_SECONDS;
+      change.damage = this.lastHp - state.hp;
       playHit();
+      if (this.blowFrom) {
+        const away = new THREE.Vector3(p.x - this.blowFrom.x, 0, p.z - this.blowFrom.z);
+        if (away.lengthSq() > 1e-6) this.knock.copy(away.normalize().multiplyScalar(KNOCK_DISTANCE));
+      }
     }
+    this.blowFrom = null;
+    this.knock.multiplyScalar(Math.exp(-dt * KNOCK_RETURN));
+    this.body.position.x = this.knock.x;
+    this.body.position.z = this.knock.z;
     this.lastHp = state.hp;
     // Every attack pushes attackReadyAt forward, so a jump in it means the monster just swung.
     if (this.lastAttackReadyAt !== null && state.attackReadyAt > this.lastAttackReadyAt && state.alive) {
@@ -112,6 +142,7 @@ export class MonsterActor {
 
     if (!state.alive && !this.dead) {
       this.dead = true;
+      change.died = true;
       if (this.death) this.blender.fadeTo(this.death, 0.1);
       else this.sinkLeft = SINK_SECONDS;
     } else if (!this.dead && this.attackLeft === 0) {
@@ -134,5 +165,6 @@ export class MonsterActor {
       if (camera) this.bar.quaternion.copy(camera.quaternion);
     }
     this.mixer.update(dt);
+    return change;
   }
 }

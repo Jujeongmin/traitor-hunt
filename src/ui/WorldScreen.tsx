@@ -233,6 +233,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           <SkillBar hud={hud} playerClass={playerClass} onSkill={(slot) => view.current?.tapSkill(slot)} onPotion={() => view.current?.tapPotion()} />
           <QuestTracker client={client} bag={bag} seeking={hud.seeking} onSeek={(types) => view.current?.seekQuest(types)} />
           {!touch && <div className="crosshair" />}
+          {hud.hurt > 0 && <div className="hud-hurt" style={{ opacity: hud.hurt }} />}
           {hud.dead && (
             <div className="pain fallen">
               <div className="solid-panel world-panel">

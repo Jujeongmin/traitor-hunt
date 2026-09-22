@@ -57,6 +57,10 @@ const AUTO_HEAL_BELOW = 0.75;
 const AIM_ASSIST = Math.PI * 0.6;
 // No two skills go off closer together than this.
 const SKILL_GAP_MS = 900;
+// A monster's loss of health this soon after your skill hit it shows as a skill's big number.
+const SKILL_NUMBER_MS = 1500;
+// How long the red edge flash lasts after a blow.
+const HURT_FLASH_MS = 350;
 // How long a "+XP" note, and a note of gold or a drop, stays up.
 const GAIN_MS = 1500;
 const NOTE_MS = 3000;
@@ -93,6 +97,8 @@ export interface WorldHud {
   seeking: boolean;
   // The monster you are fighting.
   target: { name: string; hp: number; maxHp: number } | null;
+  // How strongly the screen's edge flashes red (0 to 1), just after a blow.
+  hurt: number;
   // Potions in the bag (Q drinks one), and what the last kills paid.
   potions: number;
   notes: string[];
@@ -154,6 +160,12 @@ export class WorldView {
   private gain: { xp: number; at: number } | null = null;
   private notes: { text: string; at: number }[] = [];
   private lastPotionAt = Number.NEGATIVE_INFINITY;
+  // Your health last frame, to show what a blow took; the monsters your last skill hit, whose next
+  // loss of health shows as a big number.
+  private lastHp: number | null = null;
+  private skillHits = new Map<string, number>();
+  // When you were last hurt, for the red flash at the screen's edge.
+  private hurtAt = Number.NEGATIVE_INFINITY;
   private frame = 0;
   private disposed = false;
 
@@ -190,8 +202,8 @@ export class WorldView {
     this.library = library;
     buildLevelScene(this.scene, library, this.layout);
     this.addPortals();
+    // Your own name stays off: the camera is right behind you and it would only cover the view.
     this.me = this.hero(this.options.playerClass, this.options.costume);
-    this.me.label(this.options.name, "#ffd9a0");
     this.clock.start();
     this.frame = requestAnimationFrame(this.tick);
   }
@@ -320,6 +332,7 @@ export class WorldView {
     if (here) this.client.reportPose(this.pose);
     this.checkPortals(here);
 
+    this.showHurt(state.me?.hp ?? null);
     this.syncActors(state.others, dt, dead);
     this.syncMonsters(state.monsters, dt);
     this.effects.update(dt);
@@ -439,7 +452,10 @@ export class WorldView {
     this.lastSlot = index;
     this.skills += 1;
     playSkill();
-    void this.client.useSkill(index, yaw).then((r) => this.gained(r));
+    void this.client.useSkill(index, yaw).then((r) => {
+      for (const id of r?.hit ?? []) this.skillHits.set(id, performance.now());
+      this.gained(r);
+    });
     return yaw;
   }
 
@@ -535,12 +551,23 @@ export class WorldView {
       }
       entry.actor.label(`Lv${other.look.level} ${other.look.job ? `${other.look.job} ` : ""}${other.look.name}`);
       entry.actor.sync(other.pose, "active", dt);
+      entry.actor.fadeLabel(this.camera.position.distanceTo(entry.actor.object.position));
     }
     for (const [account, entry] of this.others) {
       if (seen.has(account)) continue;
       this.scene.remove(entry.actor.object);
       this.others.delete(account);
     }
+  }
+
+  // What a blow took off you, in red over your head, with a flash at the screen's edge.
+  private showHurt(hp: number | null): void {
+    if (hp !== null && this.lastHp !== null && hp < this.lastHp && this.me) {
+      const at = new THREE.Vector3(this.pose.x, 2.1, this.pose.z);
+      this.effects.floatText(at, `-${Math.round(this.lastHp - hp)}`, "#ff5a4a");
+      this.hurtAt = performance.now();
+    }
+    this.lastHp = hp;
   }
 
   private syncMonsters(monsters: Record<string, MonsterState>, dt: number): void {
@@ -554,7 +581,18 @@ export class WorldView {
         this.monsters.set(id, actor);
         this.scene.add(actor.object);
       }
-      actor.sync(state, dt, this.camera);
+      if (!state.alive) this.skillHits.delete(id);
+      // Blows come from the nearest hunter; near you, that is almost always you.
+      actor.hitFrom(this.pose.x, this.pose.z);
+      const change = actor.sync(state, dt, this.camera);
+      const at = new THREE.Vector3(actor.object.position.x, actor.height + 0.2, actor.object.position.z);
+      if (change.damage > 0) {
+        const skillAt = this.skillHits.get(id);
+        const big = skillAt !== undefined && performance.now() - skillAt < SKILL_NUMBER_MS;
+        if (big) this.skillHits.delete(id);
+        this.effects.floatText(at, String(Math.round(change.damage)), big ? "#ffb347" : "#fff4dc", big);
+      }
+      if (change.died) this.effects.burst(new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z), 0xfff1c9);
     }
     for (const [id, actor] of this.monsters) {
       if (monsters[id]) continue;
@@ -625,6 +663,7 @@ export class WorldView {
       seeking: this.auto && this.questSeek !== null,
       target: fighting?.alive ? { name: `Lv${MONSTERS[fighting.type].level} ${MONSTERS[fighting.type].name}`, hp: fighting.hp, maxHp: MONSTERS[fighting.type].hp } : null,
       potions: (this.client.state.bag?.bag.potion_small ?? 0) + (this.client.state.bag?.bag.potion_big ?? 0),
+      hurt: Math.max(0, 1 - (now - this.hurtAt) / HURT_FLASH_MS),
       notes: this.notes.map((n) => n.text),
     };
     for (const listener of this.hudListeners) listener(hud);

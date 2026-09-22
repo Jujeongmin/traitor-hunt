@@ -33,6 +33,8 @@ const SHOT_HEIGHT = 0.9;
 // An attack or skill holds you in place this long (at most its clip); moving after that cuts the rest
 // of the clip short, so a hero never slides along the ground mid-swing.
 const ATTACK_COMMIT = 0.45;
+const LABEL_NEAR = 10;
+const LABEL_FAR = 28;
 // A pause this long between swings starts a combo over.
 const COMBO_RESET_SECONDS = 1.4;
 const SKILL_COMMIT = 0.8;
@@ -73,7 +75,7 @@ export class PlayerActor {
   readonly object: THREE.Object3D;
   private readonly body: THREE.Object3D;
   private readonly animated: Animated | null;
-  private readonly tag = createLabel(1.8);
+  private readonly tag = createLabel(1.3);
   private tagText = "";
   private placed = false;
   private dead = false;
@@ -93,7 +95,7 @@ export class PlayerActor {
   constructor(readonly account: string, model: PlayerModel | null) {
     this.body = model?.object ?? placeholderBody();
     this.object = new THREE.Group();
-    this.tag.position.y = PLAYER_HEIGHT + 0.35;
+    this.tag.position.y = PLAYER_HEIGHT + 0.3;
     this.object.add(this.body, this.tag);
     this.animated = model ? PlayerActor.animate(model) : null;
     this.rig = model?.rig ?? null;
@@ -107,6 +109,14 @@ export class PlayerActor {
   // Whether an attack or skill still holds this hero in place.
   get rooted(): boolean {
     return this.commitLeft > 0 && !this.dead;
+  }
+
+  // Names fade out between these distances from the camera, so a crowd does not fill the screen.
+  fadeLabel(distance: number): void {
+    const material = this.tag.material;
+    const shown = this.tagText.length > 0 && distance < LABEL_FAR;
+    this.tag.visible = shown;
+    if (shown) material.opacity = distance <= LABEL_NEAR ? 1 : 1 - (distance - LABEL_NEAR) / (LABEL_FAR - LABEL_NEAR);
   }
 
   // The name over the head; empty hides it.
