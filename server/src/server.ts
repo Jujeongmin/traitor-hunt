@@ -8,6 +8,7 @@ import {
 import { rollLoot } from "../../src/game/world/monsters";
 import { QUESTS, QUEST_START, countKills, questDone } from "../../src/game/account/quests";
 import { ADVANCE_LEVEL, JOBS, readJob } from "../../src/game/combat/jobs";
+import { TALK_RANGE, TALK_SLACK, npcSpot, type NpcId } from "../../src/game/world/npcs";
 import { CHARACTERS_PER_WORLD, characterView, type Character } from "../../src/game/account/characters";
 import { FULL_GAME_PRODUCT, readPurchaseEvent } from "../../src/game/account/purchase";
 import { isFreeClass, readClass } from "../../src/game/combat/classes";
@@ -173,9 +174,12 @@ function readItem(value: unknown): ItemId {
   return id;
 }
 
-// The shop is in the village.
-function requireVillage(): void {
+// The shop and the quests are kept by people in the village: you must be there, standing by them.
+async function requireNpc(id: NpcId): Promise<void> {
   if (currentChannel().zone !== START_ZONE) throw new RuleViolation("not_in_village");
+  const pose = (await $room.getMyState()).pose;
+  const spot = npcSpot(id);
+  if (!isPose(pose) || Math.hypot(pose.x - spot.x, pose.z - spot.z) > TALK_RANGE + TALK_SLACK) throw new RuleViolation("not_near");
 }
 
 // The caller's channel room, from inside it.
@@ -449,7 +453,7 @@ export class Server {
   async buyItem(id: unknown, count?: unknown): Promise<BagView> {
     const item = readItem(id);
     const n = readCount(count);
-    requireVillage();
+    await requireNpc("merchant");
     const price = ITEMS[item].price;
     if (price === null) throw new RuleViolation("unavailable");
     const account = $sender.account;
@@ -469,7 +473,7 @@ export class Server {
   async sellItem(id: unknown, count?: unknown): Promise<BagView> {
     const item = readItem(id);
     const n = readCount(count);
-    requireVillage();
+    await requireNpc("merchant");
     const account = $sender.account;
     await playing(account);
     const next = await updateActive(account, (c) => ({ ...c, bag: addItem(c.bag, item, -n) }));
@@ -495,6 +499,7 @@ export class Server {
   async claimQuest(): Promise<BagView> {
     const account = $sender.account;
     await playing(account);
+    await requireNpc("elder");
     let paid = 0;
     const next = await updateActive(account, (c) => {
       if (!questDone(c.quest)) throw new RuleViolation("quest_unfinished");

@@ -2,12 +2,14 @@ import { ITEMS, sellPrice } from "../../src/game/account/items";
 import { WEAPONS } from "../../src/game/combat/classes";
 import { MONSTERS, maxHpAt } from "../../src/game/world/monsters";
 import { portalsOf, zoneLayout } from "../../src/game/world/zones";
-import { enterAs, errorOf, join, makeCharacter, walkTo } from "./helpers";
+import { enterAs, errorOf, join, makeCharacter, toNpc, walkTo } from "./helpers";
 
-// A character standing in the village, in the world.
+// A character standing in the village, by the merchant.
 async function inVillage(server: any, account = "test-a"): Promise<any> {
   await makeCharacter(server, account, `상인${account.slice(-1)}`);
-  return enterAs(server, account);
+  const entry = await enterAs(server, account);
+  await toNpc(server, "merchant");
+  return entry;
 }
 
 async function toForest(server: any, account: string, from: any): Promise<any> {
@@ -44,8 +46,11 @@ describe("bag and gold", () => {
     expect((await server.getBag()).gold).toBe(result.gold);
   });
 
-  test("the shop is in the village, and wants the gold up front", async (server) => {
+  test("the shop is the merchant's, in the village, and wants the gold up front", async (server) => {
     const village = await inVillage(server);
+    await walkTo(server, zoneLayout("village").playerSpawn.x, zoneLayout("village").playerSpawn.z);
+    expect(await errorOf(server.buyItem("potion_small"))).toContain("not_near");
+    await toNpc(server, "merchant");
     expect(await errorOf(server.buyItem("potion_small"))).toContain("not_enough_gold");
     expect(await errorOf(server.buyItem("weapon_3"))).toContain("unavailable");
     await $asset.mint("gold", 100);

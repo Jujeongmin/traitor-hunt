@@ -5,7 +5,7 @@ import { SKILLS } from "../../src/game/combat/skills";
 import { WEAPONS } from "../../src/game/combat/classes";
 import { MONSTERS, maxHpAt } from "../../src/game/world/monsters";
 import { portalsOf, zoneLayout } from "../../src/game/world/zones";
-import { enterAs, errorOf, giveXp, join, makeCharacter, walkTo } from "./helpers";
+import { enterAs, errorOf, giveXp, join, makeCharacter, toNpc, walkTo } from "./helpers";
 
 // XP that puts a character at the start of a level (see account/level.ts).
 function xpFor(level: number): number {
@@ -88,7 +88,7 @@ describe("quests", () => {
   test("kills of the asked kind count, and the reward comes once it is done", async (server) => {
     await hunter(server, "test-a", 1);
     const first = QUESTS[0];
-    expect(await errorOf(server.claimQuest())).toContain("quest_unfinished");
+    expect(await errorOf(server.claimQuest())).toContain("not_in_village");
     await ring("rat", 3);
     await server.useSkill(0);
     expect((await server.getBag()).quest).toEqual({ index: 0, count: 0 });
@@ -99,6 +99,14 @@ describe("quests", () => {
     const done = await server.getBag();
     expect(done.quest).toEqual({ index: 0, count: first.count });
     const xpBefore = (await server.getAccount()).xp;
+    // Reported to the elder, in the village.
+    expect(await errorOf(server.claimQuest())).toContain("not_in_village");
+    const forest = $sender.roomId;
+    const portal = portalsOf("forest1").find((p) => p.to === "village")!;
+    await walkTo(server, portal.x, portal.z);
+    await join(server, "test-a", await server.travel("village"), forest);
+    expect(await errorOf(server.claimQuest())).toContain("not_near");
+    await toNpc(server, "elder");
     const claimed = await server.claimQuest();
     expect(claimed.quest).toEqual({ index: 1, count: 0 });
     expect(claimed.gold).toBeGreaterThanOrEqual(first.gold);

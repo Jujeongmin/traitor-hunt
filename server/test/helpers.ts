@@ -1,3 +1,5 @@
+import { npcSpot } from "../../src/game/world/npcs";
+
 export const PLAYERS = ["test-a", "test-b", "test-c", "test-d"];
 
 export async function errorOf(promise: Promise<unknown>): Promise<string> {
@@ -38,6 +40,12 @@ export async function join(server: any, account: string, entry: { roomId: string
 export async function enterAs(server: any, account: string): Promise<any> {
   server.connect({ account });
   return join(server, account, await server.enterWorld());
+}
+
+// Stands the caller next to a village NPC (the shop's merchant, the quests' elder).
+export async function toNpc(server: any, id: "merchant" | "elder"): Promise<void> {
+  const spot = npcSpot(id);
+  await walkTo(server, spot.x + 1, spot.z);
 }
 
 // Moves the caller straight to (x, z), as a long walk would: the last pose is made old enough that

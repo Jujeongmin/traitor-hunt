@@ -16,8 +16,9 @@ import { groundAt, platformBlocks } from "../rules/platforms";
 import { chaseCamera } from "../rules/chaseCamera";
 import { BOSS_MOVES, MONSTERS, ZONE_BOSS, ZONE_MONSTERS, type MonsterState, type MonsterType } from "../world/monsters";
 import type { Point2 } from "../rules/levelLayout";
+import { NPCS, npcNear, npcSpot, type NpcId } from "../world/npcs";
 import type { Pose } from "../world/types";
-import { PORTAL_RADIUS, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
+import { PORTAL_RADIUS, START_ZONE, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
 import { playShot, playSkill, playSwing } from "../audio/sfx";
 import { costumeById, type Costume } from "./costumes";
 import { Effects } from "./effects";
@@ -55,6 +56,8 @@ const STUCK_DISTANCE = 0.6;
 const STUCK_REROUTE_MS = 1200;
 const STUCK_GIVE_UP_MS = 4000;
 const UNREACHABLE_MS = 10_000;
+// A walk to an NPC ends this close to them.
+const TALK_ARRIVE = 2.2;
 // A route's corner counts as reached this close.
 const WAYPOINT_REACH = 1.2;
 // A heal is used on its own once health falls below this share.
@@ -102,6 +105,8 @@ export interface WorldHud {
   auto: boolean;
   // Auto-battle is hunting for a quest's monsters.
   seeking: boolean;
+  // The village NPC you are standing by, to talk to.
+  npc: { id: NpcId; name: string; role: string } | null;
   // The monster you are fighting.
   target: { name: string; hp: number; maxHp: number } | null;
   // How strongly the screen's edge flashes red (0 to 1), just after a blow.
@@ -121,6 +126,8 @@ export interface WorldViewOptions {
   onProgress?: (done: number, total: number) => void;
   // Walking into a portal asks to go through.
   onTravel: (to: ZoneId) => void;
+  // Talking to a village NPC (E, the pad's button, or arriving where you were sent).
+  onTalk: (id: NpcId) => void;
 }
 
 // One zone of the open world on screen: the forest and its portals, you (over the shoulder) and the
@@ -136,6 +143,9 @@ export class WorldView {
   private readonly effects = new Effects(this.scene);
   private readonly others = new Map<string, { actor: PlayerActor; key: string }>();
   private readonly monsters = new Map<string, MonsterActor>();
+  private readonly npcs: { id: NpcId; actor: PlayerActor; at: Point2; yaw: number }[] = [];
+  // Where you were sent to walk (to an NPC), and whom to talk to on arrival.
+  private walkGoal: { to: Point2; talk: NpcId | null } | null = null;
   private readonly hudListeners = new Set<(hud: WorldHud) => void>();
   private readonly layout: LevelLayout;
   private readonly portals: Portal[];
@@ -214,13 +224,18 @@ export class WorldView {
     this.addPortals();
     // Your own name stays off: the camera is right behind you and it would only cover the view.
     this.me = this.hero(this.options.playerClass, this.options.costume);
+    if (this.options.entry.zone === START_ZONE) this.addNpcs();
     this.clock.start();
     this.frame = requestAnimationFrame(this.tick);
   }
 
   // For checking the game from the browser console in development.
-  debugHandle(): { pose: () => Pose; setPose: (p: { x: number; z: number; yaw?: number }) => void } {
+  debugHandle(): {
+    pose: () => Pose; setPose: (p: { x: number; z: number; yaw?: number }) => void; npcs: () => unknown; zone: string;
+  } {
     return {
+      zone: this.options.entry.zone,
+      npcs: () => this.npcs.map((n) => ({ id: n.id, at: n.at, shown: n.actor.object.visible, pos: n.actor.object.position.toArray() })),
       pose: () => ({ ...this.pose }),
       setPose: (p) => {
         this.pose = { x: p.x, z: p.z, yaw: p.yaw ?? this.yaw };
@@ -251,7 +266,21 @@ export class WorldView {
     this.auto = true;
   }
 
-  // The on-screen buttons: a skill or the potion by tap, a jump.
+  // Walks you to a village NPC and opens the talk on arrival (the quest tracker's report).
+  walkToNpc(id: NpcId): void {
+    if (this.options.entry.zone !== START_ZONE) return;
+    this.walkGoal = { to: npcSpot(id), talk: id };
+    this.auto = false;
+    this.questSeek = null;
+    this.route = null;
+  }
+
+  // The on-screen buttons: a skill or the potion by tap, a jump, talking to the NPC close by.
+  talk(): void {
+    const id = npcNear(this.pose.x, this.pose.z);
+    if (id) this.options.onTalk(id);
+  }
+
   tapSkill(slot: number): void {
     this.input.press(SKILL_KEYS[slot]);
   }
@@ -304,6 +333,7 @@ export class WorldView {
     // Mid-swing you stand still (and turn only through the attack itself).
     const rooted = this.me?.rooted === true;
     const potion = this.input.consumePress("KeyQ");
+    if (this.input.consumePress("KeyE")) this.talk();
     const autoPotion = this.auto && settings().autoPotion && !!state.me && state.me.hp < state.me.maxHp * AUTO_POTION_BELOW;
     if (here && (potion || autoPotion)) this.drinkPotion();
     let facingYaw = this.yaw;
@@ -312,9 +342,13 @@ export class WorldView {
       for (const m of Object.values(state.monsters)) {
         if (m.alive) this.bodies.push({ x: m.x, z: m.z, r: PLAYER_BODY + MONSTERS[m.type].body });
       }
+      for (const npc of this.npcs) this.bodies.push({ x: npc.at.x, z: npc.at.z, r: PLAYER_BODY * 2 });
       const speed = WALK_SPEED * (this.input.blocking ? GUARD_WALK : 1);
       const move = this.input.moveInput();
-      const chase = this.auto && move.forward === 0 && move.strafe === 0 ? this.autoChase(state.monsters) : null;
+      const idle = move.forward === 0 && move.strafe === 0;
+      // Your own steps cancel a walk you were sent on.
+      if (!idle) this.walkGoal = null;
+      const chase = idle && this.walkGoal ? this.walkTo(this.walkGoal) : this.auto && idle ? this.autoChase(state.monsters) : null;
       if (rooted) {
         facingYaw = chase ? chase.yaw : this.pose.yaw;
       } else if (chase) {
@@ -404,6 +438,39 @@ export class WorldView {
     if (!points || points.length === 0) return { yaw: this.yawTo(m), walk: true };
     while (points.length > 1 && this.distanceTo(points[0]) < WAYPOINT_REACH) points.shift();
     return { yaw: this.yawTo(points[0]), walk: true };
+  }
+
+  // Heading for a spot you were sent to: straight when clear, by the route otherwise. On arrival the
+  // walk ends (and the talk it was for opens).
+  private walkTo(goal: { to: Point2; talk: NpcId | null }): { yaw: number; walk: boolean } | null {
+    if (this.distanceTo(goal.to) <= TALK_ARRIVE) {
+      this.walkGoal = null;
+      this.route = null;
+      if (goal.talk) this.options.onTalk(goal.talk);
+      return null;
+    }
+    if (lineClear(this.layout, this.pose, goal.to, PLAYER_RADIUS + 0.1)) return { yaw: this.yawTo(goal.to), walk: true };
+    const now = performance.now();
+    if (!this.route || now - this.route.at > ROUTE_MS) {
+      const points = gridRoute(this.layout, this.pose, goal.to);
+      this.route = points ? { points, at: now } : null;
+    }
+    const points = this.route?.points;
+    if (!points || points.length === 0) return { yaw: this.yawTo(goal.to), walk: true };
+    while (points.length > 1 && this.distanceTo(points[0]) < WAYPOINT_REACH) points.shift();
+    return { yaw: this.yawTo(points[0]), walk: true };
+  }
+
+  // The village's people: each a hero in their own costume, their name and role in gold overhead,
+  // standing still and turned toward where you arrive.
+  private addNpcs(): void {
+    const spawn = this.layout.playerSpawn;
+    for (const npc of NPCS) {
+      const at = npcSpot(npc.id);
+      const actor = this.hero(npc.playerClass, costumeById(npc.costume) ?? this.options.costume);
+      actor.label(`${npc.name} · ${npc.role}`, "#ffd36a");
+      this.npcs.push({ id: npc.id, actor, at, yaw: Math.atan2(-(spawn.x - at.x), -(spawn.z - at.z)) });
+    }
   }
 
   // How long auto-battle has been walking without getting anywhere, in ms.
@@ -570,6 +637,10 @@ export class WorldView {
     if (!this.library) return;
     // The camera sits behind you, so your own body is drawn from your local pose.
     this.me?.sync(this.pose, dead ? "dead" : "active", dt);
+    for (const npc of this.npcs) {
+      npc.actor.sync({ x: npc.at.x, z: npc.at.z, yaw: npc.yaw }, "active", dt);
+      npc.actor.fadeLabel(this.camera.position.distanceTo(npc.actor.object.position));
+    }
     const seen = new Set<string>();
     for (const other of others) {
       seen.add(other.account);
@@ -702,6 +773,11 @@ export class WorldView {
       gain: this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : null,
       auto: this.auto,
       seeking: this.auto && this.questSeek !== null,
+      npc: (() => {
+        const id = npcNear(this.pose.x, this.pose.z);
+        const npc = id ? NPCS.find((n) => n.id === id)! : null;
+        return npc ? { id: npc.id, name: npc.name, role: npc.role } : null;
+      })(),
       target: fighting?.alive ? { name: `Lv${MONSTERS[fighting.type].level} ${MONSTERS[fighting.type].name}`, hp: fighting.hp, maxHp: MONSTERS[fighting.type].hp } : null,
       potions: (this.client.state.bag?.bag.potion_small ?? 0) + (this.client.state.bag?.bag.potion_big ?? 0),
       hurt: Math.max(0, 1 - (now - this.hurtAt) / HURT_FLASH_MS),

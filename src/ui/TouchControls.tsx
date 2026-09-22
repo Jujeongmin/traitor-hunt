@@ -86,13 +86,16 @@ export function TouchStick({ controls }: { controls: FpsInput }) {
 interface PadButtonsProps {
   controls: FpsInput;
   auto: boolean;
+  // Someone to talk to close by: then a talk button shows.
+  talkTo: string | null;
   onJump: () => void;
   onAuto: () => void;
+  onTalk: () => void;
 }
 
 // The round buttons at the bottom right, on every device: attack (held for a flurry), guard, jump
 // and auto-battle.
-export function PadButtons({ controls, auto, onJump, onAuto }: PadButtonsProps) {
+export function PadButtons({ controls, auto, talkTo, onJump, onAuto, onTalk }: PadButtonsProps) {
   useEffect(() => () => {
     controls.setVirtualFiring(false);
     controls.setVirtualBlocking(false);
@@ -112,6 +115,7 @@ export function PadButtons({ controls, auto, onJump, onAuto }: PadButtonsProps) 
       <button type="button" className="touch-button attack" {...hold((on) => controls.setVirtualFiring(on))}>공격</button>
       <button type="button" className="touch-button" {...hold((on) => controls.setVirtualBlocking(on))}>막기</button>
       <button type="button" className="touch-button" onPointerDown={onJump}>점프</button>
+      {talkTo && <button type="button" className="touch-button talk" onClick={onTalk}>대화</button>}
       <button type="button" className={`touch-button auto${auto ? " on" : ""}`} onClick={onAuto}>
         {auto ? "자동\n중" : "자동\n전투"}
       </button>
