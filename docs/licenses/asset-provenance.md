@@ -133,7 +133,9 @@ digital media"에 넣는 것을 허락하고 Unity 엔진을 조건으로 두지
 | ultimate-monsters | Ultimate Monsters — https://quaternius.com/packs/ultimatemonsters.html | Quaternius | CC0 1.0 | 일반 몬스터(mon_green_blob·mushnub·goleling·bat), 보스(mon_mushroom_king), ~~마을 NPC~~ (사람 모델로 교체, 아래 줄) |
 | ultimate-characters | Ultimate Animated Character Pack (2019-11) — https://quaternius.com/packs/ultimatedanimatedcharacter.html | Quaternius | CC0 1.0 (받은 폴더의 License.txt) | 마을 NPC: npc_merchant = OldClassy_Male, npc_elder = OldClassy_Female (glTF의 Skin 색이 검게 나와 게임에서 색을 덮어씀) |
 | ultimate-monsters (FBX-20260921T060420Z zip) | Quaternius 애니메이션 동물 FBX(Rat·Frog·Snake·Spider·Wasp) | Quaternius | CC0 1.0 (같이 받은 License 파일 4개 모두 CC0 1.0) | 숲 몬스터(mon_rat·frog·snake·spider·wasp) |
+| medieval-village | Medieval Village MegaKit [Standard] — https://quaternius.com (Reroll-Beasts/art-src/q-medieval-village에서 복사, 2026-08-31 받음) | Quaternius | CC0 1.0 (License_Standard.txt) | 마을 집 3종(bld_house_tall·long·small): 벽·지붕·문·창 조각을 `scripts/build-houses.mjs`가 조립, 텍스처는 512px webp로 줄임 |
 
 변환: `npm run import-gltf`(scripts/gltf-list.json의 glTF → art-src/_glb) 다음 `npm run models`.
+마을 집은 `node scripts/build-houses.mjs`(art-src/medieval-village/glTF 조각 → art-src/_glb/bld_*.glb) 다음 `npm run models`.
 동물 5종은 FBX라 Unity(`unity/ExportGlb.cs`, `embeddedClips`)로 GLB를 뽑았다. 같은 때 받은 Bestiary - Dungeon Monsters Kit는
 애니메이션이 없고 QAL 라이선스라 쓰지 않았다.

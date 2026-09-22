@@ -48,7 +48,8 @@ for (const file of readdirSync(srcDir).filter((f) => f.endsWith(".glb"))) {
     dedup(),
     resample(),
     prune({ keepLeaves: skinned }),
-    textureCompress({ encoder: sharp, targetFormat: "webp", resize: [1024, 1024] }),
+    // The village houses are big and seen from afar: their kit textures are cut down further.
+    textureCompress({ encoder: sharp, targetFormat: "webp", resize: name.startsWith("bld_") ? [512, 512] : [1024, 1024] }),
   ];
   // Static kit pieces stay unquantized so their raw geometry can be instanced later.
   if (skinned) steps.push(quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12, quantizeWeight: 8 }));

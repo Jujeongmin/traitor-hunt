@@ -1,5 +1,5 @@
 import { TILE_SIZE, parseLevel, type LevelLayout, type Point2 } from "../rules/levelLayout";
-import { fieldMap } from "./fieldMap";
+import { fieldMap, type House } from "./fieldMap";
 
 // The open world: a village, two forest fields and the boss's clearing, joined by portals (O cells).
 // Each zone runs as channels of at most CHANNEL_CAPACITY players (one Verse8 room each). The
@@ -18,16 +18,27 @@ export interface Zone {
   map: string[];
   // Where each O leads, in reading order.
   portals: ZoneId[];
+  // The houses standing in it (their cells are in the map as h).
+  houses?: House[];
 }
+
+// The village's houses, round the square (see scripts/build-houses.mjs for the models).
+const VILLAGE_HOUSES: House[] = [
+  { model: "bld_house_tall", at: [10, 5], face: "S" },
+  { model: "bld_house_long", at: [20, 3], face: "S" },
+  { model: "bld_house_small", at: [24, 15], face: "N" },
+  { model: "bld_house_tall", at: [12, 19], face: "N" },
+  { model: "bld_house_small", at: [4, 9], face: "E" },
+];
 
 // The fields are wide open country (drawn by fieldMap from a few numbers): about 200 by 140 metres
 // of meadow and groves between walls of forest, the village a little smaller.
 export const ZONES: Record<ZoneId, Zone> = {
   village: {
-    id: "village", name: "초록숲 마을", paid: false, minLevel: 1, portals: ["forest1"],
+    id: "village", name: "초록숲 마을", paid: false, minLevel: 1, portals: ["forest1"], houses: VILLAGE_HOUSES,
     map: fieldMap({
       cols: 34, rows: 26, seed: 3, spawn: [14, 13], portals: [{ side: "E", at: 13 }],
-      monsters: 0, groves: 5, edge: 2, props: "cBCHcBcC",
+      monsters: 0, groves: 5, edge: 2, props: "cBCHcBcC", houses: VILLAGE_HOUSES,
     }),
   },
   forest1: {

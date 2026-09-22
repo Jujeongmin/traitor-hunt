@@ -78,6 +78,9 @@ const NOTE_MS = 3000;
 const AUTO_POTION_BELOW = 0.35;
 const POTION_GAP_MS = 1000;
 
+// How far a house model is turned for its door to face each way (it is built facing +z, south).
+const HOUSE_YAW = { S: 0, E: Math.PI / 2, N: Math.PI, W: -Math.PI / 2 } as const;
+
 // The monster models a zone needs.
 function zoneMonsterModels(zone: ZoneId): string[] {
   const types: MonsterType[] = [...ZONE_MONSTERS[zone]];
@@ -221,12 +224,16 @@ export class WorldView {
   async start(): Promise<void> {
     const library = await ModelLibrary.load();
     const npcModels = this.options.entry.zone === START_ZONE ? NPC_MODELS : [];
-    await library.preload([...WORLD_MODELS, ...zoneMonsterModels(this.options.entry.zone), ...npcModels], this.options.onProgress);
+    const houseModels = [...new Set((ZONES[this.options.entry.zone].houses ?? []).map((h) => h.model))];
+    await library.preload(
+      [...WORLD_MODELS, ...zoneMonsterModels(this.options.entry.zone), ...npcModels, ...houseModels], this.options.onProgress,
+    );
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
     buildLevelScene(this.scene, library, this.layout);
     this.addPortals();
+    this.addHouses();
     // Your own name stays off: the camera is right behind you and it would only cover the view.
     this.me = this.hero(this.options.playerClass, this.options.costume);
     if (this.options.entry.zone === START_ZONE) this.addNpcs();
@@ -468,6 +475,18 @@ export class WorldView {
 
   // The village's people, each their own model, their name and role in gold overhead, standing
   // turned toward where you arrive.
+  // The zone's houses, each in the middle of its 2 by 2 block of cells, door the way it faces.
+  private addHouses(): void {
+    const t = this.layout.tileSize;
+    for (const house of ZONES[this.options.entry.zone].houses ?? []) {
+      const object = this.library!.instance(house.model);
+      object.position.set((house.at[0] + 1) * t, 0, (house.at[1] + 1) * t);
+      // The model's door faces +z (south).
+      object.rotation.y = HOUSE_YAW[house.face];
+      this.scene.add(object);
+    }
+  }
+
   private addNpcs(): void {
     const library = this.library!;
     const spawn = this.layout.playerSpawn;

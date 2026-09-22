@@ -7,6 +7,8 @@ export interface LevelLayout {
   cols: number;
   rows: number;
   solid: boolean[][];
+  // The solid cells that are forest (the rest are houses): only these grow trees.
+  forest: boolean[][];
   playerSpawn: Point2;
   // Where monsters stand (phase 2), and the boss.
   zombieSpawns: Point2[];
@@ -19,9 +21,10 @@ export interface LevelLayout {
 
 export const TILE_SIZE = 4;
 
-// # forest; everything else is ground: P spawn, Z monster, K boss, O portal, c B C H platforms.
+// # forest, h a house's cell; everything else is ground: P spawn, Z monster, K boss, O portal,
+// c B C H platforms.
 const FLOOR_SYMBOLS = new Set([".", "P", "Z", "K", "O", "c", "B", "C", "H"]);
-const SOLID_SYMBOLS = new Set(["#"]);
+const SOLID_SYMBOLS = new Set(["#", "h"]);
 
 export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   const cols = rows[0]?.length ?? 0;
@@ -34,6 +37,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
 
   const center = (c: number, r: number): Point2 => ({ x: (c + 0.5) * tileSize, z: (r + 0.5) * tileSize });
   const solid = rows.map((row) => [...row].map((ch) => SOLID_SYMBOLS.has(ch)));
+  const forest = rows.map((row) => [...row].map((ch) => ch === "#"));
 
   const zombieSpawns: Point2[] = [];
   const platforms: Platform[] = [];
@@ -56,7 +60,7 @@ export function parseLevel(rows: string[], tileSize: number): LevelLayout {
   });
 
   if (!playerSpawn) throw new Error("level has no player spawn (P)");
-  return { tileSize, cols, rows: rows.length, solid, playerSpawn, zombieSpawns, bossSpawn, platforms, portals };
+  return { tileSize, cols, rows: rows.length, solid, forest, playerSpawn, zombieSpawns, bossSpawn, platforms, portals };
 }
 
 export function solidAt(layout: LevelLayout, x: number, z: number): boolean {

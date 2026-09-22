@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { solidAt } from "../../src/game/rules/levelLayout";
+import { natureLayout } from "../../src/game/rules/nature";
 import {
   START_ZONE, ZONES, ZONE_IDS, arrivalFrom, channelRoomId, portalsOf, readChannelRoom, readZone, zoneLayout,
 } from "../../src/game/world/zones";
@@ -52,6 +53,34 @@ describe("zones", () => {
     }
     expect(zoneLayout("forest1").zombieSpawns.length).toBeGreaterThanOrEqual(20);
     expect(zoneLayout("boss").bossSpawn).not.toBeNull();
+  });
+
+  it("builds the village's houses: solid blocks with open ground round them and nothing growing on them", () => {
+    const layout = zoneLayout("village");
+    const houses = ZONES.village.houses ?? [];
+    expect(houses.length).toBeGreaterThan(0);
+    const pieces = natureLayout(layout);
+    for (const { at: [c, r] } of houses) {
+      for (let dr = 0; dr <= 1; dr++) {
+        for (let dc = 0; dc <= 1; dc++) {
+          expect(layout.solid[r + dr][c + dc]).toBe(true);
+          expect(layout.forest[r + dr][c + dc]).toBe(false);
+        }
+      }
+      // The ring round the block is open ground, so no house walls anything in.
+      for (let dr = -1; dr <= 2; dr++) {
+        for (let dc = -1; dc <= 2; dc++) {
+          if (dr >= 0 && dr <= 1 && dc >= 0 && dc <= 1) continue;
+          expect(layout.solid[r + dr][c + dc]).toBe(false);
+        }
+      }
+      const onBlock = pieces.filter((p) => {
+        const pc = Math.floor(p.x / layout.tileSize);
+        const pr = Math.floor(p.z / layout.tileSize);
+        return pc >= c && pc <= c + 1 && pr >= r && pr <= r + 1;
+      });
+      expect(onBlock).toEqual([]);
+    }
   });
 
   it("keeps the village and the first field free", () => {

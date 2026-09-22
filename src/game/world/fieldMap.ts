@@ -25,6 +25,15 @@ export interface FieldSpec {
   edge: number;
   // Things to stand on (see platforms.ts), placed on open ground in turn.
   props: string;
+  // Houses, each on a 2 by 2 block of cells with open ground round it.
+  houses?: House[];
+}
+
+// A house: its model, the top-left cell of its block, and which way its door faces.
+export interface House {
+  model: string;
+  at: [number, number];
+  face: Side;
 }
 
 // Open ground this many cells round the spawn, the portals and the boss stays clear of trees.
@@ -104,7 +113,15 @@ export function fieldMap(spec: FieldSpec): string[] {
     road(spec.boss[0], spec.boss[1], sc, sr);
   }
 
-  // Open ground walled off from the spawn by groves becomes forest too: nobody can reach it.
+  // Houses: their blocks and a ring round them cleared, then the blocks built on.
+  for (const { at: [hc, hr] } of spec.houses ?? []) {
+    for (let r = hr; r <= hr + 1; r++) for (let c = hc; c <= hc + 1; c++) clearAround(c, r, 1);
+  }
+  for (const { at: [hc, hr] } of spec.houses ?? []) {
+    for (let r = hr; r <= hr + 1; r++) for (let c = hc; c <= hc + 1; c++) set(c, r, "h");
+  }
+
+  // Open ground walled off from the spawn by groves (or houses) becomes forest too: nobody can reach it.
   const reach = new Set<string>([`${sc},${sr}`]);
   const queue: [number, number][] = [[sc, sr]];
   while (queue.length > 0) {
@@ -112,13 +129,13 @@ export function fieldMap(spec: FieldSpec): string[] {
     for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nc = c + dc;
       const nr = r + dr;
-      if (inside(nc, nr) && grid[nr][nc] !== "#" && !reach.has(`${nc},${nr}`)) {
+      if (inside(nc, nr) && grid[nr][nc] !== "#" && grid[nr][nc] !== "h" && !reach.has(`${nc},${nr}`)) {
         reach.add(`${nc},${nr}`);
         queue.push([nc, nr]);
       }
     }
   }
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (!reach.has(`${c},${r}`)) grid[r][c] = "#";
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (!reach.has(`${c},${r}`) && grid[r][c] !== "h") grid[r][c] = "#";
 
   for (const [pc, pr] of portals) grid[pr][pc] = "O";
   grid[sr][sc] = "P";

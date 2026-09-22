@@ -45,7 +45,7 @@ const FILLER_BORDER = 5;
 
 export function forestFillers(layout: LevelLayout): Filler[] {
   const t = layout.tileSize;
-  const solid = (c: number, r: number) => c < 0 || r < 0 || c >= layout.cols || r >= layout.rows || layout.solid[r][c];
+  const solid = (c: number, r: number) => c < 0 || r < 0 || c >= layout.cols || r >= layout.rows || layout.forest[r][c];
   const out: Filler[] = [];
   for (let r = -FILLER_BORDER; r < layout.rows + FILLER_BORDER; r++) {
     for (let c = -FILLER_BORDER; c < layout.cols + FILLER_BORDER; c++) {
@@ -86,8 +86,10 @@ function between(range: readonly number[], noise: number): number {
 export function natureLayout(layout: LevelLayout): NaturePiece[] {
   const t = layout.tileSize;
   const inside = (c: number, r: number) => c >= 0 && r >= 0 && c < layout.cols && r < layout.rows;
-  // Outside the map counts as solid: the forest goes on.
-  const solid = (c: number, r: number) => !inside(c, r) || layout.solid[r][c];
+  // Outside the map counts as solid: the forest goes on. A house's cells are neither forest nor
+  // ground to plant on.
+  const solid = (c: number, r: number) => !inside(c, r) || layout.forest[r][c];
+  const built = (c: number, r: number) => inside(c, r) && layout.solid[r][c] && !layout.forest[r][c];
   const key = (c: number, r: number) => `${c},${r}`;
   const busy = new Set<string>();
   for (const p of [
@@ -165,7 +167,7 @@ export function natureLayout(layout: LevelLayout): NaturePiece[] {
         }
         continue;
       }
-      if (busy.has(key(c, r))) continue;
+      if (busy.has(key(c, r)) || built(c, r)) continue;
       const plants = Math.floor(cellNoise(c, r, 80) * 2.4);
       for (let i = 0; i < plants; i++) {
         place(pick(GROUND_PLANTS, cellNoise(c, r, 81 + i)), 0.8 + cellNoise(c, r, 120 + i) * 0.5, cellNoise(c, r, 110 + i) * Math.PI * 2, (k) => ({

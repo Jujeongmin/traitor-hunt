@@ -54,7 +54,7 @@ function buildGround(layout: LevelLayout): THREE.Mesh {
   const openAt = (x: number, z: number) => {
     const c = Math.floor(x / t);
     const r = Math.floor(z / t);
-    return c >= 0 && r >= 0 && c < layout.cols && r < layout.rows && !layout.solid[r][c];
+    return c >= 0 && r >= 0 && c < layout.cols && r < layout.rows && !layout.forest[r][c];
   };
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i);

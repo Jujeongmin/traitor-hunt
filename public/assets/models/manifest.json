@@ -1,5 +1,20 @@
 {
   "models": {
+    "bld_house_long": {
+      "url": "assets/models/bld_house_long.glb",
+      "bytes": 701440,
+      "animations": []
+    },
+    "bld_house_small": {
+      "url": "assets/models/bld_house_small.glb",
+      "bytes": 455236,
+      "animations": []
+    },
+    "bld_house_tall": {
+      "url": "assets/models/bld_house_tall.glb",
+      "bytes": 609044,
+      "animations": []
+    },
     "chest_closed": {
       "url": "assets/models/chest_closed.glb",
       "bytes": 477632,
