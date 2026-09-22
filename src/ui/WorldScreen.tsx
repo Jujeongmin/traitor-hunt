@@ -27,6 +27,7 @@ const TRAVEL_PROBLEM: Record<string, string> = {
   not_owned: "정식판을 구매하면 들어갈 수 있는 구역이에요",
   zone_full: "모든 채널이 가득 찼어요. 잠시 뒤 다시 시도해 주세요",
   not_near: "포털 가까이 서 주세요",
+  too_low: "레벨이 모자라요",
 };
 
 const ENTER_PROBLEM: Record<string, string> = {
@@ -188,7 +189,9 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           )}
           {hud.portal && (
             <div className="hud-prompt band">
-              {hud.portal.locked ? `${hud.portal.to} — 정식판이 필요해요` : `${hud.portal.to}(으)로 가는 길`}
+              {hud.portal.locked ? `${hud.portal.to} — 정식판이 필요해요`
+                : hud.portal.needLevel ? `${hud.portal.to} — Lv${hud.portal.needLevel}부터 갈 수 있어요`
+                  : `${hud.portal.to}(으)로 가는 길`}
             </div>
           )}
           {showProblem && <div className="hud-error band">{problem.text}</div>}

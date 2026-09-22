@@ -80,6 +80,7 @@ async function playing(account: string): Promise<Character> {
 // the room and calls arrive, which puts you there.
 async function enter(account: string, character: Character, zone: ZoneId, x: number, z: number): Promise<ZoneEntry> {
   if (ZONES[zone].paid && !(await ownsFullGame(account))) throw new RuleViolation("not_owned");
+  if (levelOf(character.xp).level < ZONES[zone].minLevel) throw new RuleViolation("too_low");
   const { roomId, channel } = await pickChannel(character.world, zone, account);
   await saveSpot(account, { zone, x, z });
   await $global.updateUserState(account, { activity: "world" });
@@ -312,7 +313,10 @@ export class Server {
     const character = await playing(account);
     const spot = returnSpot(character.spot);
     const owned = await ownsFullGame(account);
-    if (spot && (!ZONES[spot.zone].paid || owned)) return enter(account, character, spot.zone, spot.x, spot.z);
+    const level = levelOf(character.xp).level;
+    if (spot && (!ZONES[spot.zone].paid || owned) && level >= ZONES[spot.zone].minLevel) {
+      return enter(account, character, spot.zone, spot.x, spot.z);
+    }
     const home = zoneLayout(START_ZONE).playerSpawn;
     return enter(account, character, START_ZONE, home.x, home.z);
   }

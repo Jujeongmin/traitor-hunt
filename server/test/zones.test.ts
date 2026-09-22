@@ -1,5 +1,5 @@
 import { CHANNEL_CAPACITY, arrivalFrom, portalsOf, zoneLayout } from "../../src/game/world/zones";
-import { enterAs, errorOf, join, makeCharacter, walkTo } from "./helpers";
+import { enterAs, errorOf, giveXp, join, makeCharacter, walkTo } from "./helpers";
 
 // A real wallet account: it does not play for free like the test- accounts.
 const BUYER = "0x1111111111111111111111111111111111111111";
@@ -84,11 +84,14 @@ describe("portals", () => {
     expect(await errorOf(server.travel("moon"))).toContain("no_zone");
   });
 
-  test("the second field needs the full game", async (server) => {
+  test("the second field needs the full game and level 10", async (server) => {
     await makeCharacter(server, BUYER, "구매자");
     const field = await through(server, BUYER, await enterAs(server, BUYER), "forest1");
     expect(await errorOf(through(server, BUYER, field, "forest2"))).toContain("not_owned");
-    await server.$onItemPurchased({ account: BUYER, purchaseId: 7, productId: "full-game", quantity: 1 });
+    await server.$onItemPurchased({ account: BUYER, purchaseId: 6, productId: "full-game", quantity: 1 });
+    server.connect({ account: BUYER, roomId: field.roomId });
+    expect(await errorOf(through(server, BUYER, field, "forest2"))).toContain("too_low");
+    await giveXp(BUYER, 20_000);
     server.connect({ account: BUYER, roomId: field.roomId });
     expect((await through(server, BUYER, field, "forest2")).zone).toBe("forest2");
   });

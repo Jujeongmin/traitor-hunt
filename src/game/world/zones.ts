@@ -11,6 +11,8 @@ export interface Zone {
   name: string;
   // Needs the full game bought.
   paid: boolean;
+  // The level a character needs to go in.
+  minLevel: number;
   // # forest, . ground, P where you appear when nothing else says, O a portal, Z a monster's spot,
   // K the boss's spot, c B C H things to stand on (see levelLayout.ts).
   map: string[];
@@ -22,28 +24,28 @@ export interface Zone {
 // of meadow and groves between walls of forest, the village a little smaller.
 export const ZONES: Record<ZoneId, Zone> = {
   village: {
-    id: "village", name: "초록숲 마을", paid: false, portals: ["forest1"],
+    id: "village", name: "초록숲 마을", paid: false, minLevel: 1, portals: ["forest1"],
     map: fieldMap({
       cols: 34, rows: 26, seed: 3, spawn: [14, 13], portals: [{ side: "E", at: 13 }],
       monsters: 0, groves: 5, edge: 2, props: "cBCHcBcC",
     }),
   },
   forest1: {
-    id: "forest1", name: "숲 필드 1", paid: false, portals: ["village", "forest2"],
+    id: "forest1", name: "숲 필드 1", paid: false, minLevel: 1, portals: ["village", "forest2"],
     map: fieldMap({
       cols: 50, rows: 36, seed: 11, spawn: [5, 18], portals: [{ side: "W", at: 18 }, { side: "E", at: 17 }],
       monsters: 24, groves: 16, edge: 3, props: "cBcCcB",
     }),
   },
   forest2: {
-    id: "forest2", name: "숲 필드 2", paid: true, portals: ["forest1", "boss"],
+    id: "forest2", name: "숲 필드 2", paid: true, minLevel: 10, portals: ["forest1", "boss"],
     map: fieldMap({
       cols: 50, rows: 36, seed: 29, spawn: [5, 17], portals: [{ side: "W", at: 17 }, { side: "N", at: 38 }],
       monsters: 26, groves: 20, edge: 3, props: "cBcCH",
     }),
   },
   boss: {
-    id: "boss", name: "버섯왕의 공터", paid: true, portals: ["forest2"],
+    id: "boss", name: "버섯왕의 공터", paid: true, minLevel: 25, portals: ["forest2"],
     map: fieldMap({
       cols: 30, rows: 30, seed: 47, spawn: [15, 25], portals: [{ side: "S", at: 15 }],
       monsters: 0, boss: [15, 11], groves: 4, edge: 3, props: "cc",

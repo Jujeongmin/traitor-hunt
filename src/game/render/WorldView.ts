@@ -75,7 +75,8 @@ function zoneMonsterModels(zone: ZoneId): string[] {
 export interface WorldHud {
   zone: string;
   channel: number;
-  portal: { to: string; locked: boolean } | null;
+  // A locked portal needs the full game or, failing that, a level.
+  portal: { to: string; locked: boolean; needLevel: number | null } | null;
   // Keys 1 to 3; a skill above your level shows the level it opens at.
   skills: { name: string; readyInMs: number; cooldownMs: number; level: number; open: boolean }[];
   blocking: boolean;
@@ -560,7 +561,7 @@ export class WorldView {
   // Each portal: a glowing ring on the ground, a column of light, and the name of where it leads.
   private addPortals(): void {
     for (const portal of this.portals) {
-      const locked = ZONES[portal.to].paid && !this.options.owned;
+      const locked = (ZONES[portal.to].paid && !this.options.owned) || levelOf(this.client.state.me?.xp ?? 0).level < ZONES[portal.to].minLevel;
       const color = locked ? 0xff8a5c : 0x8fe3ff;
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(PORTAL_RADIUS - 0.25, PORTAL_RADIUS, 40).rotateX(-Math.PI / 2),
@@ -574,7 +575,8 @@ export class WorldView {
       column.position.set(portal.x, 1.5, portal.z);
       const label = createLabel(2.6);
       label.position.set(portal.x, 3.3, portal.z);
-      setLabel(label, `${ZONES[portal.to].name}${locked ? " (정식판)" : ""}`, locked ? "#ffb08a" : "#bff0ff");
+      const why = ZONES[portal.to].paid && !this.options.owned ? " (정식판)" : locked ? ` (Lv${ZONES[portal.to].minLevel})` : "";
+      setLabel(label, `${ZONES[portal.to].name}${why}`, locked ? "#ffb08a" : "#bff0ff");
       this.scene.add(ring, column, label);
     }
   }
@@ -593,7 +595,10 @@ export class WorldView {
       zone: ZONES[entry.zone].name,
       channel: entry.channel,
       portal: near && near.d <= PORTAL_REARM + 2
-        ? { to: ZONES[near.portal.to].name, locked: ZONES[near.portal.to].paid && !this.options.owned }
+        ? {
+          to: ZONES[near.portal.to].name, locked: ZONES[near.portal.to].paid && !this.options.owned,
+          needLevel: level.level < ZONES[near.portal.to].minLevel ? ZONES[near.portal.to].minLevel : null,
+        }
         : null,
       skills: SKILLS[this.options.playerClass].map((skill, i) => ({
         name: skill.name, cooldownMs: skill.cooldownMs, level: skill.level, open: level.level >= skill.level,
