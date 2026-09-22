@@ -3,6 +3,8 @@ import { typing } from "../game/render/FpsInput";
 import { ChatBox } from "./ChatBox";
 import { SmithPanel } from "./SmithPanel";
 import { DeathPanel } from "./DeathPanel";
+import { PowerSaveScreen } from "./PowerSaveScreen";
+import { useWakeLock } from "./useWakeLock";
 import { playMusic } from "../game/audio/music";
 import { trackFor } from "../game/audio/musicTrack";
 import type { PlayerClass } from "../game/combat/classes";
@@ -185,9 +187,14 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     // One view per zone: the key on this component remounts it for a new entry.
   }, []);
 
-  // The menu buttons fold away behind one; each has its key. Escape closes whatever is open, else
-  // unfolds or folds the buttons.
+  // The menu buttons fold away behind one (M); each has its key. Escape closes whatever is open, else
+  // folds or unfolds the buttons too (while the mouse is captured the browser keeps the first Escape
+  // to let it go, so M is the menu's key).
   const [menuOpen, setMenuOpen] = useState(false);
+  // Power saving (절전): a dark summary over the world, which goes on undrawn.
+  const [saving, setSaving] = useState(false);
+  useEffect(() => view.current?.setPowerSave(saving), [saving]);
+  useWakeLock();
   const open = useRef({ panel, menu });
   open.current = { panel, menu };
   const toggle = (next: Panel) => {
@@ -200,6 +207,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     { id: "skills", label: "스킬", key: "K", code: "KeyK", act: () => toggle("skills"), on: panel === "skills" },
     { id: "forge", label: "대장간", key: "U", code: "KeyU", act: () => toggle("smith"), on: panel === "smith" },
     { id: "bag", label: "가방", key: "I", code: "KeyI", act: () => toggle("bag"), on: panel === "bag" },
+    { id: "sleep", label: "절전", key: "B", code: "KeyB", act: () => setSaving((on) => !on), on: saving },
     {
       id: "menu", label: "설정", key: "P", code: "KeyP",
       act: () => {
@@ -217,6 +225,12 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
     if (!questDone(bag.quest)) view.current?.seekQuest(quest.targets);
     else if (inVillage) view.current?.walkToNpc("elder");
   };
+  // A clicked button lets go of the focus at once, or Space (jump) and Enter (chat) would press it again.
+  useEffect(() => {
+    const release = (e: MouseEvent) => (e.target as HTMLElement | null)?.closest?.("button")?.blur();
+    document.addEventListener("click", release);
+    return () => document.removeEventListener("click", release);
+  }, []);
   const keys = useRef(menuItems);
   keys.current = menuItems;
   useEffect(() => {
@@ -226,6 +240,10 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         if (open.current.menu) setMenu(false);
         else if (open.current.panel) setPanel(null);
         else setMenuOpen((o) => !o);
+        return;
+      }
+      if (e.code === "KeyM") {
+        setMenuOpen((o) => !o);
         return;
       }
       if (e.code === "KeyJ") {
@@ -273,7 +291,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
             <button type="button" className={`hud-icon-button${menuOpen ? " on" : ""}`} onClick={() => setMenuOpen((o) => !o)}>
               <img src={iconFor("ui_more") ?? undefined} alt="" draggable={false} />
               <span>메뉴</span>
-              {!touch && <kbd className="hud-key">Esc</kbd>}
+              {!touch && <kbd className="hud-key">M</kbd>}
             </button>
           </div>
           {hud.notes.length > 0 && (
@@ -317,6 +335,11 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
           <ChatBox client={client} touch={touch} />
           {!touch && <div className="crosshair" />}
           {hud.hurt > 0 && <div className="hud-hurt" style={{ opacity: hud.hurt }} />}
+          {saving && (
+            <PowerSaveScreen
+              client={client} hud={hud} bag={bag} onWake={() => setSaving(false)}
+            />
+          )}
           {hud.dead && (
             <DeathPanel client={client} level={hud.level} lostXp={hud.lostXp} gold={bag?.gold ?? null} travelling={travelling} />
           )}
@@ -326,7 +349,7 @@ function ZoneScreen({ entry, client, playerClass, costume, name, owned, travelli
         <div className="menu-modal" onClick={() => setMenu(false)}>
           <div className="solid-panel world-panel" onClick={(e) => e.stopPropagation()}>
             <h2>메뉴</h2>
-            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · E 대화 · R 자동 전투 · J 퀘스트 찾아가기/보고 · Enter 채팅 · Esc 메뉴 펼치기 · O 랭킹 · L 퀘스트 · K 스킬 창 · U 대장간 · I 가방 · P 설정 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
+            <p className="note">WASD 이동 · 스페이스 점프 · 마우스 시점 · 좌클릭 공격 · 우클릭 막기 · 1~3 스킬 · Q 물약 · E 대화 · R 자동 전투 · J 퀘스트 찾아가기/보고 · Enter 채팅 · M 메뉴 펼치기 · Esc 창 닫기 · O 랭킹 · L 퀘스트 · K 스킬 창 · U 대장간 · I 가방 · B 절전 모드 · P 설정 · 스킬 창에서 배운 스킬을 칸으로 끌어 넣기 · 칸을 아래로 끌면 자동 전투가 씀 · 퀘스트를 누르면 찾아감</p>
             <button type="button" className="brush-button" onClick={() => setMenu(false)}>계속하기</button>
             <button type="button" className="brush-button" onClick={() => setSettings(true)}>설정</button>
             <button type="button" className="brush-button" onClick={onExit}>메뉴로 나가기</button>

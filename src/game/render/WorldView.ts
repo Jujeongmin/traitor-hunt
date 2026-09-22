@@ -337,8 +337,24 @@ export class WorldView {
 
   private tick = (): void => {
     this.frame = requestAnimationFrame(this.tick);
+    if (this.powerSave) {
+      // Power saving: nothing drawn, and the game stepped only as often as in a hidden tab.
+      const now = performance.now();
+      if (now - this.lastSavedStep < BACKGROUND_STEP_MS) return;
+      this.lastSavedStep = now;
+      this.step(Math.min(this.clock.getDelta(), BACKGROUND_MAX_DT), false);
+      return;
+    }
     this.step(Math.min(this.clock.getDelta(), 0.1), true);
   };
+
+  private powerSave = false;
+  private lastSavedStep = 0;
+
+  // Power saving (절전): the screen shows a summary instead of the world, which goes on undrawn.
+  setPowerSave(on: boolean): void {
+    this.powerSave = on;
+  }
 
   // A hidden tab gets no animation frames: then a worker's timer steps the game (moving, fighting,
   // potions, poses to the server) without drawing it, so auto-battle goes on while you look elsewhere.

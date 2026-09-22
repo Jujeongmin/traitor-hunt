@@ -737,3 +737,19 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .death-panel .note { font-size: 12px; color: var(--ink-dim); text-align: center; }
 
 .hud-quest > .hud-key { top: -6px; right: -6px; }
+
+/* Power saving (절전): a dark screen with the hunt's summary, over the undrawn world. */
+.power-save {
+  position: absolute; inset: 0; z-index: 30; background: #050403; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; user-select: none;
+}
+.power-save-title { font: 800 22px var(--font-head); color: #ffd36a; }
+.power-save-zone { font-size: 13px; color: var(--ink-dim); }
+.power-save-vitals { width: 240px; display: flex; flex-direction: column; gap: 6px; font: 700 14px var(--font-head); }
+.power-save-stats { display: grid; grid-template-columns: 90px 120px; gap: 6px 14px; margin: 0; font-size: 14px; }
+.power-save-stats dt { color: var(--ink-dim); }
+.power-save-stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.power-save-stats dd.on { color: #9dffb0; }
+.power-save-stats dd.off { color: var(--ink-dim); }
+.power-save-warn { margin: 0; color: var(--blood); font: 700 14px var(--font-head); }
+.power-save-hint { font-size: 12px; color: rgba(242, 232, 213, 0.4); }

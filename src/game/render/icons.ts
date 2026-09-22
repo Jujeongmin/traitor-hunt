@@ -370,7 +370,7 @@ const cache = new Map<string, string>();
 const ICON_FILES: Record<string, string> = {
   ui_forge: "assets/ui/icons/forge.png", ui_more: "assets/ui/icons/menu.png",
   pad_attack: "assets/ui/icons/pad_attack.png", pad_block: "assets/ui/icons/pad_block.png", pad_jump: "assets/ui/icons/pad_jump.png",
-  pad_auto: "assets/ui/icons/pad_auto.png", pad_talk: "assets/ui/icons/pad_talk.png",
+  pad_auto: "assets/ui/icons/pad_auto.png", pad_talk: "assets/ui/icons/pad_talk.png", ui_sleep: "assets/ui/icons/sleep.png",
 };
 
 export function iconFor(id: string): string | null {
