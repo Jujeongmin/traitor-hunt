@@ -692,3 +692,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .smith-note.bad { color: var(--blood); }
 .smith-row { flex-wrap: wrap; }
 .smith-row > b { flex: 1; }
+
+/* No browser scrollbars anywhere: panels still scroll by wheel, drag and touch. */
+* { scrollbar-width: none; }
+::-webkit-scrollbar { display: none; }

@@ -1,5 +1,8 @@
-// Pixel-art icons for the skills, the potions and the gear, drawn here as 12 x 12 grids and rendered
-// to images once (no files to load). One letter per pixel; see PALETTE.
+import { ITEMS } from "../account/items";
+import { publicUrl } from "../assets/publicUrl";
+
+// Pixel-art icons for the skills and the menu buttons, drawn here as 12 x 12 grids and rendered to
+// images once (no files to load). One letter per pixel; see PALETTE. Items have picture files (iconFor).
 
 const PALETTE: Record<string, string> = {
   k: "#1a1412", w: "#fff6e6", s: "#b9c0c8", S: "#6b7078", t: "#f2cf9a",
@@ -11,106 +14,6 @@ const PALETTE: Record<string, string> = {
 export const ICON_SIZE = 12;
 
 const ICONS: Record<string, string[]> = {
-  // Materials for the smith: a blue whetstone, a slime's jelly, a skein of spider silk, a golem's
-  // glowing heart-stone and the Mushroom King's spores.
-  stone: [
-    "............",
-    "............",
-    "....kkkk....",
-    "..kkcbbbkk..",
-    ".kcbbbbbBBk.",
-    ".kbbcbbbBBk.",
-    "kbbbbbbBBBBk",
-    "kbbbbBBBBBBk",
-    ".kBBBBBBBBk.",
-    "..kkBBBBkk..",
-    "....kkkk....",
-    "............",
-  ],
-  jelly: [
-    "............",
-    "............",
-    ".....kk.....",
-    "....kggk....",
-    "...kgwggk...",
-    "..kgwggggk..",
-    ".kggggggGGk.",
-    ".kgggggGGGk.",
-    "kggggGGGGGGk",
-    "kGGGGGGGGGGk",
-    ".kkkkkkkkkk.",
-    "............",
-  ],
-  silk: [
-    "............",
-    "...kkkkkk...",
-    "..kwwwwwwk..",
-    ".kwsswwsswk.",
-    ".kwwwsswwwk.",
-    ".kwsswwsswk.",
-    ".kwwwsswwwk.",
-    ".kwsswwsswk.",
-    "..kwwwwwwk..",
-    "...kkkkkk...",
-    ".....ks.....",
-    "......kk....",
-  ],
-  core: [
-    "............",
-    "....kkkk....",
-    "...kKKKKk...",
-    "..kKKooKKk..",
-    ".kKKoyyoKKk.",
-    ".kKoyyyyoKk.",
-    ".kKoyyyyoKk.",
-    ".kKKoyyoKKk.",
-    "..kKKooKKk..",
-    "...kKKKKk...",
-    "....kkkk....",
-    "............",
-  ],
-  spore: [
-    "............",
-    ".....kk.....",
-    "..k.kppk.k..",
-    ".kpkpPPpkpk.",
-    ".kPPPPPPPPk.",
-    "..kkkwwkkk..",
-    "....kwwk....",
-    "..k.kwwk.k..",
-    ".kpk.kk.kpk.",
-    ".kPk....kPk.",
-    "..k......k..",
-    "............",
-  ],
-  potion_small: [
-    "....kkkk....",
-    "....ksSk....",
-    "....ksSk....",
-    "...kknnkk...",
-    "..kwccccck..",
-    "..kcrrrrck..",
-    ".kcrrRrrrck.",
-    ".krrRRRrrRk.",
-    ".krrRRRRRRk.",
-    ".kRRRRRRRRk.",
-    "..kRRRRRRk..",
-    "...kkkkkk...",
-  ],
-  potion_big: [
-    "....kkkk....",
-    "....kyYk....",
-    "...kkyYkk...",
-    "..kwcccccck.",
-    ".kccrrrrrcck",
-    ".kcrrRrrrrck",
-    "kcrrRRRrrrrk",
-    "krrRRRRRrrRk",
-    "krrRRRRRRRRk",
-    "kRRyYYYyRRRk",
-    ".kRRRRRRRRk.",
-    "..kkkkkkkk..",
-  ],
   // Warrior: a sword swung round, a charging cut, the ground struck.
   warrior_0: [
     "...kkkkkk...",
@@ -454,50 +357,21 @@ const ICONS: Record<string, string[]> = {
     "............",
     "............",
   ],
-  // Gear: a sword and a chestplate; the tier picks the metal (see iconFor).
-  weapon: [
-    "..........k.",
-    ".........kwk",
-    "........kwmk",
-    ".......kwmk.",
-    "......kwmk..",
-    ".....kwmk...",
-    "..k.kwmk....",
-    "..kkwmk.....",
-    "..kymkk.....",
-    ".kykkyk.....",
-    "knk..kk.....",
-    "kk..........",
-  ],
-  armor: [
-    "..kk....kk..",
-    ".kmmkkkkmmk.",
-    "kmmmmwwmmmmk",
-    "kmkmmwwmmkmk",
-    "kkkmmmmmmkkk",
-    "..kmmwmmmk..",
-    "..kmmmmmmk..",
-    "..kmmwmmmk..",
-    "..kmmmmmmk..",
-    "..kmmmmmmk..",
-    "...kmmmmk...",
-    "....kkkk....",
-  ],
 };
 
 // The metal of each gear tier: the letter m in the gear grids.
-const METAL: Record<string, string> = { "1": "#9c7a4c", "2": "#b9c0c8", "3": "#ffd24a", "4": "#7fa6c9", "5": "#a0724f" };
-
 const cache = new Map<string, string>();
 
 // The icon for a skill (by class and slot), a potion or an item of gear (by id), as an image URL.
 // Null where there is no canvas (tests).
+// Items (potions, gear, materials) are pictures from the 496 RPG icons pack (Henrique Lazarini, CC0),
+// one file each under assets/ui/items; everything else is drawn from the grids above.
 export function iconFor(id: string): string | null {
+  if (id in ITEMS) return publicUrl(`assets/ui/items/${id}.png`);
   if (typeof document === "undefined") return null;
   const cached = cache.get(id);
   if (cached) return cached;
-  const tier = /^(weapon|armor)_(\d)$/.exec(id);
-  const rows = ICONS[tier ? tier[1] : id];
+  const rows = ICONS[id];
   if (!rows) return null;
   const canvas = document.createElement("canvas");
   canvas.width = ICON_SIZE;
@@ -506,7 +380,7 @@ export function iconFor(id: string): string | null {
   if (!ctx) return null;
   rows.forEach((row, y) => {
     [...row].forEach((ch, x) => {
-      const colour = ch === "m" ? METAL[tier?.[2] ?? "2"] : PALETTE[ch];
+      const colour = PALETTE[ch];
       if (!colour) return;
       ctx.fillStyle = colour;
       ctx.fillRect(x, y, 1, 1);
@@ -527,5 +401,5 @@ export function iconGrids(): Record<string, string[]> {
 }
 
 export function knownIconLetters(): Set<string> {
-  return new Set([...Object.keys(PALETTE), "m", "."]);
+  return new Set([...Object.keys(PALETTE), "."]);
 }
