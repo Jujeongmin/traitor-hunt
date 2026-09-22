@@ -181,12 +181,28 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
   display: flex; gap: 8px; align-items: flex-start;
 }
-.hud-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.hud-slot { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 /* A square slot, like a hotbar's: the icon fills it, the key sits in a corner. */
 .hud-cell {
   position: relative; width: 56px; height: 56px; border-radius: 6px; overflow: hidden; cursor: pointer;
   background: rgba(14, 11, 9, 0.85); border: 2px solid rgba(255, 179, 90, 0.55);
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.5); touch-action: none; user-select: none;
+  transition: transform 0.18s ease-out;
+}
+.hud-cell.pulling { transition: none; }
+/* Sitting lower with a shimmering band along its foot: auto-battle may use this one. */
+.hud-cell-glow { position: absolute; left: 0; right: 0; bottom: 0; height: 0; pointer-events: none; }
+.hud-cell.auto { border-color: var(--ember); }
+.hud-cell.auto .hud-cell-glow {
+  height: 6px;
+  background: linear-gradient(90deg, rgba(255, 179, 90, 0.35), #ffe9b8, rgba(255, 179, 90, 0.35));
+  background-size: 200% 100%;
+  box-shadow: 0 0 10px 2px rgba(255, 200, 120, 0.7);
+  animation: hud-glow 1.6s linear infinite;
+}
+@keyframes hud-glow {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 .hud-cell img { position: absolute; inset: 6px; width: 44px; height: 44px; image-rendering: pixelated; }
 .hud-cell.locked { border-color: rgba(255, 255, 255, 0.15); }
@@ -198,11 +214,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .hud-cell-corner { position: absolute; right: 4px; bottom: 2px; font: 700 13px var(--font-head); color: var(--ink); text-shadow: var(--shadow); }
 .hud-cell-cooling { position: absolute; left: 0; right: 0; top: 0; background: rgba(0, 0, 0, 0.6); pointer-events: none; }
 .hud-cell-name { font: 600 11px var(--font-head); color: var(--ink); text-shadow: var(--shadow); white-space: nowrap; }
-.hud-auto-mark {
-  font: 600 11px var(--font-head); color: var(--ink-dim); background: rgba(14, 11, 9, 0.7); border: 1px dashed rgba(255, 255, 255, 0.35);
-  border-radius: 6px; padding: 2px 10px; cursor: pointer;
-}
-.hud-auto-mark.on { color: #1a120b; background: var(--ember); border-color: var(--ember); }
 /* The quest you are on, at the right, half way down. */
 .hud-quest {
   position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: 240px; padding: 8px 12px;
