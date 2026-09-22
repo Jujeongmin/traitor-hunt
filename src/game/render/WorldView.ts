@@ -22,7 +22,8 @@ import type { Pose } from "../world/types";
 import { PORTAL_RADIUS, START_ZONE, ZONES, ZONE_IDS, portalsOf, zoneLayout, type Portal, type ZoneEntry, type ZoneId } from "../world/zones";
 import { playCue, preloadCues } from "../audio/sfx";
 import { costumeById, type Costume } from "./costumes";
-import { Effects } from "./effects";
+import { ARROW_MODEL, Effects, type ShotKind } from "./effects";
+import { magicCircle } from "./magicCircle";
 import { FpsInput } from "./FpsInput";
 import { HEROES, HERO_MODELS } from "./heroes";
 import { createLabel, setLabel } from "./labels";
@@ -34,7 +35,22 @@ import { PlayerActor } from "./PlayerActor";
 import { QUALITY, hotbarFor, onSettings, settings } from "../../ui/settings";
 
 export const LOOK_SENSITIVITY = 0.0022;
-export const WORLD_MODELS = [...new Set([...LEVEL_MODELS, ...HERO_MODELS])];
+// A portal is a summoning circle (Magic Summoning Circle, CityBuildingKit, CC0).
+const PORTAL_MODEL = "fx_summon_circle";
+// The circle comes without its pictures: its parts are coloured here (stone, the runed plate, wood).
+const PORTAL_PAINT: [string, number, number][] = [["Summoning", 0x7fb6e8, 0x2a5f9e], ["Wood", 0x8a5a2b, 0], ["", 0x9aa0a8, 0]];
+
+function paintPortal(object: THREE.Object3D): THREE.Object3D {
+  object.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const old = mesh.material as THREE.Material;
+    const [, color, glow] = PORTAL_PAINT.find(([name]) => old.name.includes(name))!;
+    mesh.material = new THREE.MeshStandardMaterial({ color, emissive: glow, roughness: 0.9 });
+  });
+  return object;
+}
+export const WORLD_MODELS = [...new Set([...LEVEL_MODELS, ...HERO_MODELS, ARROW_MODEL, PORTAL_MODEL])];
 
 // Outdoors nothing roofs the camera in; this only keeps it from flying off.
 const SKY_CEILING = 30;
@@ -164,6 +180,7 @@ export class WorldView {
   private readonly resizeObserver: ResizeObserver;
   private resizeFrame = 0;
   private library: ModelLibrary | null = null;
+  private readonly portalGlows: THREE.Object3D[] = [];
   private me: PlayerActor | null = null;
   private pose: Pose;
   private air: Airborne = GROUNDED;
@@ -243,6 +260,7 @@ export class WorldView {
     // React StrictMode mounts twice; the first view may be gone by now.
     if (this.disposed) return;
     this.library = library;
+    this.effects.useModels(library);
     this.lod = buildLevelScene(this.scene, library, this.layout, this.renderer, this.doorways());
     this.addPortals();
     this.addHouses();
@@ -259,7 +277,7 @@ export class WorldView {
   debugHandle(): {
     pose: () => Pose; setPose: (p: { x: number; z: number; yaw?: number }) => void; npcs: () => unknown; zone: string;
     drawn: () => { calls: number; triangles: number; geometries: number; textures: number };
-    heaviest: () => [string, number][];
+    heaviest: () => [string, number][]; shoot: (kind: ShotKind, turn?: number) => void;
   } {
     return {
       zone: this.options.entry.zone,
@@ -280,6 +298,8 @@ export class WorldView {
       },
       npcs: () => this.npcs.map((n) => ({ id: n.id, at: n.at, shown: n.actor.object.visible, pos: n.actor.object.position.toArray() })),
       pose: () => ({ ...this.pose }),
+      // A shot from where you stand, the way you face, to see the effect.
+      shoot: (kind, turn = 0) => this.effects.shoot(kind, new THREE.Vector3(this.pose.x, 1.1, this.pose.z), this.yaw + turn, 20),
       setPose: (p) => {
         this.pose = { x: p.x, z: p.z, yaw: p.yaw ?? this.yaw };
         if (p.yaw !== undefined) this.yaw = p.yaw;
@@ -472,7 +492,8 @@ export class WorldView {
     this.showHurt(state.me?.hp ?? null);
     this.syncActors(state.others, dt, dead);
     this.syncMonsters(state.monsters, dt);
-    this.effects.update(dt);
+    this.effects.update(dt, this.camera);
+    for (const glow of this.portalGlows) glow.rotation.y += dt * 0.6;
     const cam = chaseCamera(this.pose, this.yaw, this.pitch, this.walls, SKY_CEILING);
     this.camera.position.set(cam.x, cam.y, cam.z);
     this.lod?.setNear(QUALITY[settings().quality].near);
@@ -821,15 +842,12 @@ export class WorldView {
         if (big) this.skillHits.delete(id);
         if (settings().damageNumbers) this.effects.floatText(at, String(Math.round(change.damage)), big ? "#ffb347" : "#fff4dc", big);
       }
-      if (change.died) {
-        this.effects.burst(new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z), 0xfff1c9);
-        // Heard only near you, not from across the field.
-        if (Math.hypot(actor.object.position.x - this.pose.x, actor.object.position.z - this.pose.z) < DIE_HEARD) playCue("die");
-      }
+      // Heard only near you, not from across the field.
+      const near = Math.hypot(actor.object.position.x - this.pose.x, actor.object.position.z - this.pose.z) < DIE_HEARD;
+      if (change.died && near) playCue("die");
       if (change.slammed) {
         const ground = new THREE.Vector3(actor.object.position.x, 0, actor.object.position.z);
         this.effects.ring(ground, BOSS_MOVES.slamRadius, 0xff7a3a);
-        this.effects.burst(ground, 0xc9a27a);
       }
     }
     for (const [id, actor] of this.monsters) {
@@ -839,26 +857,25 @@ export class WorldView {
     }
   }
 
-  // Each portal: a glowing ring on the ground, a column of light, and the name of where it leads.
+  // Each portal: a summoning circle on the ground and the name of where it leads.
   private addPortals(): void {
+    const model = this.library!.get(PORTAL_MODEL).scene;
+    const width = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).x;
     for (const portal of this.portals) {
       const locked = (ZONES[portal.to].paid && !this.options.owned) || levelOf(this.client.state.me?.xp ?? 0).level < ZONES[portal.to].minLevel;
-      const color = locked ? 0xff8a5c : 0x8fe3ff;
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(PORTAL_RADIUS - 0.25, PORTAL_RADIUS, 40).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }),
-      );
-      ring.position.set(portal.x, 0.06, portal.z);
-      const column = new THREE.Mesh(
-        new THREE.CylinderGeometry(PORTAL_RADIUS * 0.8, PORTAL_RADIUS * 0.8, 3, 24, 1, true),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }),
-      );
-      column.position.set(portal.x, 1.5, portal.z);
+      const ring = paintPortal(model.clone(true));
+      ring.scale.setScalar((PORTAL_RADIUS * 2) / width);
+      ring.position.set(portal.x, 0, portal.z);
+      // A magic circle turning over the stone: blue, or orange where you may not go yet.
+      const glow = magicCircle(locked ? 0xff8a5c : 0x6fd0ff, 0.9);
+      glow.scale.setScalar(PORTAL_RADIUS * 0.8);
+      glow.position.set(portal.x, 0.12, portal.z);
+      this.portalGlows.push(glow);
       const label = createLabel(2.6);
       label.position.set(portal.x, 3.3, portal.z);
       const why = ZONES[portal.to].paid && !this.options.owned ? " (정식판)" : locked ? ` (Lv${ZONES[portal.to].minLevel})` : "";
       setLabel(label, `${ZONES[portal.to].name}${why}`, locked ? "#ffb08a" : "#bff0ff");
-      this.scene.add(ring, column, label);
+      this.scene.add(ring, glow, label);
     }
   }
 

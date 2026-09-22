@@ -49,6 +49,11 @@
       "kind": "character",
       "asset": "Assets/Resources/QuaterniusAnimals/Wasp.fbx",
       "embeddedClips": true
+    },
+    {
+      "name": "fx_summon_circle",
+      "kind": "prefab",
+      "asset": "Assets/Resources/SummoningCircle/SummoningCircle.fbx"
     }
   ]
 }

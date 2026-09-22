@@ -103,7 +103,7 @@ function buildGround(layout: LevelLayout, paths: readonly Point2[][]): THREE.Mes
 export function buildLevelScene(
   scene: THREE.Scene, library: ModelLibrary, layout: LevelLayout, renderer: THREE.WebGLRenderer, destinations: readonly Point2[] = [],
 ): LodBatch {
-  scene.background = skyTexture(SUN_OFFSET) ?? new THREE.Color(SKY);
+  scene.background = skyTexture() ?? new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, FOG_NEAR, FOG_FAR);
   scene.add(new THREE.HemisphereLight(0xe6f2ff, 0x5b6b34, 1.4));
   const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);

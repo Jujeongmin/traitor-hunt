@@ -20,6 +20,16 @@
       "bytes": 1099540,
       "animations": []
     },
+    "fx_arrow": {
+      "url": "assets/models/fx_arrow.glb",
+      "bytes": 13164,
+      "animations": []
+    },
+    "fx_summon_circle": {
+      "url": "assets/models/fx_summon_circle.glb",
+      "bytes": 136316,
+      "animations": []
+    },
     "hero_cleric": {
       "url": "assets/models/hero_cleric.glb",
       "bytes": 385444,

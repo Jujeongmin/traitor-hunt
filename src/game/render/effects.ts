@@ -1,7 +1,10 @@
 import * as THREE from "three";
+import type { ModelSource } from "./staticBatch";
+import { boltPicture, magicCircle } from "./magicCircle";
 
-// Small, short-lived effects the heroes leave behind: a shot flying out of a bow or a staff, and a
-// ring of light when a skill goes off. They only show what the server already decided.
+// Small, short-lived effects the heroes leave behind: an arrow (a model) or a spell (a picture) flying
+// out of a bow or a staff, and a magic circle when a skill goes off. They only show what the server
+// already decided.
 
 export type ShotKind = "arrow" | "bolt";
 
@@ -14,38 +17,71 @@ interface Live {
   step: (dt: number, t: number) => void;
 }
 
-const arrowGeometry = new THREE.CylinderGeometry(0.025, 0.025, 0.7, 5).rotateX(Math.PI / 2);
-const boltGeometry = new THREE.SphereGeometry(0.16, 10, 8);
-const ringGeometry = new THREE.RingGeometry(0.85, 1, 40).rotateX(-Math.PI / 2);
-const moteGeometry = new THREE.OctahedronGeometry(0.12);
+// The arrow model, and how long an arrow looks in flight (metres).
+export const ARROW_MODEL = "fx_arrow";
+const ARROW_LENGTH = 0.8;
+const BOLT_SIZE = 1.3;
+const BOLT_COLOR = 0xb58cff;
 const FLOAT_SECONDS = 0.9;
-const BURST_SECONDS = 0.7;
 
 export class Effects {
   private readonly live: Live[] = [];
 
+  private arrow: THREE.Object3D | null = null;
+  // The camera the spell pictures turn to face (see update).
+  private camera: THREE.Camera | null = null;
+
   constructor(private readonly scene: THREE.Object3D) {}
+
+  // The arrow model, once the models are in.
+  useModels(library: ModelSource): void {
+    const model = library.get(ARROW_MODEL).scene.clone(true);
+    const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+    model.scale.setScalar(ARROW_LENGTH / size.z);
+    // The model lies along z, point toward +z; turned to point along -z, the way yaw 0 faces.
+    model.rotation.y = Math.PI;
+    this.arrow = new THREE.Group().add(model);
+  }
 
   // A shot from (x, height, z) along yaw (yaw 0 flies toward -z), for reach metres.
   shoot(kind: ShotKind, from: THREE.Vector3, yaw: number, reach: number): void {
-    const material = kind === "arrow"
-      ? new THREE.MeshBasicMaterial({ color: 0x8a5a2b })
-      : new THREE.MeshBasicMaterial({ color: 0xb58cff, transparent: true, opacity: 0.9 });
-    const mesh = new THREE.Mesh(kind === "arrow" ? arrowGeometry : boltGeometry, material);
-    mesh.position.copy(from);
-    mesh.rotation.y = yaw;
     const dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-    this.add(mesh, reach / SHOT_SPEED, (dt) => mesh.position.addScaledVector(dir, SHOT_SPEED * dt));
+    let object: THREE.Object3D;
+    if (kind === "arrow") {
+      if (!this.arrow) return;
+      object = this.arrow.clone(true);
+      object.rotation.y = yaw;
+    } else {
+      const material = new THREE.SpriteMaterial({
+        map: boltPicture(), color: BOLT_COLOR, transparent: true, depthWrite: false,
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.setScalar(BOLT_SIZE);
+      object = sprite;
+    }
+    object.position.copy(from);
+    const sprite = object instanceof THREE.Sprite ? object : null;
+    const ahead = new THREE.Vector3();
+    const here = new THREE.Vector3();
+    this.add(object, reach / SHOT_SPEED, (dt) => {
+      object.position.addScaledVector(dir, SHOT_SPEED * dt);
+      // The picture points along +x: turned on screen to point the way the spell flies.
+      if (sprite && this.camera) {
+        here.copy(object.position).project(this.camera);
+        ahead.copy(object.position).add(dir).project(this.camera);
+        (sprite.material as THREE.SpriteMaterial).rotation = Math.atan2(ahead.y - here.y, ahead.x - here.x);
+      }
+    });
   }
 
-  // A ring that spreads out to radius round (x, z) and fades.
+  // A magic circle that spreads out to radius round (x, z), turning, and fades.
   ring(at: THREE.Vector3, radius: number, color: number): void {
-    const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
-    const mesh = new THREE.Mesh(ringGeometry, material);
+    const mesh = magicCircle(color, 1);
     mesh.position.set(at.x, 0.08, at.z);
     this.add(mesh, RING_SECONDS, (_dt, t) => {
-      mesh.scale.setScalar(0.3 + t * radius);
-      material.opacity = 0.8 * (1 - t);
+      mesh.scale.setScalar(0.4 + t * radius);
+      mesh.rotation.y = t * 1.2;
+      mesh.material.opacity = 1 - t * t;
     });
   }
 
@@ -83,25 +119,8 @@ export class Effects {
     });
   }
 
-  // A puff where a monster fell: a ring on the ground and a few motes rising.
-  burst(at: THREE.Vector3, color: number): void {
-    this.ring(at, 1.8, color);
-    for (let i = 0; i < 8; i++) {
-      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false });
-      const mote = new THREE.Mesh(moteGeometry, material);
-      const angle = (i / 8) * Math.PI * 2;
-      const dir = new THREE.Vector3(Math.cos(angle), 0.8 + Math.random() * 0.6, Math.sin(angle));
-      mote.position.set(at.x, 0.4, at.z);
-      this.add(mote, BURST_SECONDS, (dt, t) => {
-        mote.position.addScaledVector(dir, dt * 2.4);
-        dir.y -= dt * 2;
-        mote.scale.setScalar(1 - t * 0.7);
-        material.opacity = 0.9 * (1 - t);
-      });
-    }
-  }
-
-  update(dt: number): void {
+  update(dt: number, camera: THREE.Camera | null = null): void {
+    this.camera = camera;
     for (let i = this.live.length - 1; i >= 0; i--) {
       const e = this.live[i];
       e.left -= dt;
@@ -130,10 +149,11 @@ export class Effects {
   }
 }
 
+// Its own material, and a number's own picture; the shared effect pictures and the arrow model stay.
 function disposeMaterial(object: THREE.Object3D): void {
   const material = (object as THREE.Mesh).material as THREE.Material & { map?: THREE.Texture | null };
   if (material && !Array.isArray(material)) {
-    material.map?.dispose();
+    if (material.map instanceof THREE.CanvasTexture) material.map.dispose();
     material.dispose();
   }
 }

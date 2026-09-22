@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { magicCircle } from "./magicCircle";
 import { BOSS_MOVES, type MonsterState } from "../world/monsters";
 import { ActionBlender, clipByName, ownMaterials, skinnedHeight } from "./skinned";
 
@@ -48,8 +49,8 @@ export class MonsterActor {
   private readonly knock = new THREE.Vector3();
   // Where the next blow comes from (set by the view before sync), to push away from.
   private blowFrom: { x: number; z: number } | null = null;
-  // The boss's warning: a red ring on the ground where its slam will land, while it rears up.
-  private readonly warning: THREE.Mesh;
+  // The boss's warning: a red magic circle on the ground where its slam will land, while it rears up.
+  private readonly warning: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private warningClock = 0;
   private wasSlamming = false;
 
@@ -83,15 +84,8 @@ export class MonsterActor {
     this.bar.add(back, this.barFill);
     this.bar.position.y = look.height + 0.35;
     this.bar.visible = false;
-    this.warning = new THREE.Mesh(
-      new THREE.RingGeometry(BOSS_MOVES.slamRadius - 0.35, BOSS_MOVES.slamRadius, 64).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }),
-    );
-    const fill = new THREE.Mesh(
-      new THREE.CircleGeometry(BOSS_MOVES.slamRadius, 64).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }),
-    );
-    this.warning.add(fill);
+    this.warning = magicCircle(0xff3a2a, 0.9);
+    this.warning.scale.setScalar(BOSS_MOVES.slamRadius);
     this.warning.position.y = 0.07;
     this.warning.visible = false;
     this.object = new THREE.Group();
@@ -118,7 +112,8 @@ export class MonsterActor {
     if (slamming) {
       this.warningClock += dt;
       const pulse = 0.5 + 0.5 * Math.sin(this.warningClock * 14);
-      (this.warning.material as THREE.MeshBasicMaterial).opacity = 0.45 + pulse * 0.45;
+      this.warning.material.opacity = 0.55 + pulse * 0.45;
+      this.warning.rotation.y = this.warningClock * 1.5;
     }
     const p = this.object.position;
     // Back from the dead: standing where it started.

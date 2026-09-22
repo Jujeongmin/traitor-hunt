@@ -129,6 +129,22 @@ WAV는 모노 22.05 kHz로 줄이고 앞뒤 무음을 잘랐고, OGG는 그대�
 | `cloth.wav` (창 열기·닫기) | inventory/cloth.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
 | `enhance_ok.wav` | inventory/metal-ringing.wav | RPG Sound Pack | artisticdude | https://opengameart.org/content/rpg-sound-pack |
 
+## 코드 그림 교체 (2026-09-22)
+
+코드로 그리던 하늘, 산, 언덕, 화살, 마법탄, 스킬 원, 보스 경고 원, 포털, 스킬·메뉴 아이콘을 에셋으로 바꾸거나 뺐다.
+사용자가 후보 페이지(art-src/review/후보.html)에서 골랐다. 모두 CC0.
+
+| 게임 파일 | 쓰임 | 원본 | 제작 | 출처 |
+|---|---|---|---|---|
+| `public/assets/sky/kloppenheim_06.jpg` | 하늘 | Kloppenheim 06 (pure sky), 톤매핑 JPG를 2048x1024로 줄임 | Poly Haven | https://polyhaven.com/a/kloppenheim_06_puresky |
+| `fx_arrow.glb` | 궁수 화살 | arrow.glb (Bow, arrow, quiver) | OpenGameArt | https://opengameart.org/content/bow-arrow-quiver |
+| `public/assets/fx/bolt.png` | 마법탄 | Pure_01 (Pure Projectile) | OpenGameArt | https://opengameart.org/content/pure-projectile-magic-effect |
+| `public/assets/fx/magic_circle.png` | 스킬 원, 보스 경고, 포털 빛 | teleportCircle.png 넷째 줄 첫 칸을 흰색으로 | OpenGameArt | https://opengameart.org/content/teleport-circle-sprite-sheet |
+| `fx_summon_circle.glb` | 포털 | Magic Summoning Circle (FBX, Unity로 GLB 변환; 그림 파일이 없어 색은 코드에서 칠함) | CityBuildingKit | https://opengameart.org/content/magic-summoning-circle |
+| `public/assets/ui/icons/*.png` | 스킬 18개, 메뉴 6개 | 496 RPG icons (S_Sword16 등, `art-src/review` 선택 결과) | Henrique Lazarini | https://opengameart.org/content/496-pixel-art-icons-for-medievalfantasy-rpg |
+
+설정 아이콘(`ui_menu`)은 사용자가 고르지 않아 I_Key02를 썼다.
+
 ## 바닥 텍스처 (2026-09-22)
 
 모두 CC0. 사용자가 후보 페이지(art-src/ground/후보.html)에서 E안을 골랐다. 1K 원본은 `art-src/ground/`에 있고,
