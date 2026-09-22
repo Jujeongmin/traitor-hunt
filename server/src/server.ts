@@ -5,7 +5,7 @@ import { levelOf } from "../../src/game/account/level";
 import {
   GOLD, ITEMS, MAX_STACK, NO_GEAR, addItem, equip, readItemId, sellPrice, unequip, type BagView, type ItemId, type Slot,
 } from "../../src/game/account/items";
-import { rollLoot } from "../../src/game/world/monsters";
+import { rankHitters, rollLoot, xpFor, type MonsterType } from "../../src/game/world/monsters";
 import { QUESTS, QUEST_START, countKills, questDone } from "../../src/game/account/quests";
 import { ADVANCE_LEVEL, JOBS, readJob } from "../../src/game/combat/jobs";
 import { TALK_RANGE, TALK_SLACK, npcSpot, type NpcId } from "../../src/game/world/npcs";
@@ -108,37 +108,78 @@ async function partyNearby(account: string): Promise<string[]> {
     .map((u) => u.account);
 }
 
-// Adds XP (and kills toward the quest) to a character, and shows it in the room: a new level heals
-// it to its new, larger health.
-async function payHunter(account: string, roomId: string, xp: number, felled: HitResult["felled"], items: ItemId[]): Promise<void> {
+// What one hunter is paid for a blow or skill: XP, gold, items and the kinds it counts toward its
+// quest.
+interface Pay {
+  xp: number;
+  gold: number;
+  items: ItemId[];
+  felled: MonsterType[];
+}
+
+// Pays a character (gold onto its account as a Verse8 asset, the rest into the character) and shows
+// it in the room: the new XP (a new level heals it to its new, larger health) and the payout itself,
+// which its client shows and refreshes the bag on.
+async function payHunter(account: string, roomId: string, pay: Pay): Promise<void> {
+  // Verse8 mints only to the caller; another hunter's gold is minted here, then handed over.
+  if (pay.gold > 0) {
+    await $asset.mint(GOLD, pay.gold);
+    if (account !== $sender.account) await $asset.transfer(account, GOLD, pay.gold);
+  }
   const next = await updateActive(account, (c) => ({
-    ...c, xp: c.xp + xp, bag: items.reduce((bag, id) => addItem(bag, id, 1), c.bag), quest: countKills(c.quest, felled),
+    ...c, xp: c.xp + pay.xp, bag: pay.items.reduce((bag, id) => addItem(bag, id, 1), c.bag), quest: countKills(c.quest, pay.felled),
   }));
-  await writeRanking(account, next);
-  const levelled = levelOf(next.xp).level > levelOf(next.xp - xp).level;
+  if (pay.xp > 0) await writeRanking(account, next);
+  const levelled = levelOf(next.xp).level > levelOf(next.xp - pay.xp).level;
   await withRoomLock(roomId, async () => {
     const stats = fightStats(next);
     await $room.updateUserState(
       account,
-      { look: zoneLook(next), xp: next.xp, ...(levelled ? { maxHp: stats.maxHp, hp: stats.maxHp } : {}) },
+      {
+        look: zoneLook(next), xp: next.xp, ...(levelled ? { maxHp: stats.maxHp, hp: stats.maxHp } : {}),
+        payout: { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, xp: pay.xp, gold: pay.gold, items: pay.items },
+      },
       { returnState: false },
     );
   });
 }
 
-// Pays for what a hunter felled: XP (shared with party members close by), gold (onto the hunter's
-// account, as a Verse8 asset) and whatever dropped (into the hunter's bag).
-async function reward(account: string, roomId: string, result: HitResult): Promise<HitResult> {
-  if (result.felled.length === 0) return result;
-  const loot = result.felled.map((type) => rollLoot(type));
-  const gold = loot.reduce((sum, l) => sum + l.gold, 0);
-  const items = loot.flatMap((l) => l.items);
-  if (gold > 0) await $asset.mint(GOLD, gold);
-  const party = await partyNearby(account);
-  const share = Math.max(1, Math.round((result.xp * (1 + PARTY_BONUS * party.length)) / (party.length + 1)));
-  await payHunter(account, roomId, share, result.felled, items);
-  for (const member of party) await payHunter(member, roomId, share, result.felled, []);
-  return { ...result, xp: share, gold, items };
+// Pays for what a blow or skill felled. Each monster's XP, gold and drops go to whoever still here
+// dealt it the most damage, the XP shared with that hunter's party members close by; everyone here
+// who hit it at all counts it toward their quest. Answers with what the caller itself was paid.
+async function reward(caller: string, roomId: string, result: HitResult): Promise<HitResult> {
+  if (result.kills.length === 0) return result;
+  const present = new Set<string>((await $room.getRoomState([])).$users);
+  present.add(caller);
+  const pays = new Map<string, Pay>();
+  const payOf = (account: string) => {
+    let pay = pays.get(account);
+    if (!pay) pays.set(account, (pay = { xp: 0, gold: 0, items: [], felled: [] }));
+    return pay;
+  };
+  const levels = new Map<string, number>();
+  const parties = new Map<string, string[]>();
+  for (const kill of result.kills) {
+    const hunters = rankHitters(kill.hitters, present);
+    const owner = hunters[0] ?? caller;
+    if (!levels.has(owner)) {
+      const [state] = await $room.getUserStates([owner], ["look"]);
+      levels.set(owner, typeof state?.look?.level === "number" ? state.look.level : 1);
+    }
+    if (!parties.has(owner)) parties.set(owner, await partyNearby(owner));
+    const party = parties.get(owner)!;
+    const loot = rollLoot(kill.type);
+    const xp = xpFor(kill.type, levels.get(owner)!);
+    const share = Math.max(1, Math.round((xp * (1 + PARTY_BONUS * party.length)) / (party.length + 1)));
+    const own = payOf(owner);
+    own.gold += loot.gold;
+    own.items.push(...loot.items);
+    for (const member of [owner, ...party]) payOf(member).xp += share;
+    for (const counted of new Set([owner, ...party, ...hunters])) payOf(counted).felled.push(kill.type);
+  }
+  for (const [account, pay] of pays) await payHunter(account, roomId, pay);
+  const mine = pays.get(caller);
+  return { ...result, xp: mine?.xp ?? 0, gold: mine?.gold ?? 0, items: mine?.items ?? [] };
 }
 
 async function bagView(character: Character): Promise<BagView> {
@@ -398,14 +439,14 @@ export class Server {
   // Your attack on a monster, facing yaw; the server checks reach, facing and your weapon's pace.
   async strike(monsterId: unknown, yaw?: unknown): Promise<HitResult> {
     const { roomId, zone } = currentChannel();
-    const result = await withRoomLock(roomId, () => strike(zone, monsterId, yaw, Date.now()));
+    const result = await withRoomLock(roomId, () => strike(zone, $sender.account, monsterId, yaw, Date.now()));
     return reward($sender.account, roomId, result);
   }
 
   // Your class's skill, no sooner than its cooldown allows.
   async useSkill(slot?: unknown, yaw?: unknown): Promise<HitResult> {
     const { roomId, zone } = currentChannel();
-    const result = await withRoomLock(roomId, () => useSkill(zone, slot, yaw, Date.now()));
+    const result = await withRoomLock(roomId, () => useSkill(zone, $sender.account, slot, yaw, Date.now()));
     return reward($sender.account, roomId, result);
   }
 

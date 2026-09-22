@@ -23,14 +23,14 @@ export interface MonsterSpec {
   speed: number;
   // How far away it notices a player.
   aggro: number;
-  // Paid to whoever lands the killing blow.
+  // Paid to whoever dealt it the most damage (see topHitter).
   xp: number;
   // Footprint radius, for bodies not walking through each other.
   body: number;
   // How long it stays down before it comes back where it started.
   respawnMs: number;
-  // Gold paid to whoever fells it, somewhere between the two; and what it may drop, each on its own
-  // chance (0 to 1).
+  // Gold paid to whoever dealt it the most damage, somewhere between the two; and what it may drop,
+  // each on its own chance (0 to 1).
   gold: [number, number];
   drops: { item: ItemId; chance: number }[];
 }
@@ -148,6 +148,18 @@ export interface MonsterState {
   calls?: number;
   // Called by the boss: gone for good once felled.
   summoned?: boolean;
+  // The damage each hunter has dealt it since it was last whole, by account.
+  hitters?: Record<string, number>;
+}
+
+// Who a fallen monster's XP, gold and drops go to: of the hunters in `present`, the one who dealt it
+// the most damage (on a tie, whoever hit it first). Everyone who hit it at all counts the kill toward
+// their quest; they come after the owner here, most damage first.
+export function rankHitters(hitters: Record<string, number>, present: ReadonlySet<string>): string[] {
+  return Object.entries(hitters)
+    .filter(([account]) => present.has(account))
+    .sort((a, b) => b[1] - a[1])
+    .map(([account]) => account);
 }
 
 export function readMonsterType(value: unknown): MonsterType | null {

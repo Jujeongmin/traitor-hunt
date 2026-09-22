@@ -91,6 +91,32 @@ describe("hunting", () => {
     expect(await errorOf(server.strike("m0"))).toContain("monster_dead");
   });
 
+  test("a kill pays whoever dealt the most damage, and counts for everyone who hit it", async (server) => {
+    const entry = await toForest(server, "test-b");
+    await toForest(server, "test-a");
+    const spawn = zoneLayout("forest1").playerSpawn;
+    await standAt(server, spawn.x, spawn.z);
+    // test-b has taken most of its health; test-a lands the last blow.
+    await only("green_blob", spawn.x, spawn.z - 1.5, 10);
+    const { monsters } = await $room.getRoomState();
+    await $room.updateRoomState({ monsters: { m0: { ...monsters.m0, hitters: { "test-b": MONSTERS.green_blob.hp - 10 } } } });
+    const kill = await server.strike("m0");
+    expect(kill.killed).toEqual(["m0"]);
+    expect(kill).toMatchObject({ xp: 0, gold: 0, items: [] });
+    expect((await server.getAccount()).xp).toBe(0);
+    expect((await server.getBag()).quest.count).toBe(1);
+    expect((await $room.getMyState()).payout).toMatchObject({ xp: 0, gold: 0 });
+
+    server.connect({ account: "test-b", roomId: entry.roomId });
+    expect((await server.getAccount()).xp).toBe(MONSTERS.green_blob.xp);
+    const bag = await server.getBag();
+    expect(bag.quest.count).toBe(1);
+    expect(bag.gold).toBeGreaterThanOrEqual(MONSTERS.green_blob.gold[0]);
+    expect((await $room.getMyState()).payout).toMatchObject({ xp: MONSTERS.green_blob.xp });
+    // Whole again, it forgets who hit it.
+    expect((await $room.getRoomState()).monsters.m0.hitters).toBeUndefined();
+  });
+
   test("a fallen monster comes back where it started once its time is up", async (server) => {
     const entry = await toForest(server, "test-a");
     const spawn = zoneLayout("forest1").playerSpawn;

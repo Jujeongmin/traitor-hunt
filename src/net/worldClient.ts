@@ -40,6 +40,16 @@ export interface WorldState {
 
 // What an attack or skill did, as the server answers it: what it hit and felled, and what that paid.
 export interface HitResult { hit: string[]; killed: string[]; xp: number; gold: number; items: ItemId[] }
+// What the server paid you for a kill, yours or one you helped with: the XP, gold and items (all
+// zero when you only counted it toward your quest).
+export interface Payout { xp: number; gold: number; items: ItemId[] }
+
+function readPayout(raw: unknown): (Payout & { id: string }) | null {
+  const p = raw as Record<string, unknown> | null;
+  if (!p || typeof p !== "object" || typeof p.id !== "string") return null;
+  const items = Array.isArray(p.items) ? p.items.filter((i): i is ItemId => typeof i === "string") : [];
+  return { id: p.id, xp: num(p.xp), gold: num(p.gold), items };
+}
 
 // Moving, your pose goes out this often; standing still, this often, so the others keep hearing you.
 export const POSE_THROTTLE_MS = 100;
@@ -95,6 +105,10 @@ export class WorldClient {
   private members: string[] = [];
   private users: Record<string, unknown>[] = [];
   private lastPose: (Pose & { at: number }) | null = null;
+  // The last payout seen in your room user state (undefined until the room first shows you), and
+  // the ones not yet taken by the view.
+  private payoutSeen: string | null | undefined = undefined;
+  private payouts: Payout[] = [];
 
   constructor(
     private readonly transport: MatchTransport,
@@ -174,12 +188,12 @@ export class WorldClient {
   // Facing yaw: turning is instant, so it goes with the attack rather than waiting for the next pose.
   async strike(monsterId: string, yaw: number): Promise<HitResult | null> {
     if (this.current.phase !== "in") return null;
-    return this.paid(await this.transport.call<HitResult>("strike", [monsterId, yaw]).catch(() => null));
+    return await this.transport.call<HitResult>("strike", [monsterId, yaw]).catch(() => null);
   }
 
   async useSkill(slot: number, yaw: number): Promise<HitResult | null> {
     if (this.current.phase !== "in") return null;
-    return this.paid(await this.transport.call<HitResult>("useSkill", [slot, yaw]).catch(() => null));
+    return await this.transport.call<HitResult>("useSkill", [slot, yaw]).catch(() => null);
   }
 
   // 전직, and claiming a finished quest.
@@ -191,10 +205,23 @@ export class WorldClient {
     return this.bagCall("claimQuest", []);
   }
 
-  private paid(result: HitResult | null): HitResult | null {
+  // Payouts that came in since the last call, oldest first.
+  takePayouts(): Payout[] {
+    const out = this.payouts;
+    this.payouts = [];
+    return out;
+  }
+
+  private notePayout(raw: unknown): void {
+    const payout = readPayout(raw);
+    const id = payout?.id ?? null;
+    if (id === this.payoutSeen) return;
+    const first = this.payoutSeen === undefined;
+    this.payoutSeen = id;
+    if (first || !payout) return;
+    this.payouts.push({ xp: payout.xp, gold: payout.gold, items: payout.items });
     // Gold, drops and quest kills all live with the bag.
-    if (result && result.killed.length > 0) void this.refreshBag();
-    return result;
+    void this.refreshBag();
   }
 
   async refreshBag(): Promise<void> {
@@ -278,6 +305,7 @@ export class WorldClient {
     this.members = [];
     this.users = [];
     this.lastPose = null;
+    this.payoutSeen = undefined;
     this.set({ phase: "in", entry, others: [], monsters: {}, me: null, error: null });
     void this.refreshBag();
     this.unsubscribers = [
@@ -301,7 +329,10 @@ export class WorldClient {
     let me: Vitals | null = this.current.me;
     for (const user of this.users) {
       const account = user.account;
-      if (account === this.account) me = readVitals(user) ?? me;
+      if (account === this.account) {
+        me = readVitals(user) ?? me;
+        this.notePayout(user.payout);
+      }
       if (typeof account !== "string" || account === this.account || !this.members.includes(account)) continue;
       const look = readLook(user.look);
       if (!look || !isPose(user.pose)) continue;

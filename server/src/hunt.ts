@@ -6,7 +6,7 @@ import { BLOCK_ARC, facing, inStrikeReach } from "../../src/game/combat/melee";
 import { SKILLS, readSlot, skillTargets } from "../../src/game/combat/skills";
 import { stepMonsters, type Prey } from "../../src/game/world/monsterAi";
 import {
-  MONSTERS, ZONE_BOSS, ZONE_MONSTERS, damageAt, maxHpAt, readMonsterType, spawnMonsters, xpFor, type MonsterState,
+  MONSTERS, ZONE_BOSS, ZONE_MONSTERS, damageAt, maxHpAt, readMonsterType, spawnMonsters, type MonsterState,
   type MonsterType,
 } from "../../src/game/world/monsters";
 import { RANGE_SLACK, RuleViolation, isPose, type Pose } from "../../src/game/world/types";
@@ -147,37 +147,45 @@ export async function tickRoom(zone: ZoneId, deltaMs: number, now: number): Prom
   if (regen) await $room.updateRoomState({ regenAt: now + REGEN_MS }, { returnState: false });
 }
 
-// What one blow or skill did: the monsters it felled and the XP they pay.
-// The kinds felled, for their loot; the server fills gold and items in after paying out.
+// What one blow or skill did: the monsters it hit and felled. Each felled one comes with everyone
+// who hit it and how hard, for the server to pay out (see reward in server.ts); what the caller
+// itself was paid (XP, gold, items) is filled in there.
+export interface Kill {
+  type: MonsterType;
+  hitters: Record<string, number>;
+}
+
 export interface HitResult {
   hit: string[];
   killed: string[];
+  kills: Kill[];
   xp: number;
-  felled: MonsterType[];
   gold: number;
   items: string[];
 }
 
-export const NOTHING: HitResult = { hit: [], killed: [], xp: 0, felled: [], gold: 0, items: [] };
+export const NOTHING: HitResult = { hit: [], killed: [], kills: [], xp: 0, gold: 0, items: [] };
 
-// Hits the monsters for damage (and a stun). A hunter of `level` earns the XP of those it fells.
+// `account` hits the monsters for damage (and a stun); what it takes off each is written down
+// against its name.
 function land(
-  monsters: Record<string, MonsterState>, ids: string[], damage: number, stunMs: number, now: number, level: number,
+  monsters: Record<string, MonsterState>, ids: string[], damage: number, stunMs: number, now: number, account: string,
 ): HitResult {
-  const out: HitResult = { ...NOTHING, hit: [], killed: [], felled: [], items: [] };
+  const out: HitResult = { ...NOTHING, hit: [], killed: [], kills: [], items: [] };
   for (const id of ids) {
     const m = monsters[id];
     if (!m?.alive) continue;
     out.hit.push(id);
-    m.hp = Math.max(0, m.hp - damage);
+    const dealt = Math.min(m.hp, damage);
+    m.hp -= dealt;
+    m.hitters = { ...m.hitters, [account]: (m.hitters?.[account] ?? 0) + dealt };
     if (stunMs > 0) m.stunnedUntil = Math.max(m.stunnedUntil, now + stunMs);
     if (m.hp <= 0) {
-      const spec = MONSTERS[m.type];
       m.alive = false;
-      m.respawnAt = now + spec.respawnMs;
+      m.respawnAt = now + MONSTERS[m.type].respawnMs;
       out.killed.push(id);
-      out.felled.push(m.type);
-      out.xp += xpFor(m.type, level);
+      out.kills.push({ type: m.type, hitters: m.hitters });
+      delete m.hitters;
     }
   }
   return out;
@@ -194,7 +202,7 @@ async function me(yaw: unknown): Promise<{ f: Fighter & { pose: Pose }; state: R
 }
 
 // Your attack on one monster: in reach of where you stand, facing it, no sooner than your weapon allows.
-export async function strike(zone: ZoneId, monsterId: unknown, yaw: unknown, now: number): Promise<HitResult> {
+export async function strike(zone: ZoneId, account: string, monsterId: unknown, yaw: unknown, now: number): Promise<HitResult> {
   if (typeof monsterId !== "string") throw new RuleViolation("no_monster");
   const { f, state } = await me(yaw);
   const readyAt = state.strikeReadyAt;
@@ -206,7 +214,7 @@ export async function strike(zone: ZoneId, monsterId: unknown, yaw: unknown, now
   const weapon = WEAPONS[f.playerClass];
   if (!inStrikeReach(f.pose, m, weapon, true)) throw new RuleViolation("out_of_range");
   await $room.updateMyState({ strikeReadyAt: now + weapon.intervalMs * COOLDOWN_GRACE }, { returnState: false });
-  const result = land(monsters, [monsterId], damageAt(weapon.damage, f.level, f.gear.power), 0, now, f.level);
+  const result = land(monsters, [monsterId], damageAt(weapon.damage, f.level, f.gear.power), 0, now, account);
   await writeMonsters(monsters);
   return result;
 }
@@ -214,7 +222,7 @@ export async function strike(zone: ZoneId, monsterId: unknown, yaw: unknown, now
 // One of your class's skills (slot 0 to 2), once your level has opened it and its own cooldown is
 // over: every monster it reaches takes its damage (and stun); a heal also mends you and everyone
 // standing close.
-export async function useSkill(zone: ZoneId, rawSlot: unknown, yaw: unknown, now: number): Promise<HitResult> {
+export async function useSkill(zone: ZoneId, account: string, rawSlot: unknown, yaw: unknown, now: number): Promise<HitResult> {
   const slot = readSlot(rawSlot ?? 0);
   if (slot === null) throw new RuleViolation("unavailable");
   const { f, state: mine } = await me(yaw);
@@ -243,7 +251,7 @@ export async function useSkill(zone: ZoneId, rawSlot: unknown, yaw: unknown, now
   const monsters = await readMonsters(zone);
   const targets = skillTargets(f.pose, monsters, skill, true);
   if (targets.length === 0) return { ...NOTHING };
-  const result = land(monsters, targets, damageAt(skill.damage, f.level, f.gear.power), skill.stunMs, now, f.level);
+  const result = land(monsters, targets, damageAt(skill.damage, f.level, f.gear.power), skill.stunMs, now, account);
   await writeMonsters(monsters);
   return result;
 }

@@ -75,6 +75,39 @@ describe("WorldClient", () => {
   });
 });
 
+describe("WorldClient payouts", () => {
+  // A server that can also write a payout into the caller's room user state, as a kill does.
+  class PayingServer extends Server {
+    async pay(id: string, xp: number): Promise<void> {
+      await $room.updateMyState({ payout: { id, xp, gold: 5, items: ["potion_small"] } }, { returnState: false });
+    }
+  }
+
+  it("hands over each new payout once, not the one already there when you arrive", async () => {
+    const world = new LocalWorld(new PayingServer());
+    const transport = new LocalTransport(world, "test-a");
+    await transport.call("createCharacter", ["testa", "warrior", "0000"]);
+    const a = new WorldClient(transport);
+    // In, and seen in the room (a first pose) before anything is paid.
+    const arrive = async () => {
+      await a.enter();
+      a.reportPose({ x: 10, z: 10, yaw: 0 });
+      await world.idle();
+    };
+    await arrive();
+    await world.call("test-a", a.state.entry!.roomId, "pay", ["old", 1]);
+    await world.idle();
+    expect(a.takePayouts()).toEqual([{ xp: 1, gold: 5, items: ["potion_small"] }]);
+    // Arriving again, the old one is only noted.
+    await arrive();
+    expect(a.takePayouts()).toEqual([]);
+    await world.call("test-a", a.state.entry!.roomId, "pay", ["new", 30]);
+    await world.idle();
+    expect(a.takePayouts()).toEqual([{ xp: 30, gold: 5, items: ["potion_small"] }]);
+    expect(a.takePayouts()).toEqual([]);
+  });
+});
+
 describe("WorldClient pose rate", () => {
   it("never sends more than ten poses a second, and still sends an attack made in between", async () => {
     let now = 0;

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { HitResult, OtherPlayer, WorldClient } from "../../net/worldClient";
+import type { OtherPlayer, Payout, WorldClient } from "../../net/worldClient";
 import { ITEMS } from "../account/items";
 import { levelOf } from "../account/level";
 import { ModelLibrary } from "../assets/ModelLibrary";
@@ -532,7 +532,7 @@ export class WorldView {
       const shot = HEROES[c].shot;
       if (shot) playShot(shot);
       else playSwing();
-      if (target) void this.client.strike(target, yaw).then((r) => this.gained(r));
+      if (target) void this.client.strike(target, yaw);
     }
     if (now - Math.max(...this.lastSkillAt) < SKILL_GAP_MS) return yaw;
     // The bar's slots hold skills; a key or auto-battle picks a slot, and the skill in it is used.
@@ -563,7 +563,6 @@ export class WorldView {
     playSkill();
     void this.client.useSkill(index, yaw).then((r) => {
       for (const id of r?.hit ?? []) this.skillHits.set(id, performance.now());
-      this.gained(r);
     });
     return yaw;
   }
@@ -580,8 +579,9 @@ export class WorldView {
     return skill.heal > 0 ? hurt || hits : hits;
   }
 
-  private gained(result: HitResult | null): void {
-    if (!result) return;
+  // What the server paid you: for your kills, and for ones you dealt the most damage to or your
+  // party took (anyone's kill you hit counts toward your quest, which pays nothing here).
+  private gained(result: Payout): void {
     const now = performance.now();
     if (result.xp > 0) {
       const recent = this.gain && now - this.gain.at < GAIN_MS ? this.gain.xp : 0;
@@ -745,6 +745,7 @@ export class WorldView {
     const now = performance.now();
     if (now - this.lastHudAt < HUD_INTERVAL_MS) return;
     this.lastHudAt = now;
+    for (const payout of this.client.takePayouts()) this.gained(payout);
     this.notes = this.notes.filter((n) => now - n.at < NOTE_MS).slice(-4);
     const entry = this.client.state.entry ?? this.options.entry;
     const near = this.nearestPortal();

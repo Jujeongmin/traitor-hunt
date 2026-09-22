@@ -264,6 +264,15 @@ export class LocalWorld {
         of(account).set(id, have - amount);
         return all(account);
       },
+      transfer: async (to: string, id: string, amount: number) => {
+        if (!(amount > 0)) throw new Error("Amount must be positive");
+        if (to === caller) throw new Error("Cannot transfer to yourself");
+        const have = of().get(id) ?? 0;
+        if (have < amount) throw new Error(`Insufficient ${id}: has ${have}, needs ${amount}`);
+        of().set(id, have - amount);
+        of(to).set(id, (of(to).get(id) ?? 0) + amount);
+        return all();
+      },
     };
   }
 

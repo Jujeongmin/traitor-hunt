@@ -57,6 +57,7 @@ export function stepMonsters(
     if (!target && d < 0.5) {
       // Home: whole again after a lost chase (a boss forgets its calls and its slam).
       m.hp = spec.hp;
+      delete m.hitters;
       if (BOSSES.has(m.type)) {
         m.calls = 0;
         m.slamAt = undefined;
